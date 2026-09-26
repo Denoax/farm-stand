@@ -180,6 +180,7 @@ export function ShopSection({ basket, dispatch, focusRequest }: ShopSectionProps
   const productGridRef = useRef<HTMLDivElement>(null)
   const filterPositionsRef = useRef<Map<string, DOMRect>>(new Map())
   const filterAnimationsRef = useRef<Animation[]>([])
+  const handledFocusRequestRef = useRef(0)
   const visibleProducts = useMemo(() => filter === 'all' ? products : products.filter((product) => product.category === filter), [filter])
   const count = basketCount(basket)
 
@@ -298,24 +299,20 @@ export function ShopSection({ basket, dispatch, focusRequest }: ShopSectionProps
     })
   }, [filter])
 
-  useEffect(() => {
-    if (!focusRequest) return
+  useLayoutEffect(() => {
+    if (!focusRequest || handledFocusRequestRef.current === focusRequest.sequence) return
     const product = productById.get(focusRequest.productId)
     if (!product) return
-    setFilter(product.category)
-    let secondFrame = 0
-    const firstFrame = requestAnimationFrame(() => {
-      secondFrame = requestAnimationFrame(() => {
-        const card = document.getElementById(`product-${product.id}`)
-        card?.scrollIntoView({ block: 'start' })
-        card?.focus({ preventScroll: true })
-      })
-    })
-    return () => {
-      cancelAnimationFrame(firstFrame)
-      cancelAnimationFrame(secondFrame)
+    if (filter !== product.category) {
+      setFilter(product.category)
+      return
     }
-  }, [focusRequest])
+    const card = document.getElementById(`product-${product.id}`)
+    if (!card) return
+    card.scrollIntoView({ block: 'start' })
+    card.focus({ preventScroll: true })
+    handledFocusRequestRef.current = focusRequest.sequence
+  }, [filter, focusRequest])
 
   const selectFilter = (nextFilter: 'all' | CategoryId) => {
     if (nextFilter === filter) return

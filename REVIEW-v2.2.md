@@ -22,7 +22,7 @@ Farm life has a non-pinned photographic-window entry and two-layer profile trans
 - Added coverage: handoff arrival/reversal/state preservation, direct hash bypass, detail opening interruption and resized close, runtime reduced-motion settlement, failed animal load retention, arrow-key tabs, and portrait touch.
 - Firefox 155 portrait shop/detail/farm-profile smoke: passed with no console or page errors.
 - WebKit 26.6: browser build downloaded project-locally, but launch is blocked by missing host libraries. No system packages or global configuration were changed.
-- Production transfer: 2,798,311 encoded bytes at arrival and 3,403,313 after a full visit, with no catalogue/farm-life media at arrival. This is +4,032 bytes versus the v2.1 figures for both paths. CLS remained 0.0143.
+- Production transfer: 2,798,326 encoded bytes at arrival and 3,403,328 after a full visit, with no catalogue/farm-life media at arrival. This is +4,047 bytes versus the v2.1 figures for both paths. CLS remained 0.0143.
 - Motion timing in headless Chromium/SwiftShader: three warmed 48-sample hero traversals had 33.4–49.9 ms median frame intervals, 50.1–66.7 ms p95, and 66.7–83.3 ms maxima. This software-renderer result is preserved and is not physical-device or GPU evidence.
 - Detail travel observed in-page: 593.9 ms open and 403.7 ms close.
 - Capture runtime: zero console errors, page errors, or failed requests.
