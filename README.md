@@ -21,4 +21,4 @@ npm run build
 npm run preview -- --host 127.0.0.1
 ```
 
-Run the browser tests with `npm run test:e2e` and the production-build resource check with `npm run measure` while the preview server is running. Asset provenance and transformations are recorded in [ASSETS.md](./ASSETS.md). Bulky captures and recordings under `evidence/` are deliberately ignored; the concise v2 review and machine-readable summary are tracked with the source.
+Run the browser tests with `npm run test:e2e`. With the production preview running, `npm run measure` records transfer/layout/renderer evidence, `npm run measure:motion` records software-rendered motion timing, and `npm run capture:motion` creates selected screenshots and normal-speed recordings. Asset provenance and transformations are recorded in [ASSETS.md](./ASSETS.md). Bulky captures and recordings under `evidence/` are deliberately ignored; concise review reports and machine-readable summaries are tracked with the source.

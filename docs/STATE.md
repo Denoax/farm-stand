@@ -2,7 +2,7 @@
 
 ## Approved direction
 
-The user approved the sunlit farm-stand direction, the v2 expansion, and the v2.1 editorial/shop refinement. Preserve the current hero, rural setting, Fraunces/Source Sans 3 typography, wood/green/yellow palette, useful first frame, short stand-to-shop transition, static fallback, and explicit demonstration boundaries. The cancelled anatomy project is out of scope.
+The user approved the sunlit farm-stand direction, the v2 expansion, the v2.1 editorial/shop refinement, and the v2.2 motion direction. Preserve the current hero, rural setting, Fraunces/Source Sans 3 typography, wood/green/yellow palette, useful first frame, reversible stand-to-shop handoff, static fallback, and explicit demonstration boundaries. The cancelled anatomy project is out of scope.
 
 ## Repository state
 
@@ -14,7 +14,11 @@ The authorization covers coherent verified website changes and the existing Page
 
 ## Current implementation
 
-The v2.1 build retains the seven-product catalogue and refines it into a compact customer-facing shop. Apple and onion now use dedicated model renders; product copy, detail layouts, persistent add feedback, and the `Dozen eggs` styling-prop disclosure are explicit. The hens action reveals the egg product across filter states while preserving basket state and placing focus on the destination. The sourced farm-life profiles use subject-led copy and a lower hens crop. A local sample-hours interaction demonstrates an editable preview with reset while saving and publishing nothing.
+The v2.2 build retains the complete v2.1 shop and adds three coordinated motion systems. The live Three.js apple publishes its projected browser-space bounds to a reversible DOM bridge that travels into the real apple-card image while the overlapping catalogue enters normal document flow. Direct shop entry, reduced motion, missing target media, WebGL fallback, and preserved filter/basket state bypass or unwind the handoff safely.
+
+Product details remain native dialogs and use an inert, aria-hidden image clone inside the top layer for measured card-to-dialog and dialog-to-card travel. Opening/closing interruption, Escape, focus return, resize, offscreen source, live reduced-motion changes, and immediate basket commits are handled independently of decorative motion. Remaining product cards use bounded FLIP position changes; successful adds may travel only when the basket target is visible, while feedback remains explicit.
+
+Farm-life entry uses a non-pinned photographic-window reveal. Profile changes preload and decode before committing coherent copy/image/link state, keep at most two image layers, use latest-request-wins semantics, retain the prior profile on failure, and implement arrow/Home/End tab behavior with roving focus. The sample-hours preview uses a restrained masked value change.
 
 Deterministic multi-item basket operations, quantity/removal/reset handling, integer-money totals, and the no-submission collection preview remain intact. Fictional visit information, the concrete website-service process, and the copy-only contact brief remain separate from farm-customer actions; the contact destination is unconfigured.
 
@@ -22,10 +26,12 @@ Below-fold media is intersection-deferred with reserved dimensions. The hero ren
 
 ## Evidence checked
 
-- Production build passes; Vite retains a raw-size warning for the lazy Three.js scene chunk.
-- Playwright Chromium matrix passes 39 tests with one intentional desktop skip for the portrait-only first-card composition assertion. It includes direct anchors, 320 px, 900 px, short landscape, 200% text, keyboard/dialog behavior, delayed and failed media, rapid animal switching, filtered animal-to-product navigation, reduced motion, refresh, state independence, and renderer pause/resume.
-- Firefox passed a portrait shop/detail smoke journey with no page errors. The project-local WebKit build is blocked by missing host libraries; no global packages were installed. Physical-device, hardware-accelerated, screen-reader, and human usability checks remain unperformed.
-- Production-served measurement: arrival 2,794,279 encoded-body bytes with zero catalogue/farm-life requests; full visited page 3,399,281 encoded-body bytes. Observed CLS was 0.0143. A 30-run headless Chromium add-to-count measurement after three warm-ups was 32.5 ms median / 32.8 ms p95; it includes the next animation frame and is not INP. Headless SwiftShader is software rendering, not hardware evidence.
+- Production build passes; current output is 26.01 kB CSS, 263.60 kB main JavaScript (81.58 kB gzip), and a lazy 616.16 kB Three.js scene chunk (155.52 kB gzip). Vite retains its generic raw chunk-size warning.
+- Playwright Chromium matrix passes 50 applicable checks across desktop and portrait with two intentional cross-project skips. It adds projected handoff arrival/reversal, direct-entry bypass, detail interruption/resize/focus return, runtime reduced-motion settlement, animal load failure/latest-request behavior, arrow-key tabs, and portrait touch to the previous responsive, state, media-failure, and accessibility coverage.
+- Firefox passes a portrait shop/detail/farm-profile smoke journey with no console or page errors. The project-matched WebKit build is present but blocked by missing host libraries; no system dependencies or global configuration were installed. Physical-device, hardware-accelerated, screen-reader, and human usability checks remain unperformed.
+- Production-served measurement at v2.2: arrival 2,798,249 encoded-body bytes with zero catalogue/farm-life requests; full visited page 3,403,251 encoded-body bytes; observed CLS remains 0.0143. Relative to v2.1, both transfer totals increase by 3,970 bytes (about 0.14% arrival).
+- Headless Chromium/SwiftShader handoff measurement after a warm-up produced 50.0/50.0/49.9 ms median frame intervals across three 48-sample runs; p95 was 99.9/83.3/116.6 ms. These are adverse software-renderer frame intervals, not GPU timings or physical-device evidence. Observed detail travel was 582.2 ms open and 419.6 ms close.
+- Normal-speed local recordings and selected desktop/portrait captures report zero console errors, page errors, or failed requests. They remain review evidence, not approved visual baselines.
 - Selected matched shop captures, details, farm-life views, a seven-product contact sheet, and an end-to-end recording are under ignored `evidence/`; they are local review evidence, not a human-approved baseline.
 
 ## Publication status
@@ -36,8 +42,9 @@ The site is published through the existing push-to-main GitHub Pages workflow. D
 
 - Public business/brand name, contact destination, commercial scope, pricing, support terms, backend, and integrations are not supplied; configuration keeps them inactive.
 - The selected Pexels photography is licensed demonstration material, not verified client/property imagery.
-- The lazy Three.js scene chunk is 615.02 kB raw (155.12 kB gzip), above Vite's generic chunk-warning threshold.
-- Physical portrait-device, hardware GPU, WebKit, and screen-reader behavior remain unverified; Firefox coverage is a focused local smoke journey rather than the full matrix.
+- The projected handoff deliberately transfers visual ownership from the live mesh to its catalogue render; it does not keep one live WebGL mesh moving through DOM top-layer space. Human motion review remains authoritative for whether that matched transfer is sufficiently seamless.
+- The lazy Three.js scene chunk is 616.16 kB raw (155.52 kB gzip), above Vite's generic chunk-warning threshold.
+- Physical portrait-device, hardware GPU, WebKit, and screen-reader behavior remain unverified; Firefox coverage is a focused local smoke journey rather than the full matrix. SwiftShader frame pacing is not evidence of hardware performance.
 - Composition, photography, type, and copy still require human visual/editorial approval; local captures are not self-approved baselines.
 
 ## Next action

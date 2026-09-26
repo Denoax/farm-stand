@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "reviewed_at": "2026-09-25",
+  "branch": "farm-stand-v2-2",
+  "feature_commit": "791adac2e4316dc287eee840ff40181c16b6defa",
+  "base_commit": "d2e43a524d751600fb5b4f4eb906bdf06bd644cc",
+  "preview": {
+    "command": "npm run preview -- --host 127.0.0.1",
+    "url": "http://127.0.0.1:4173/farm-stand/"
+  },
+  "scope_status": "verified_motion_build_complete",
+  "tests": {
+    "build": "passed_with_vite_chunk_size_warning",
+    "playwright_chromium": {
+      "passed": 50,
+      "failed": 0,
+      "skipped": 2,
+      "projects": ["desktop-chromium", "portrait-chromium"]
+    },
+    "firefox_smoke": "passed",
+    "webkit_smoke": "blocked_by_missing_host_libraries",
+    "unperformed": ["physical device", "hardware GPU", "screen reader", "human usability review"]
+  },
+  "runtime": {
+    "console_errors": 0,
+    "page_errors": 0,
+    "failed_requests": 0,
+    "initial_requests": 19,
+    "initial_encoded_bytes": 2798249,
+    "initial_below_fold_media_requests": 0,
+    "full_visit_requests": 29,
+    "full_visit_encoded_bytes": 3403251,
+    "cumulative_layout_shift": 0.014299445760593492,
+    "hero_paused_without_new_renders": true,
+    "hero_resumed_with_current_scene": true,
+    "renderer_classification": "software",
+    "hero_frame_interval_ms": {
+      "run_medians": [50.0, 50.0, 49.9],
+      "run_p95": [99.9, 83.3, 116.6],
+      "run_max": [133.3, 133.4, 116.7]
+    },
+    "detail_motion_ms": {
+      "open": 582.2,
+      "close": 419.6
+    }
+  },
+  "evidence": {
+    "before": [
+      "evidence/live-v2.1-desktop-shop.png",
+      "evidence/live-v2.1-portrait-shop.png",
+      "evidence/live-v2.1-desktop-detail.png",
+      "evidence/live-v2.1-portrait-farm-life.png",
+      "evidence/live-v2.1-e2e-journey.webm"
+    ],
+    "after": [
+      "evidence/v2.2-desktop-handoff-mid.png",
+      "evidence/v2.2-desktop-handoff-arrival.png",
+      "evidence/v2.2-portrait-product-detail.png",
+      "evidence/v2.2-desktop-farm-life.png",
+      "evidence/v2.2-portrait-farm-life.png",
+      "evidence/iris-v2.2-desktop-shop.png"
+    ],
+    "recordings": [
+      "evidence/v2.2-hero-handoff-desktop.webm",
+      "evidence/v2.2-interactions-portrait.webm"
+    ],
+    "runtime": [
+      "evidence/capture-runtime-v2.2.json",
+      "evidence/production-measurements-v2.json",
+      "evidence/motion-measurements-v2.2.json"
+    ]
+  },
+  "remaining_high_impact": [
+    "The handoff transfers from projected live-model geometry to a matched catalogue render rather than keeping one live mesh across the DOM endpoint.",
+    "SwiftShader motion cadence is adverse and cannot establish hardware or physical-device smoothness.",
+    "WebKit, physical-device, screen-reader, and full Firefox matrix behavior remain unverified.",
+    "The 616.16 kB raw lazy Three.js chunk retains Vite's generic warning.",
+    "Business configuration and human artistic approval remain outstanding."
+  ]
+}
