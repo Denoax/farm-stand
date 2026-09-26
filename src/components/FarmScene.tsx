@@ -84,7 +84,7 @@ export function FarmScene({ progressRef, motionPaused, onStateChange }: FarmScen
     renderer.toneMapping = THREE.ACESFilmicToneMapping
     renderer.toneMappingExposure = 1.05
     renderer.shadowMap.enabled = true
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    renderer.shadowMap.type = THREE.PCFShadowMap
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
     renderer.domElement.className = 'farm-canvas'
     renderer.domElement.setAttribute('aria-hidden', 'true')
