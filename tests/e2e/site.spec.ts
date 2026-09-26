@@ -44,7 +44,7 @@ test('hero transition keeps hidden controls inert and preserves selection', asyn
   await expect(transition).toHaveAttribute('inert', '')
   await page.evaluate(() => {
     const stage = document.querySelector<HTMLElement>('.hero-stage')
-    window.scrollTo(0, Math.max(0, (stage?.offsetHeight ?? innerHeight) - innerHeight))
+    window.scrollTo(0, Math.max(0, ((stage?.offsetHeight ?? innerHeight) - innerHeight) * 0.82))
   })
   await expect(transition).not.toHaveAttribute('inert', '')
   const onion = page.getByLabel('Yellow onions')
@@ -54,7 +54,7 @@ test('hero transition keeps hidden controls inert and preserves selection', asyn
   await page.evaluate(() => { document.documentElement.style.scrollBehavior = 'auto' })
   await page.evaluate(() => {
     const stage = document.querySelector<HTMLElement>('.hero-stage')
-    window.scrollTo(0, Math.max(0, (stage?.offsetHeight ?? innerHeight) - innerHeight))
+    window.scrollTo(0, Math.max(0, ((stage?.offsetHeight ?? innerHeight) - innerHeight) * 0.82))
   })
   await expect(onion).toBeChecked()
 })
@@ -160,7 +160,7 @@ test('basket survives navigation, resizing, hero selection and farm-life switchi
   await page.evaluate(() => window.scrollTo(0, 0))
   await page.evaluate(() => {
     const stage = document.querySelector<HTMLElement>('.hero-stage')
-    window.scrollTo(0, Math.max(0, (stage?.offsetHeight ?? innerHeight) - innerHeight))
+    window.scrollTo(0, Math.max(0, ((stage?.offsetHeight ?? innerHeight) - innerHeight) * 0.82))
   })
   await page.locator('.stand-transition').getByText('Yellow onions', { exact: true }).click()
   await page.locator('#shop').scrollIntoViewIfNeeded()
@@ -308,4 +308,100 @@ test('narrow, intermediate, short-landscape, and 200-percent text layouts do not
   const dialog = page.getByRole('dialog', { name: 'Carrot bunches' })
   await expect(dialog).toBeVisible()
   expect(await dialog.evaluate((node) => node.getBoundingClientRect().height)).toBeLessThanOrEqual(540)
+})
+
+test('stand-to-shop image bridge reaches the real apple card and reverses without changing shop state', async ({ page }) => {
+  await openShop(page)
+  await page.getByRole('button', { name: 'Produce', exact: true }).click()
+  await addProduct(page, 'apple')
+  await page.evaluate(() => {
+    document.documentElement.style.scrollBehavior = 'auto'
+    window.scrollTo(0, 0)
+  })
+
+  const stageTravel = await page.locator('.hero-stage').evaluate((node) => node.offsetHeight - innerHeight)
+  await page.evaluate((y) => window.scrollTo(0, y), stageTravel * 0.72)
+  await expect.poll(() => page.evaluate(() => Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stage-progress')))).toBeGreaterThan(0.7)
+  await expect(page.getByTestId('scene-host')).toHaveAttribute('data-rendering', 'active')
+  const bridge = page.locator('.stand-shop-bridge')
+  await expect(bridge).toBeVisible()
+  await expect(bridge).toHaveAttribute('data-phase', /travelling|arriving/)
+
+  await page.evaluate((y) => window.scrollTo(0, y), stageTravel * 0.97)
+  await expect.poll(async () => {
+    const [moving, target] = await Promise.all([
+      bridge.evaluate((node) => node.getBoundingClientRect()),
+      page.locator('#product-apple .product-picture').evaluate((node) => node.getBoundingClientRect()),
+    ])
+    return Math.max(Math.abs(moving.left - target.left), Math.abs(moving.top - target.top), Math.abs(moving.width - target.width), Math.abs(moving.height - target.height))
+  }).toBeLessThan(8)
+
+  await page.evaluate((y) => window.scrollTo(0, y), stageTravel * 0.38)
+  await expect(bridge).toBeHidden()
+  await page.locator('#shop').scrollIntoViewIfNeeded()
+  await expect(page.getByRole('button', { name: 'Produce', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: /Basket/ }).first()).toContainText('1')
+})
+
+test('direct shop entry skips the hero bridge', async ({ page }) => {
+  await page.goto(`${projectPath}#shop`, { waitUntil: 'networkidle' })
+  await expect(page.locator('.stand-shop-bridge')).toBeHidden()
+  await expect(page.getByRole('heading', { name: 'Shop the stand.' })).toBeVisible()
+})
+
+test('product image motion can be interrupted and still restores focus and the source card', async ({ page }) => {
+  await openShop(page)
+  const trigger = page.locator('#product-apple').getByRole('button', { name: 'View details' })
+  await trigger.click()
+  await expect(page.locator('.product-transition-clone')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog', { name: 'Orchard apples' })).toBeHidden()
+  await expect(page.locator('.product-transition-clone')).toHaveCount(0)
+  await expect(trigger).toBeFocused()
+
+  await trigger.click()
+  await expect(page.getByRole('dialog', { name: 'Orchard apples' })).toBeVisible()
+  await page.waitForTimeout(600)
+  await page.setViewportSize({ width: 900, height: 700 })
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog', { name: 'Orchard apples' })).toBeHidden()
+  await expect(page.locator('.product-transition-clone')).toHaveCount(0)
+})
+
+test('a live reduced-motion change settles an active detail transition', async ({ page }) => {
+  await openShop(page)
+  await page.locator('#product-apple').getByRole('button', { name: 'View details' }).click()
+  await expect(page.locator('.product-transition-clone')).toBeVisible()
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await expect(page.locator('.product-transition-clone')).toHaveCount(0)
+  const dialog = page.getByRole('dialog', { name: 'Orchard apples' })
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByRole('img', { name: /red apple rendered/i })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+})
+
+test('farm profile tabs support arrow keys and a failed request preserves coherent content', async ({ page }) => {
+  await page.route('**/media/farm-life/cattle.avif', (route) => route.abort())
+  await page.goto(`${projectPath}#farm-life`)
+  const hens = page.getByRole('tab', { name: 'Hens' })
+  await hens.focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(page.getByRole('heading', { name: 'Hens', exact: true })).toBeVisible()
+  await expect(hens).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('status')).toContainText('previous profile remains in view')
+  await expect(page.getByAltText(/brown hens gathered behind a farm gate/i)).toBeVisible()
+})
+
+test('portrait touch opens and closes details and changes farm profiles', async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.includes('portrait'), 'Touch journey uses the portrait mobile context')
+  await openShop(page)
+  await page.locator('#product-apple').getByRole('button', { name: 'View details' }).tap()
+  const dialog = page.getByRole('dialog', { name: 'Orchard apples' })
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('button', { name: 'Close product details' }).tap()
+  await expect(dialog).toBeHidden()
+  await page.locator('#farm-life').evaluate((node) => node.scrollIntoView({ block: 'start', behavior: 'instant' }))
+  await page.getByRole('tab', { name: 'Cattle' }).tap()
+  await expect(page.getByAltText(/cattle standing beneath a leafy tree/i)).toBeVisible()
 })

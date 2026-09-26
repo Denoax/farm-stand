@@ -139,6 +139,8 @@ export function FarmScene({ progressRef, selectedProduct, onStateChange }: FarmS
     stillLife.add(contact)
 
     const modelGroups: Partial<Record<HeroProductId, THREE.Group>> = {}
+    const modelMaterials: Partial<Record<HeroProductId, THREE.Material[]>> = {}
+    const modelMeshes: Partial<Record<HeroProductId, THREE.Mesh[]>> = {}
     let disposed = false
     const loader = new GLTFLoader()
     const loadModel = (id: HeroProductId, url: string, height: number) =>
@@ -149,6 +151,19 @@ export function FarmScene({ progressRef, selectedProduct, onStateChange }: FarmS
             if (disposed) return
             const group = prepareModel(gltf.scene, height)
             modelGroups[id] = group
+            const materials: THREE.Material[] = []
+            const meshes: THREE.Mesh[] = []
+            group.traverse((child) => {
+              if (!(child instanceof THREE.Mesh)) return
+              meshes.push(child)
+              const childMaterials = Array.isArray(child.material) ? child.material : [child.material]
+              childMaterials.forEach((material) => {
+                if (!materials.includes(material)) materials.push(material)
+              })
+            })
+            modelMaterials[id] = materials
+            modelMeshes[id] = meshes
+            group.userData.localBounds = new THREE.Box3().setFromObject(group)
             stillLife.add(group)
             resolve()
           },
@@ -174,13 +189,19 @@ export function FarmScene({ progressRef, selectedProduct, onStateChange }: FarmS
     let frame = 0
     let renderEnabled = true
     let heroVisible = true
+    let hostLeft = 0
+    let hostTop = 0
     let selectionAnimationStart: number | null = null
     let appleStartScale = 1
     let onionStartScale = 1
+    const projectedPoint = new THREE.Vector3()
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
     const resize = () => {
       const width = sceneHost.clientWidth
       const height = sceneHost.clientHeight
+      const bounds = sceneHost.getBoundingClientRect()
+      hostLeft = bounds.left
+      hostTop = bounds.top
       renderer.setSize(width, height, false)
       camera.aspect = width / Math.max(height, 1)
       camera.updateProjectionMatrix()
@@ -222,6 +243,21 @@ export function FarmScene({ progressRef, selectedProduct, onStateChange }: FarmS
         const target = selected === 'apple' ? 1.05 : 0.94
         const scale = THREE.MathUtils.lerp(appleStartScale, target, easedSelection)
         apple.scale.setScalar(selectionProgress === 1 ? target : scale)
+        const handoff = document.getElementById('product-apple')
+          ? THREE.MathUtils.smoothstep(progress, 0.58, 0.68)
+          : 0
+        modelMaterials.apple?.forEach((material) => {
+          if (!('opacity' in material)) return
+          const baseOpacity = typeof material.userData.handoffBaseOpacity === 'number'
+            ? material.userData.handoffBaseOpacity
+            : material.opacity
+          material.userData.handoffBaseOpacity = baseOpacity
+          material.transparent = handoff > 0 || baseOpacity < 1
+          material.opacity = baseOpacity * (1 - handoff)
+        })
+        modelMeshes.apple?.forEach((mesh) => {
+          mesh.castShadow = handoff < 0.98
+        })
       }
       if (onion) {
         onion.position.set(0.82, -0.7, -0.03)
@@ -234,6 +270,37 @@ export function FarmScene({ progressRef, selectedProduct, onStateChange }: FarmS
       camera.position.x = THREE.MathUtils.lerp(0, 0.32, progress)
       camera.position.y = THREE.MathUtils.lerp(portrait ? 2.35 : 2.05, portrait ? 2.1 : 1.92, progress)
       camera.lookAt(0, portrait ? 0.15 : 0.05, 0)
+      camera.updateMatrixWorld()
+
+      if (apple) {
+        stillLife.updateWorldMatrix(true, true)
+        const localBounds = apple.userData.localBounds as THREE.Box3
+        const minimum = localBounds.min
+        const maximum = localBounds.max
+        let left = Number.POSITIVE_INFINITY
+        let top = Number.POSITIVE_INFINITY
+        let right = Number.NEGATIVE_INFINITY
+        let bottom = Number.NEGATIVE_INFINITY
+        for (const x of [minimum.x, maximum.x]) {
+          for (const y of [minimum.y, maximum.y]) {
+            for (const z of [minimum.z, maximum.z]) {
+              projectedPoint.set(x, y, z).applyMatrix4(apple.matrixWorld).project(camera)
+              left = Math.min(left, (projectedPoint.x + 1) * sceneHost.clientWidth / 2)
+              right = Math.max(right, (projectedPoint.x + 1) * sceneHost.clientWidth / 2)
+              top = Math.min(top, (1 - projectedPoint.y) * sceneHost.clientHeight / 2)
+              bottom = Math.max(bottom, (1 - projectedPoint.y) * sceneHost.clientHeight / 2)
+            }
+          }
+        }
+        window.dispatchEvent(new CustomEvent('farmsceneappleframe', {
+          detail: {
+            left: hostLeft + left,
+            top: hostTop + top,
+            width: right - left,
+            height: bottom - top,
+          },
+        }))
+      }
       renderer.render(scene, camera)
       sceneHost.dataset.drawCalls = String(renderer.info.render.calls)
       sceneHost.dataset.triangles = String(renderer.info.render.triangles)

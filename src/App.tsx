@@ -6,6 +6,7 @@ import { ShopSection } from './components/ShopSection'
 import { FarmLife } from './components/FarmLife'
 import { VisitSection } from './components/VisitSection'
 import { TryUpdate } from './components/TryUpdate'
+import { StandShopBridge } from './components/StandShopBridge'
 import { basketReducer } from './state/basket'
 import type { ProductId } from './content/catalogue'
 
@@ -19,6 +20,7 @@ export function App() {
   const progressRef = useRef(0)
   const [selectedProduct, setSelectedProduct] = useState<HeroProductId>('apple')
   const [sceneState, setSceneState] = useState<SceneState>('loading')
+  const [demoActive, setDemoActive] = useState(false)
   const [basket, dispatchBasket] = useReducer(basketReducer, {})
   const [shopFocusRequest, setShopFocusRequest] = useState<{ productId: ProductId; sequence: number }>()
   const onSceneState = useCallback((state: SceneState) => setSceneState(state), [])
@@ -63,21 +65,23 @@ export function App() {
       if (reducedMotion.matches) {
         progressRef.current = 1
         stage.style.setProperty('--stage-progress', '1')
+        document.documentElement.style.setProperty('--stage-progress', '1')
         stage.dataset.demoActive = 'true'
         setInteractive('.hero-copy', true)
-        setInteractive('.stand-transition', true)
+        setDemoActive(true)
         previousDemoActive = true
         previousHeroActive = true
       } else {
         const bounds = stage.getBoundingClientRect()
         const scrollable = Math.max(stage.offsetHeight - window.innerHeight, 1)
         const progress = Math.min(1, Math.max(0, -bounds.top / scrollable))
-        const demoActive = progress > 0.66
+        const demoActive = progress > 0.66 && progress < 0.9 && -bounds.top <= scrollable + 2
         const heroActive = progress < 0.46
         progressRef.current = progress
         stage.style.setProperty('--stage-progress', progress.toFixed(4))
+        document.documentElement.style.setProperty('--stage-progress', progress.toFixed(4))
         stage.dataset.demoActive = demoActive ? 'true' : 'false'
-        if (demoActive !== previousDemoActive) setInteractive('.stand-transition', demoActive)
+        if (demoActive !== previousDemoActive) setDemoActive(demoActive)
         if (heroActive !== previousHeroActive) setInteractive('.hero-copy', heroActive)
         previousDemoActive = demoActive
         previousHeroActive = heroActive
@@ -148,9 +152,10 @@ export function App() {
               <p className="hero-disclosure">A fictional farm-shop experience demonstrating a real website service. No produce is sold here.</p>
             </div>
 
-            <ShopDemo selectedProduct={selectedProduct} onSelect={setSelectedProduct} />
+            <ShopDemo selectedProduct={selectedProduct} onSelect={setSelectedProduct} active={demoActive} />
             <div className="scroll-cue" aria-hidden="true"><span /> Scroll to open the stand</div>
           </div>
+          <StandShopBridge enabled={sceneState === 'ready'} progressRef={progressRef} />
           <span className="demo-anchor" id="demo" aria-hidden="true" />
         </section>
 

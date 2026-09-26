@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type Dispatch } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type Dispatch } from 'react'
 import { categories, formatSampleCad, productById, products, type CategoryId, type Product, type ProductId } from '../content/catalogue'
 import { basketCount, basketQuantityBounds, basketSubtotal, type BasketAction, type BasketState } from '../state/basket'
 import { DeferredImage } from './DeferredImage'
@@ -48,9 +48,9 @@ function QuantityEditor({ product, quantity, dispatch }: { product: Product; qua
   )
 }
 
-function ProductPicture({ product, eager = false }: { product: Product; eager?: boolean }) {
+function ProductPicture({ product, eager = false, detail = false }: { product: Product; eager?: boolean; detail?: boolean }) {
   return (
-    <div className="product-picture">
+    <div className="product-picture" data-detail-picture={detail ? 'true' : undefined}>
       <DeferredImage
         src={product.image}
         alt={product.alt}
@@ -171,15 +171,132 @@ export function ShopSection({ basket, dispatch, focusRequest }: ShopSectionProps
   const [basketFeedback, setBasketFeedback] = useState<{ product: Product; message: string; added: boolean } | null>(null)
   const detailDialogRef = useRef<HTMLDialogElement>(null)
   const detailTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const detailSourceRef = useRef<{ rect: DOMRect; product: Product } | null>(null)
+  const detailTransitionRef = useRef<{ animation: Animation; clone: HTMLDivElement; token: number } | null>(null)
+  const detailTransitionTokenRef = useRef(0)
+  const afterDetailCloseRef = useRef<(() => void) | null>(null)
   const basketTriggerRef = useRef<HTMLButtonElement>(null)
+  const basketFlightRef = useRef<{ animation: Animation; element: HTMLDivElement } | null>(null)
+  const productGridRef = useRef<HTMLDivElement>(null)
+  const filterPositionsRef = useRef<Map<string, DOMRect>>(new Map())
+  const filterAnimationsRef = useRef<Animation[]>([])
   const visibleProducts = useMemo(() => filter === 'all' ? products : products.filter((product) => product.category === filter), [filter])
   const count = basketCount(basket)
 
-  useEffect(() => {
+  const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  const clearDetailTransition = () => {
+    const current = detailTransitionRef.current
+    if (!current) return
+    current.animation.cancel()
+    current.clone.remove()
+    detailTransitionRef.current = null
+    detailDialogRef.current?.querySelector<HTMLElement>('[data-detail-picture="true"]')?.style.removeProperty('visibility')
+  }
+
+  const animateDetailImage = (from: DOMRect, to: DOMRect, product: Product, duration: number, closing: boolean) => {
+    const dialog = detailDialogRef.current
+    const destination = dialog?.querySelector<HTMLElement>('[data-detail-picture="true"]')
+    if (!dialog || !destination || reducedMotion()) return null
+
+    clearDetailTransition()
+    const token = ++detailTransitionTokenRef.current
+    const clone = document.createElement('div')
+    clone.className = 'product-transition-clone'
+    clone.setAttribute('aria-hidden', 'true')
+    clone.setAttribute('inert', '')
+    const image = document.createElement('img')
+    image.src = product.image
+    image.alt = ''
+    image.style.objectPosition = product.imagePosition ?? '50% 50%'
+    clone.append(image)
+    dialog.append(clone)
+    destination.style.visibility = 'hidden'
+    dialog.dataset.imageMotion = closing ? 'closing' : 'opening'
+
+    const frames = [
+      { left: `${from.left}px`, top: `${from.top}px`, width: `${from.width}px`, height: `${from.height}px`, borderRadius: '16px' },
+      { left: `${to.left}px`, top: `${to.top}px`, width: `${to.width}px`, height: `${to.height}px`, borderRadius: '0px' },
+    ]
+    const animation = clone.animate(frames, {
+      duration,
+      easing: closing ? 'cubic-bezier(.4, 0, .3, 1)' : 'cubic-bezier(.18, .8, .22, 1)',
+      fill: 'both',
+    })
+    detailTransitionRef.current = { animation, clone, token }
+    return animation.finished.catch(() => undefined).then(() => {
+      if (detailTransitionRef.current?.token !== token) return false
+      clone.remove()
+      destination.style.visibility = ''
+      delete dialog.dataset.imageMotion
+      detailTransitionRef.current = null
+      return true
+    })
+  }
+
+  useLayoutEffect(() => {
     const dialog = detailDialogRef.current
     if (!dialog || !detailProduct) return
-    dialog.showModal()
+    if (!dialog.open) dialog.showModal()
+    const source = detailSourceRef.current
+    const destination = dialog.querySelector<HTMLElement>('[data-detail-picture="true"]')
+    if (!source || source.product.id !== detailProduct.id || !destination || reducedMotion()) return
+    const destinationRect = destination.getBoundingClientRect()
+    void animateDetailImage(source.rect, destinationRect, detailProduct, 560, false)
   }, [detailProduct])
+
+  useEffect(() => () => {
+    clearDetailTransition()
+    basketFlightRef.current?.animation.cancel()
+    basketFlightRef.current?.element.remove()
+    filterAnimationsRef.current.forEach((animation) => animation.cancel())
+  }, [])
+
+  useEffect(() => {
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const stopActiveMotion = () => {
+      if (!preference.matches) return
+      const closing = detailDialogRef.current?.dataset.imageMotion === 'closing'
+      clearDetailTransition()
+      basketFlightRef.current?.animation.cancel()
+      basketFlightRef.current?.element.remove()
+      basketFlightRef.current = null
+      filterAnimationsRef.current.forEach((animation) => animation.cancel())
+      filterAnimationsRef.current = []
+      if (closing) finishDetailClose()
+    }
+    preference.addEventListener('change', stopActiveMotion)
+    return () => preference.removeEventListener('change', stopActiveMotion)
+  }, [])
+
+  useLayoutEffect(() => {
+    const grid = productGridRef.current
+    const previous = filterPositionsRef.current
+    filterPositionsRef.current = new Map()
+    filterAnimationsRef.current.forEach((animation) => animation.cancel())
+    filterAnimationsRef.current = []
+    if (!grid) return
+    const cards = [...grid.querySelectorAll<HTMLElement>('.product-card')]
+    cards.forEach((card) => filterPositionsRef.current.set(card.id, card.getBoundingClientRect()))
+    if (!previous.size || reducedMotion()) return
+    filterAnimationsRef.current = cards.map((card) => {
+      const before = previous.get(card.id)
+      const after = card.getBoundingClientRect()
+      const animation = before
+        ? card.animate([
+            { transform: `translate(${before.left - after.left}px, ${before.top - after.top}px)` },
+            { transform: 'translate(0, 0)' },
+          ], { duration: 270, easing: 'cubic-bezier(.2, .75, .25, 1)' })
+        : card.animate([
+            { opacity: 0.72, transform: 'scale(.985)' },
+            { opacity: 1, transform: 'scale(1)' },
+          ], { duration: 220, easing: 'ease-out' })
+      animation.finished.catch(() => undefined).then(() => {
+        if (animation === card.getAnimations().find((candidate) => candidate === animation)) animation.cancel()
+      })
+      return animation
+    })
+  }, [filter])
 
   useEffect(() => {
     if (!focusRequest) return
@@ -200,7 +317,52 @@ export function ShopSection({ basket, dispatch, focusRequest }: ShopSectionProps
     }
   }, [focusRequest])
 
-  const add = (product: Product) => {
+  const selectFilter = (nextFilter: 'all' | CategoryId) => {
+    if (nextFilter === filter) return
+    const cards = productGridRef.current?.querySelectorAll<HTMLElement>('.product-card') ?? []
+    filterPositionsRef.current = new Map([...cards].map((card) => [card.id, card.getBoundingClientRect()]))
+    setFilter(nextFilter)
+  }
+
+  const flyToBasket = (product: Product, source: HTMLElement) => {
+    const basketTarget = basketTriggerRef.current
+    if (reducedMotion() || !basketTarget) return false
+    const target = basketTarget.getBoundingClientRect()
+    if (target.bottom <= 0 || target.top >= innerHeight || target.right <= 0 || target.left >= innerWidth) return false
+
+    basketFlightRef.current?.animation.cancel()
+    basketFlightRef.current?.element.remove()
+    const start = source.getBoundingClientRect()
+    const flight = document.createElement('div')
+    flight.className = 'basket-flight'
+    flight.setAttribute('aria-hidden', 'true')
+    flight.setAttribute('inert', '')
+    const image = document.createElement('img')
+    image.src = product.image
+    image.alt = ''
+    image.style.objectPosition = product.imagePosition ?? '50% 50%'
+    flight.append(image)
+    document.body.append(flight)
+    flight.style.left = `${start.left}px`
+    flight.style.top = `${start.top}px`
+    flight.style.width = `${start.width}px`
+    flight.style.height = `${start.height}px`
+    const animation = flight.animate([
+      { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+      {
+        transform: `translate(${target.left + target.width / 2 - start.left - start.width / 2}px, ${target.top + target.height / 2 - start.top - start.height / 2}px) scale(.08)`,
+        opacity: 0.36,
+      },
+    ], { duration: 400, easing: 'cubic-bezier(.25, .7, .3, 1)' })
+    basketFlightRef.current = { animation, element: flight }
+    animation.finished.catch(() => undefined).then(() => {
+      flight.remove()
+      if (basketFlightRef.current?.element === flight) basketFlightRef.current = null
+    })
+    return true
+  }
+
+  const add = (product: Product, sourcePicture?: HTMLElement | null) => {
     if ((basket[product.id] ?? 0) >= basketQuantityBounds.max) {
       const message = `is already at the demonstration maximum of ${basketQuantityBounds.max}.`
       setAnnouncement(`${product.name} ${message}`)
@@ -208,8 +370,47 @@ export function ShopSection({ basket, dispatch, focusRequest }: ShopSectionProps
       return
     }
     dispatch({ type: 'add', productId: product.id })
+    if (sourcePicture) flyToBasket(product, sourcePicture)
     setAnnouncement(`${product.name} added to the demonstration basket.`)
     setBasketFeedback({ product, message: 'added to the demonstration basket.', added: true })
+  }
+
+  const openDetails = (product: Product, trigger: HTMLButtonElement) => {
+    const picture = trigger.closest<HTMLElement>('.product-card')?.querySelector<HTMLElement>('.product-picture')
+    detailTriggerRef.current = trigger
+    detailSourceRef.current = picture ? { rect: picture.getBoundingClientRect(), product } : null
+    setDetailProduct(product)
+  }
+
+  const finishDetailClose = () => {
+    const dialog = detailDialogRef.current
+    if (dialog?.open) dialog.close()
+  }
+
+  const requestDetailClose = (afterClose?: () => void) => {
+    const dialog = detailDialogRef.current
+    if (!dialog || !detailProduct) return
+    afterDetailCloseRef.current = afterClose ?? null
+    const sourcePicture = detailTriggerRef.current?.closest<HTMLElement>('.product-card')?.querySelector<HTMLElement>('.product-picture')
+    const destination = dialog.querySelector<HTMLElement>('[data-detail-picture="true"]')
+    if (!sourcePicture || !sourcePicture.isConnected || !destination || reducedMotion()) {
+      finishDetailClose()
+      return
+    }
+    const from = detailTransitionRef.current?.clone.getBoundingClientRect() ?? destination.getBoundingClientRect()
+    const to = sourcePicture.getBoundingClientRect()
+    if (to.bottom <= 0 || to.top >= innerHeight || to.right <= 0 || to.left >= innerWidth) {
+      finishDetailClose()
+      return
+    }
+    const closingAnimation = animateDetailImage(from, to, detailProduct, 360, true)
+    if (!closingAnimation) {
+      finishDetailClose()
+      return
+    }
+    void closingAnimation.then((completed) => {
+      if (completed) finishDetailClose()
+    })
   }
 
   return (
@@ -229,11 +430,11 @@ export function ShopSection({ basket, dispatch, focusRequest }: ShopSectionProps
 
       <div className="catalogue-toolbar" aria-label="Filter demonstration products">
         {categories.map((category) => (
-          <button key={category.id} type="button" aria-pressed={filter === category.id} onClick={() => setFilter(category.id)}>{category.label}</button>
+          <button key={category.id} type="button" aria-pressed={filter === category.id} onClick={() => selectFilter(category.id)}>{category.label}</button>
         ))}
       </div>
 
-      <div className="product-grid">
+      <div className="product-grid" ref={productGridRef}>
         {visibleProducts.map((product) => (
           <article className="product-card" id={`product-${product.id}`} key={product.id} data-available={product.available} tabIndex={-1}>
             <ProductPicture product={product} />
@@ -253,11 +454,10 @@ export function ShopSection({ basket, dispatch, focusRequest }: ShopSectionProps
                   className="text-button"
                   type="button"
                   onClick={(event) => {
-                    detailTriggerRef.current = event.currentTarget
-                    setDetailProduct(product)
+                    openDetails(product, event.currentTarget)
                   }}
                 >View details</button>
-                <button className="button button--ink" type="button" disabled={!product.available} onClick={() => add(product)}>
+                <button className="button button--ink" type="button" disabled={!product.available} onClick={(event) => add(product, event.currentTarget.closest<HTMLElement>('.product-card')?.querySelector<HTMLElement>('.product-picture'))}>
                   {product.available ? 'Add to basket' : 'Unavailable example'}
                 </button>
               </div>
@@ -282,15 +482,22 @@ export function ShopSection({ basket, dispatch, focusRequest }: ShopSectionProps
         className="product-dialog"
         ref={detailDialogRef}
         aria-labelledby={detailProduct ? `detail-${detailProduct.id}` : undefined}
+        onCancel={(event) => {
+          event.preventDefault()
+          requestDetailClose()
+        }}
         onClose={() => {
+          clearDetailTransition()
           setDetailProduct(null)
           detailTriggerRef.current?.focus()
+          afterDetailCloseRef.current?.()
+          afterDetailCloseRef.current = null
         }}
       >
         {detailProduct && (
           <>
-            <button className="icon-button dialog-close" type="button" onClick={() => detailDialogRef.current?.close()} aria-label="Close product details">×</button>
-            <ProductPicture product={detailProduct} eager />
+            <button className="icon-button dialog-close" type="button" onClick={() => requestDetailClose()} aria-label="Close product details">×</button>
+            <ProductPicture product={detailProduct} eager detail />
             <div className="product-dialog__copy">
               <p className="eyebrow">{detailProduct.unit}</p>
               <h2 id={`detail-${detailProduct.id}`}>{detailProduct.name}</h2>
@@ -306,7 +513,7 @@ export function ShopSection({ basket, dispatch, focusRequest }: ShopSectionProps
                 <span>{formatSampleCad(detailProduct.samplePriceMinor)} CAD · illustrative sample price</span>
                 <div className="product-dialog__actions">
                   {basketFeedback?.product.id === detailProduct.id && (
-                    <button className="text-button" type="button" onClick={() => { detailDialogRef.current?.close(); setBasketOpen(true); setBasketFeedback(null) }}>Review basket</button>
+                    <button className="text-button" type="button" onClick={() => requestDetailClose(() => { setBasketOpen(true); setBasketFeedback(null) })}>Review basket</button>
                   )}
                   <button className="button button--sun" type="button" disabled={!detailProduct.available} onClick={() => add(detailProduct)}>
                     {detailProduct.available ? 'Add to basket' : 'Unavailable in this demonstration'}

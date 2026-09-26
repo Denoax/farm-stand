@@ -33,7 +33,7 @@ export function TryUpdate() {
       <div className="try-update__preview" aria-live="polite">
         <p className="eyebrow">Customer-facing preview</p>
         <strong>Saturday collection</strong>
-        <span>{formatTime(hours.opens)}–{formatTime(hours.closes)}</span>
+        <span className="hours-mask"><span className="hours-value" key={`${hours.opens}-${hours.closes}`}>{formatTime(hours.opens)}–{formatTime(hours.closes)}</span></span>
         <p>Preview only — nothing is saved or published.</p>
       </div>
     </section>
