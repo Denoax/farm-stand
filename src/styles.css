@@ -544,6 +544,7 @@ footer p { margin: 0; }
 .scene-host { transition: none; }
 .harvest-basket {
   z-index: 2;
+  left: 56%;
   bottom: -8%;
   width: min(48rem, 50vw);
   aspect-ratio: 1538 / 1023;
@@ -607,7 +608,7 @@ footer p { margin: 0; }
 .hero-copy { width: min(42rem, 49vw); color: #fffdf7; }
 h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
 .hero-support { max-width: 34rem; }
-.hero-disclosure { color: rgb(255 255 255 / .82); }
+.hero-disclosure { max-width: 22rem; color: rgb(255 255 255 / .82); }
 .catalogue { margin-top: -16vh; background: #f5f1e6; }
 
 .catalogue-toolbar { gap: .25rem; padding-bottom: .35rem; border-bottom: 1px solid #b8c0b6; }
@@ -706,7 +707,7 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
   .hero-sticky { min-height: 39rem; }
   .harvest-backdrop--orchard { background-position: 42% center; }
   .harvest-backdrop--stand { background-image: linear-gradient(180deg, rgb(8 32 24 / .58), rgb(8 32 24 / .03) 60%), url('/media/farm-setting-1280.avif'); background-position: 58% center; }
-  .harvest-basket { bottom: -3%; width: min(35rem, 112vw); }
+  .harvest-basket { left: 50%; bottom: -3%; width: min(35rem, 112vw); }
   .harvest-support { bottom: 5%; width: 84vw; }
   .harvest-foreground { height: 8%; }
   .hero-copy { top: 27%; width: auto; }
