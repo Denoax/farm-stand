@@ -222,9 +222,9 @@ export function FarmScene({ progressRef, motionPaused, onStateChange }: FarmScen
       if (document.hidden || !heroVisible) return
       const progress = motionPausedRef.current ? 1 : (progressRef.current ?? 0)
       const portrait = sceneHost.clientWidth < 700
-      const standScene = progress >= 0.77
+      const standScene = progress >= 0.72
       stillLife.position.x = standScene ? (portrait ? 0 : -1.05) : 0
-      stillLife.position.y = standScene ? (portrait ? 1.05 : -0.05) : 0
+      stillLife.position.y = standScene ? (portrait ? -0.32 : -0.05) : 0
       stillLife.position.z = standScene ? -0.05 : 0.25
       stillLife.rotation.y = standScene ? 0.05 : -0.08
       const sceneScale = portrait ? 0.7 : 1
@@ -313,6 +313,7 @@ export function FarmScene({ progressRef, motionPaused, onStateChange }: FarmScen
         }))
       }
       renderer.render(scene, camera)
+      sceneHost.dataset.scene = standScene ? 'stand' : 'orchard'
       sceneHost.dataset.drawCalls = String(renderer.info.render.calls)
       sceneHost.dataset.triangles = String(renderer.info.render.triangles)
       sceneHost.dataset.renderCount = String(Number(sceneHost.dataset.renderCount ?? 0) + 1)

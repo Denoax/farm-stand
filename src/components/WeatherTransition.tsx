@@ -87,10 +87,9 @@ export function WeatherTransition({ motionPaused, onToggleMotion }: WeatherTrans
         <div className="weather-story__water" aria-hidden="true"><i /><i /><i /></div>
         <div className="weather-story__label" aria-hidden="true">
           <span>Rain over the field</span>
-          <span>After the shower</span>
         </div>
         <div className="weather-story__controls">
-          <a className="text-link" href="#farm-life">Continue to farm life ↓</a>
+          <a className="text-link" href="#farm-life">Meet the hens ↓</a>
           <button type="button" onClick={onToggleMotion}>{motionPaused ? 'Use full motion' : 'Pause motion'}</button>
         </div>
       </div>

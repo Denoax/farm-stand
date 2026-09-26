@@ -101,18 +101,35 @@
       "id": "harvest_fallback_posters_v24",
       "source": "Deterministic first-frame captures of the implemented orchard, live apple, transparent basket, and foreground support layers",
       "source_sha256": [
-        "182f467b051ddae83aaa4ac34f3a5ff8c66c80fceeec8e0e33c6d76ad712b1c7",
-        "1da5f042862dd016e4feb840b4e7fa0a14d9df5551084fb3916e33c8b2dcb463"
+        "13b14c5b30700d2aa58a662a59ad6b757b7a785e2a0ac29284a67a100215f942",
+        "14d3e51cfd92e1b4ae24af782724ed68b1c86542d6027cf80f3ee168531fba27"
       ],
       "derivative_path": [
         "public/media/harvest-poster-desktop.avif",
         "public/media/harvest-poster-portrait.avif"
       ],
       "derivative_sha256": [
-        "ef21572375c96114e27fa2315abd8b14bf585f8d77ccae30335907d8e6606f65",
-        "f5edc35ddeb54cb7ee19b4a9842551ea2b1b1e8876f08f5ec12acc065558d231"
+        "62da1ca30732b69394ee62b9604dffd867b02eb3ead156182f9c07c55ab069fc",
+        "9ad2489549d715abf1137d1421e7d9f586c1a986ec63dfd30aa1552248513fe4"
       ],
       "transformation": "Captured at 1440 by 900 and 390 by 844 CSS pixels with interface copy and controls suppressed, then still-image AVIF-encoded with FFmpeg. These are functional loading/failure fallbacks, not review baselines."
+    },
+    {
+      "id": "harvest_stand_complete_v24_correction",
+      "source": "Deterministic settled-frame captures of the implemented stand background, live produce, crate, shadows, and support surface",
+      "source_sha256": [
+        "fd5f639e99990e0ab5e7505b78433274fa6070ec3da6178bd0c73f0f693e69b2",
+        "299244a4718b537dd34e09df747bf1b897099218fc1deff101c8179f5aced1dd"
+      ],
+      "derivative_path": [
+        "public/media/harvest-stand-complete-desktop.avif",
+        "public/media/harvest-stand-complete-portrait.avif"
+      ],
+      "derivative_sha256": [
+        "adf86377bd9240e9eb47e73227f1a2152cae3d11d595e9e1a8de0a026bebad89",
+        "b738234b69cdc402487b6bf64bc677eec5ddef78a5b7af1c11440bb892d4768b"
+      ],
+      "transformation": "Captured at the settled stand state at 1440 by 900 and 390 by 844 CSS pixels with interface and transition layers suppressed, then AVIF-encoded with FFmpeg. The complete plate guarantees an indivisible destination under interrupted rendering and matches the live composition used to produce it."
     }
   ],
   "photography": [

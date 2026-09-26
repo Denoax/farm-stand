@@ -50,6 +50,33 @@ test('apple releases, lands behind the basket rim, and resolves into the stand w
   await expect(page.getByRole('button', { name: /Open demonstration basket, 0 items/ })).toBeVisible()
 })
 
+test('the orchard edit remains covered while scrolling forward, reversing, and crossing rapidly', async ({ page }) => {
+  await page.goto(projectPath)
+  await page.addStyleTag({ content: 'html { scroll-behavior: auto !important; }' })
+  const stage = page.locator('.hero-stage')
+  const travel = await stage.evaluate((node) => node.offsetHeight - innerHeight)
+  const visit = async (progress: number) => {
+    await page.evaluate((top) => scrollTo(0, top), travel * progress)
+    await page.waitForTimeout(50)
+  }
+
+  for (const progress of [.66, .72, .78, .72, .66, .79]) await visit(progress)
+  await visit(.72)
+  const wipe = await page.locator('.harvest-wipe').evaluate((node) => {
+    const bounds = node.getBoundingClientRect()
+    return { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom }
+  })
+  expect(wipe.left).toBeLessThanOrEqual(0)
+  expect(wipe.top).toBeLessThanOrEqual(0)
+  expect(wipe.right).toBeGreaterThanOrEqual(await page.evaluate(() => innerWidth))
+  expect(wipe.bottom).toBeGreaterThanOrEqual(await page.evaluate(() => innerHeight))
+
+  await visit(.79)
+  await expect(page.locator('.harvest-stand-complete')).toHaveCSS('opacity', '1')
+  await expect(page.getByTestId('scene-host')).toHaveCSS('opacity', '0')
+  await expect(page.getByRole('button', { name: /Open demonstration basket, 0 items/ })).toBeVisible()
+})
+
 test('catalogue filters and the multi-item drawer support immediate quantity, undo, preview and clear', async ({ page }) => {
   await openShop(page)
   await page.getByRole('button', { name: 'Farm goods' }).click()
@@ -106,7 +133,7 @@ test('weather bridge is seekable and its motion control does not hijack navigati
   await expect(page.locator('.weather-story__label')).toContainText('Rain over the field')
   await page.getByRole('button', { name: 'Pause motion' }).click()
   await expect(page.locator('[data-motion-paused="true"]')).toHaveCount(1)
-  await page.getByRole('link', { name: 'Continue to farm life' }).click()
+  await page.getByRole('link', { name: 'Meet the hens' }).click()
   await expect(page).toHaveURL(/#farm-life$/)
 })
 
@@ -239,6 +266,6 @@ test('weather media failure retains a scrollable visual bridge and farm-life acc
   await page.waitForTimeout(100)
   const after = Number(await weather.evaluate((node) => getComputedStyle(node).getPropertyValue('--weather-progress')))
   expect(after).toBeGreaterThan(before)
-  await page.getByRole('link', { name: 'Continue to farm life' }).click()
+  await page.getByRole('link', { name: 'Meet the hens' }).click()
   await expect(page).toHaveURL(/#farm-life$/)
 })

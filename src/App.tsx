@@ -135,6 +135,10 @@ export function App() {
           <div className="hero-sticky">
             <div className="harvest-backdrop harvest-backdrop--orchard" aria-hidden="true" />
             <div className="harvest-backdrop harvest-backdrop--stand" aria-hidden="true" />
+            <picture className="harvest-stand-complete" aria-hidden="true">
+              <source media="(max-width: 760px)" srcSet={publicAsset('media/harvest-stand-complete-portrait.avif')} />
+              <img src={publicAsset('media/harvest-stand-complete-desktop.avif')} alt="" width="1440" height="900" fetchPriority="high" />
+            </picture>
             <div className="harvest-support" aria-hidden="true" />
             <div className="harvest-basket harvest-basket--back" aria-hidden="true" />
             <div className="scene-visual" aria-label="An apple falls from an orchard branch into a harvest basket before the scene resolves into a sunlit farm stand">
@@ -166,7 +170,7 @@ export function App() {
 
             <div className="harvest-caption" aria-hidden="true"><span>01</span> Picked this morning <i /> <span>02</span> At the stand</div>
             <div className="scroll-cue" aria-hidden="true"><span /> Scroll to follow the harvest</div>
-            <div className="harvest-wipe" aria-hidden="true"><i /><i /><i /></div>
+            <div className="harvest-wipe" aria-hidden="true" />
           </div>
           <span className="demo-anchor" id="demo" aria-hidden="true" />
         </section>
@@ -180,20 +184,20 @@ export function App() {
           <div className="service-heading">
             <p className="eyebrow">Your website</p>
             <h2 id="service-heading">A website built around how your business works.</h2>
-            <p className="service-lead">This demonstration brings distinctive presentation, scannable products, practical information, and a clear enquiry path into one coherent experience.</p>
+            <p className="service-lead">Bring products, visiting details, and enquiries together in a site that feels true to the business.</p>
           </div>
           <div className="service-story">
             <p className="eyebrow">A plain-language process</p>
             <ol className="process-list">
               <li><span>01</span><div><strong>Understand the business</strong><p>Start with what customers need to know and what the owner needs the website to make easier.</p></div></li>
               <li><span>02</span><div><strong>Organize the content</strong><p>Shape products, services, visiting details, and enquiries into a structure people can scan.</p></div></li>
-              <li><span>03</span><div><strong>Design and build</strong><p>Create the visual system and responsive frontend around the real material available.</p></div></li>
-              <li><span>04</span><div><strong>Review and launch</strong><p>Test the important journeys, refine the result, and configure approved hosting and contact details.</p></div></li>
+              <li><span>03</span><div><strong>Design and build</strong><p>Create the visual system and responsive pages around the real material available.</p></div></li>
+              <li><span>04</span><div><strong>Review and launch</strong><p>Check the important journeys, refine the result, and connect the approved web address and contact details.</p></div></li>
             </ol>
           </div>
           <div className="service-boundary">
-            <p><strong>Demonstrated here:</strong> responsive frontend design, product presentation, basket interactions, useful information architecture, fallbacks, and an enquiry-preview interface.</p>
-            <p><strong>Configured separately if approved:</strong> inventory, payments, booking, a CMS, message delivery, analytics, or ongoing support.</p>
+            <p><strong>Shown in this example:</strong> a clear shop, collection information, farm-life stories, and a contact preview.</p>
+            <p><strong>Set up for a real business only when needed:</strong> inventory, payments, booking, content editing, message delivery, analytics, or ongoing support.</p>
           </div>
           <TryUpdate />
         </section>
@@ -203,7 +207,7 @@ export function App() {
 
       <footer>
         <a href="#top">Return to the farm stand ↑</a>
-        <p>Working project label · public demonstration · no orders, payments, bookings, or submissions</p>
+        <p>Farm stand website example · no orders, payments, bookings, or submissions</p>
         <p>Produce models: Poly Haven, CC0 · photography: credited Pexels contributors · background: project-generated original</p>
       </footer>
     </div>

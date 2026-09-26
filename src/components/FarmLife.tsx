@@ -60,7 +60,6 @@ function FarmProfileScene({ profile, index, onViewProduct }: {
         <figure className="farm-profile__figure">
           <div className="farm-profile__placeholder" aria-hidden="true" />
           <img className="farm-profile__image farm-profile__image--wide" src={shouldLoad && !imageFailed ? profile.image : undefined} alt={imageFailed ? '' : profile.alt} width="1920" height="1280" loading="lazy" decoding="async" style={{ objectPosition: profile.imagePosition }} onLoad={() => setImageReady(true)} onError={() => setImageFailed(true)} />
-          {profile.variant === 'reveal' && !imageFailed && <img className="farm-profile__image farm-profile__image--detail" src={shouldLoad ? profile.image : undefined} alt="" width="1200" height="1800" loading="lazy" decoding="async" aria-hidden="true" />}
           {imageFailed && <span className="media-fallback" role="img" aria-label={`${profile.label} photograph unavailable. ${profile.alt}`}>{profile.label} photograph unavailable</span>}
           <div className="farm-profile__foreground" aria-hidden="true"><i /><i /></div>
           <figcaption>{profile.credit}</figcaption>
@@ -82,13 +81,15 @@ function FarmProfileScene({ profile, index, onViewProduct }: {
 export function FarmLife({ onViewProduct }: FarmLifeProps) {
   return (
     <section className="farm-life" id="farm-life" aria-labelledby="farm-life-heading">
-      <div className="farm-life__intro">
-        <p className="eyebrow eyebrow--light">Life beyond the stand</p>
-        <h2 id="farm-life-heading">Three subjects. Three ways into the story.</h2>
+      <div className="farm-life__chapter-nav">
+        <div>
+          <p className="eyebrow eyebrow--light">Around the farm</p>
+          <h2 id="farm-life-heading">Farm life, one scene at a time.</h2>
+        </div>
         <nav aria-label="Farm-life scenes">
           {farmLifeProfiles.map((profile) => <a key={profile.id} href={`#${profile.id}`}>{profile.label}</a>)}
         </nav>
-        <p>Licensed photographs illustrate the kind of verified story a farm could tell. They do not show a client, this fictional property, animal access, or an endorsement.</p>
+        <p className="visually-hidden">Licensed illustrative photographs; they do not show a client or this fictional property.</p>
       </div>
       {farmLifeProfiles.map((profile, index) => <FarmProfileScene key={profile.id} profile={profile} index={index} onViewProduct={onViewProduct} />)}
     </section>

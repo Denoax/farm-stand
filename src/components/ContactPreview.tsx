@@ -30,7 +30,7 @@ export function ContactPreview() {
       <div className="contact-copy">
         <p className="eyebrow">Contact demonstration · nothing is sent</p>
         <h2 id="contact-heading">Tell me about your business.</h2>
-        <p>Start a plain-language brief here. The copy action demonstrates a useful handoff without pretending that message delivery is configured.</p>
+        <p>Start a plain-language brief here, then copy it when you are ready to discuss the website.</p>
         <p className="contact-note">An approved public identity, service contact destination, commercial scope, support and pricing terms, and any backend remain intentionally unconfigured.</p>
       </div>
       <div className="brief-builder">
