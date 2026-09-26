@@ -1,6 +1,7 @@
 import { productById, type ProductId } from '../content/catalogue'
 
 export const basketQuantityBounds = { min: 1, max: 12 }
+export const basketStorageKey = 'farm-stand-demo-basket-v1'
 export type BasketState = Partial<Record<ProductId, number>>
 
 export type BasketAction =
@@ -8,6 +9,23 @@ export type BasketAction =
   | { type: 'set'; productId: ProductId; quantity: number }
   | { type: 'remove'; productId: ProductId }
   | { type: 'reset' }
+
+export function parseBasketSnapshot(raw: string | null): BasketState {
+  if (!raw) return {}
+  try {
+    const value: unknown = JSON.parse(raw)
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+    return Object.entries(value).reduce<BasketState>((basket, [id, quantity]) => {
+      const product = productById.get(id as ProductId)
+      if (product?.available && Number.isInteger(quantity) && Number(quantity) >= basketQuantityBounds.min && Number(quantity) <= basketQuantityBounds.max) {
+        basket[product.id] = Number(quantity)
+      }
+      return basket
+    }, {})
+  } catch {
+    return {}
+  }
+}
 
 export function basketReducer(state: BasketState, action: BasketAction): BasketState {
   if (action.type === 'reset') return {}

@@ -6,7 +6,7 @@ import { FarmLife } from './components/FarmLife'
 import { WeatherTransition } from './components/WeatherTransition'
 import { VisitSection } from './components/VisitSection'
 import { TryUpdate } from './components/TryUpdate'
-import { basketReducer } from './state/basket'
+import { basketReducer, basketStorageKey, parseBasketSnapshot } from './state/basket'
 import type { ProductId } from './content/catalogue'
 
 const FarmScene = lazy(() => import('./components/FarmScene').then((module) => ({ default: module.FarmScene })))
@@ -19,13 +19,27 @@ export function App() {
   const progressRef = useRef(0)
   const [sceneState, setSceneState] = useState<SceneState>('loading')
   const [motionPaused, setMotionPaused] = useState(false)
-  const [basket, dispatchBasket] = useReducer(basketReducer, {})
+  const [basket, dispatchBasket] = useReducer(basketReducer, {}, () => {
+    try {
+      return parseBasketSnapshot(sessionStorage.getItem(basketStorageKey))
+    } catch {
+      return {}
+    }
+  })
   const [shopFocusRequest, setShopFocusRequest] = useState<{ productId: ProductId; sequence: number }>()
   const onSceneState = useCallback((state: SceneState) => setSceneState(state), [])
   const viewShopProduct = useCallback((productId: ProductId) => {
     window.history.replaceState(null, '', `#product-${productId}`)
     setShopFocusRequest((current) => ({ productId, sequence: (current?.sequence ?? 0) + 1 }))
   }, [])
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(basketStorageKey, JSON.stringify(basket))
+    } catch {
+      // Storage can be unavailable in privacy-restricted contexts; the in-memory demo remains usable.
+    }
+  }, [basket])
 
   useEffect(() => {
     const targetId = decodeURIComponent(window.location.hash.slice(1))

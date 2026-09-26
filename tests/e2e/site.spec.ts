@@ -126,6 +126,14 @@ test('direct shop entry and refresh bypass the story and remain usable', async (
   await page.reload({ waitUntil: 'networkidle' })
   await expect(page.getByRole('heading', { name: 'Shop the stand.' })).toBeVisible()
   await expect(page.locator('#product-apple').getByRole('button', { name: 'Add to basket' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Open demonstration basket, 1 items/ })).toBeVisible()
+})
+
+test('invalid stored basket data is discarded at the session boundary', async ({ page }) => {
+  await openShop(page)
+  await page.evaluate(() => sessionStorage.setItem('farm-stand-demo-basket-v1', '{"apple":999,"unknown":2}'))
+  await page.reload({ waitUntil: 'networkidle' })
+  await expect(page.getByRole('button', { name: /Open demonstration basket, 0 items/ })).toBeVisible()
 })
 
 test('visit, service, and contact remain fictional and send nothing', async ({ page }) => {
