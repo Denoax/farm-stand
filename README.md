@@ -4,11 +4,11 @@ A local, single-page website-services showcase for growers and local businesses.
 
 ## Run locally
 
-This working copy includes a project-local Node 24.21.0 runtime under `.tools/`; it does not change the global system configuration.
+Requires Node 24 and npm 11. The original working directory may contain an ignored project-local runtime under `.tools/`, but fresh clones should use their normal Node installation.
 
 ```bash
 cd Farm-Stand-Codex-Handoff-v1
-export PATH="$PWD/.tools/node-v24.21.0-linux-x64/bin:$PATH"
+npm ci
 npm run dev
 ```
 
@@ -17,7 +17,6 @@ Open `http://localhost:5173/farm-stand/`. The project-path base matches GitHub P
 Production build and local preview:
 
 ```bash
-export PATH="$PWD/.tools/node-v24.21.0-linux-x64/bin:$PATH"
 npm run build
 npm run preview -- --host 127.0.0.1
 ```
