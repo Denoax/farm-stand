@@ -138,6 +138,13 @@ export function FarmScene({ progressRef, motionPaused, onStateChange }: FarmScen
     contact.receiveShadow = true
     stillLife.add(contact)
 
+    const landingShadow = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.82, 0.2),
+      new THREE.MeshBasicMaterial({ color: 0x11120c, transparent: true, opacity: 0 }),
+    )
+    landingShadow.position.set(0, -0.67, 0.08)
+    stillLife.add(landingShadow)
+
     const modelGroups: Partial<Record<HeroProductId, THREE.Group>> = {}
     const modelMeshes: Partial<Record<HeroProductId, THREE.Mesh[]>> = {}
     let disposed = false
@@ -190,6 +197,7 @@ export function FarmScene({ progressRef, motionPaused, onStateChange }: FarmScen
     let hostLeft = 0
     let hostTop = 0
     const projectedPoint = new THREE.Vector3()
+    const projectedScale = new THREE.Vector3()
     const resize = () => {
       const width = sceneHost.clientWidth
       const height = sceneHost.clientHeight
@@ -214,46 +222,63 @@ export function FarmScene({ progressRef, motionPaused, onStateChange }: FarmScen
       if (document.hidden || !heroVisible) return
       const progress = motionPausedRef.current ? 1 : (progressRef.current ?? 0)
       const portrait = sceneHost.clientWidth < 700
-      const standProgress = THREE.MathUtils.smoothstep(progress, 0.76, 1)
-      stillLife.position.x = THREE.MathUtils.lerp(0, portrait ? 0 : -1.05, standProgress)
-      stillLife.position.y = THREE.MathUtils.lerp(0, portrait ? 1.05 : -0.05, standProgress)
-      stillLife.position.z = THREE.MathUtils.lerp(0.25, -0.05, standProgress)
-      stillLife.rotation.y = THREE.MathUtils.lerp(-0.08, 0.05, progress)
+      const standScene = progress >= 0.77
+      stillLife.position.x = standScene ? (portrait ? 0 : -1.05) : 0
+      stillLife.position.y = standScene ? (portrait ? 1.05 : -0.05) : 0
+      stillLife.position.z = standScene ? -0.05 : 0.25
+      stillLife.rotation.y = standScene ? 0.05 : -0.08
       const sceneScale = portrait ? 0.7 : 1
       stillLife.scale.setScalar(sceneScale)
 
       const apple = modelGroups.apple
       const onion = modelGroups.onion
       if (apple) {
-        const release = THREE.MathUtils.smoothstep(progress, 0.12, 0.2)
-        const fall = THREE.MathUtils.smoothstep(progress, 0.2, 0.58)
-        const bounce = progress > 0.58 && progress < 0.72 ? Math.sin((progress - 0.58) / 0.14 * Math.PI) * 0.2 : 0
-        const orchardX = THREE.MathUtils.lerp(portrait ? -0.52 : -0.78, portrait ? 0.08 : 0, fall)
-        const orchardY = THREE.MathUtils.lerp(portrait ? 1.02 : 0.96, portrait ? -0.68 : -0.58, fall) + bounce
-        apple.position.set(
-          THREE.MathUtils.lerp(orchardX, -0.42, standProgress),
-          THREE.MathUtils.lerp(orchardY, 0.45, standProgress),
-          THREE.MathUtils.lerp(0.22, 0.08, standProgress),
-        )
-        apple.rotation.set(0, THREE.MathUtils.lerp(-0.08, -0.28, standProgress), release * fall * 2.4)
-        const target = THREE.MathUtils.lerp(portrait ? 0.34 : 0.38, 1.05, standProgress)
-        apple.scale.setScalar(target)
+        const release = THREE.MathUtils.clamp((progress - 0.16) / 0.08, 0, 1)
+        const fall = THREE.MathUtils.clamp((progress - 0.24) / 0.28, 0, 1)
+        const landing = THREE.MathUtils.clamp((progress - 0.52) / 0.13, 0, 1)
+        const startX = portrait ? -0.1 : -0.75
+        const startY = portrait ? 1.92 : 1.02
+        const restX = portrait ? 0.05 : 0
+        const restY = portrait ? -0.69 : -0.61
+        const fallDistance = fall * fall
+        const bounce = Math.sin(landing * Math.PI) * (1 - landing) * 0.14
+
+        if (standScene) {
+          apple.position.set(-0.5, -0.63, 0.1)
+          apple.rotation.set(0, -0.28, 0.08)
+          apple.scale.setScalar(0.92)
+        } else {
+          apple.position.set(
+            THREE.MathUtils.lerp(startX, restX, THREE.MathUtils.smoothstep(fall, 0, 1)),
+            THREE.MathUtils.lerp(startY, restY, fallDistance) + bounce,
+            0.22,
+          )
+          apple.rotation.set(0, -0.08, release * fall * 2.15)
+          apple.scale.setScalar(portrait ? 0.34 : 0.38)
+        }
+        apple.visible = progress < 0.7 || progress > 0.79
         modelMeshes.apple?.forEach((mesh) => {
-          mesh.castShadow = progress > 0.7
+          mesh.castShadow = standScene
         })
+
+        const shadowMaterial = landingShadow.material as THREE.MeshBasicMaterial
+        landingShadow.visible = !standScene && progress > 0.43 && progress < 0.7
+        landingShadow.position.x = THREE.MathUtils.lerp(startX, restX, THREE.MathUtils.smoothstep(fall, 0, 1))
+        landingShadow.scale.setScalar(0.5 + fall * 0.5)
+        shadowMaterial.opacity = THREE.MathUtils.lerp(0, 0.34, THREE.MathUtils.smoothstep(fall, 0.45, 1))
       }
       if (onion) {
         onion.position.set(0.82, -0.7, -0.03)
         onion.rotation.y = 0.36
-        onion.visible = progress > 0.72
+        onion.visible = standScene
         const target = 0.94
         onion.scale.setScalar(target)
       }
 
-      crate.visible = progress > 0.72
-      contact.visible = progress > 0.72
-      camera.position.x = THREE.MathUtils.lerp(0, 0.32, standProgress)
-      camera.position.y = THREE.MathUtils.lerp(portrait ? 2.35 : 2.05, portrait ? 2.1 : 1.92, progress)
+      crate.visible = standScene
+      contact.visible = standScene
+      camera.position.x = standScene ? 0.32 : 0
+      camera.position.y = standScene ? (portrait ? 2.1 : 1.92) : (portrait ? 2.35 : 2.05)
       camera.lookAt(0, portrait ? 0.15 : 0.05, 0)
       camera.updateMatrixWorld()
 
@@ -283,6 +308,7 @@ export function FarmScene({ progressRef, motionPaused, onStateChange }: FarmScen
             top: hostTop + top,
             width: right - left,
             height: bottom - top,
+            worldScale: apple.getWorldScale(projectedScale).x,
           },
         }))
       }

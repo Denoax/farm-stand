@@ -2,7 +2,7 @@
 
 ## Approved direction
 
-The user approved the sunlit farm-stand direction and the v2 through v2.3 expansions. The current implementation preserves the rural setting, Fraunces/Source Sans 3 typography, wood/green/yellow palette, seven-product catalogue, product detail transition, useful first frame, accessibility fallbacks, and explicit demonstration-only boundaries. v2.3 supersedes the v2.2 travelling stand-to-card rectangle and tabbed animal profile. The cancelled anatomy project remains out of scope.
+The user approved the sunlit farm-stand direction and the v2 through v2.4 expansions. The current implementation preserves the rural setting, Fraunces/Source Sans 3 typography, wood/green/yellow palette, seven-product catalogue, product detail transition, accessibility fallbacks, and explicit demonstration-only boundaries. v2.4 replaces the weak v2.3 basket composite, dissolve, synthetic weather panel, and repeated animal-template presentation. The cancelled anatomy project remains out of scope.
 
 ## Repository and publication policy
 
@@ -12,30 +12,30 @@ Standing publication authorization remains active: implement → inspect → tes
 
 ## Current implementation
 
-The opening is a reversible scroll story. A live CC0 Three.js apple starts at a project-original orchard branch, detaches along authored progress-derived keyframes, falls behind a masked wicker basket front rim, settles, and resolves with the existing live produce into the established stand. The decorative basket never touches commerce state. Direct Shop entry bypasses the sequence; model/WebGL failure retains a static poster and full HTML journey; reduced motion presents the established stand in ordinary document flow.
+The opening is a reversible scroll story. A live CC0 Three.js apple begins at the project-original orchard branch at a fixed within-shot scale, releases along authored progress-derived keyframes, falls behind a clean opaque wicker front rim, lands with contact support, and settles. An organic full-frame wipe conceals the discrete location/scale edit into the established stand, preventing the incompatible orchard and stand spaces from dissolving through each other. The decorative basket never touches commerce state. Desktop and portrait have complete first-paint posters; direct Shop entry bypasses the sequence; model/WebGL failure retains the static poster and full HTML journey; reduced motion presents the established stand in ordinary document flow.
 
-The catalogue retains seven products, filters, source-card-to-detail image motion, immediate add feedback, keyboard/Escape focus return, and the no-commerce boundary. The basket is now a native-dialog right drawer on desktop and near-full-height bottom drawer on portrait. It has one scroll region, a sticky summary/action area, labeled steppers, remove plus one-step undo, clear confirmation, same-surface collection preview, and a persistent basket action. Basket state survives close/reopen, navigation, scene motion, and viewport changes for the current page session.
+The catalogue retains seven products, filters, source-card-to-detail image motion, immediate add feedback, keyboard/Escape focus return, and the no-commerce boundary. Its colour roles, filter hierarchy, card treatment, and featured mixed box are tightened without changing product data or integer-money logic. The basket remains a native-dialog right drawer on desktop and is now a true full-viewport drawer on portrait. It has one scroll region, a fixed summary/action area, labeled steppers, remove plus one-step undo, clear confirmation, same-surface collection preview, and a persistent basket action. Basket state survives close/reopen, navigation, scene motion, and viewport changes for the current page session.
 
-A short fixed-seed rain-to-sun bridge connects the shop to farm life. Hens, cattle, and sheep are three addressable scroll scenes using the retained credited Pexels photographs; only crop, camera, foreground, and copy layers move, never the depicted animals. Direct hashes reach the scenes. A visible Pause motion control complements the system reduced-motion preference.
+A short muted Pexels rain passage now connects the shop to farm life, with a clipped waterline clearing into the hens setting rather than a repeated stand plus explanatory panel. Hens use a ground-level hen-and-chicks composition, cattle use a wide lateral pasture, and sheep use a detail-to-flock reveal. Only crop, camera, foreground, and copy layers move; the depicted animals are never distorted to fake anatomy. Direct hashes prepare the relevant image immediately, adjacent scenes remain lazy, and useful text fallbacks remain in place. A visible Pause motion control complements the system reduced-motion preference and responds to preference changes at runtime.
 
 Fictional visit information, the concrete website-service process, sample-hours editor, and copy-only contact preview remain unchanged and unconfigured. No order, payment, reservation, booking, message, or analytics path exists.
 
 ## Validation and evidence
 
-- Production build output: 34.47 kB CSS (8.30 kB gzip), 258.90 kB main JavaScript (79.86 kB gzip), and a lazy 615.63 kB Three.js scene chunk (155.35 kB gzip). Vite retains its generic raw chunk-size warning.
-- The revised Playwright suite covers the harvest stages, direct entry/refresh, two responsive layouts, drawer operations and preservation, detail interruption/focus, weather pause/skip, addressable animal scenes, fictional boundaries, reduced motion, renderer pausing, model/media failures, and overflow.
-- Normal-speed desktop and portrait journey recordings plus decisive still frames are generated by `scripts/capture-v23-evidence.mjs` under ignored `evidence/v2.3/`. The latest local capture reported zero console errors, page errors, or failed requests. These are review evidence, not self-approved visual baselines.
-- The two added delivery images total about 382 kB. Existing locally delivered models, catalogue images, photography, and fonts remain reused.
-- Production-served measurement recorded 3,187,639 encoded bytes at arrival and 3,792,641 after the complete page visit, zero initial catalogue/farm-life requests, and 0.01496 observed CLS. The hero renderer stopped producing frames while offscreen and resumed on return.
-- Three warm-headless SwiftShader hero traversals produced 33.3 ms median frame intervals and 83.3–100 ms p95 intervals; observed product-detail travel was about 615 ms open and 383 ms close. These are end-to-end software-renderer intervals, not GPU timings or physical-device evidence.
+- Production build output: 46.89 kB CSS (10.63 kB gzip), 260.72 kB main JavaScript (80.24 kB gzip), and a lazy 615.89 kB Three.js scene chunk (155.46 kB gzip). Vite retains its generic raw chunk-size warning.
+- The revised Playwright suite covers stable apple scale and landing stages, direct entry/refresh, desktop/portrait/320 px/short-landscape layouts, full-width portrait drawer operations and preservation, detail interruption/focus, weather pause/skip/failure, addressable animal scenes, fictional boundaries, initial and runtime reduced motion, 200% text reflow, renderer pausing, model/media failures, and overflow.
+- Full normal-speed desktop and portrait journeys, a separate hero reversal/interruption recording, decisive matched frames, and delayed/failed-media evidence are generated by `scripts/capture-v24-evidence.mjs` under ignored `evidence/v2.4/review/`. The final capture conditions and any expected media-range cancellation are recorded separately from console/page/request errors. These are review evidence, not self-approved visual baselines.
+- The v2.4 delivery adds a transparent basket, two replacement animal photographs, a seven-second rain clip/poster, and two complete hero fallback posters. Provenance, exact hashes, and transformations are in `assets/manifest.json`; raw sources remain ignored.
+- Production-served measurement recorded 3,360,472 encoded bytes at arrival and 3,883,798 after the complete page visit, zero initial catalogue/farm-life requests, and 0.01095 observed CLS. The hero renderer stopped producing frames while offscreen and resumed on return.
+- Three warm-headless SwiftShader hero traversals produced 16.7 ms median frame intervals and 33.4–50 ms p95 intervals; observed product-detail travel was about 585 ms open and 381 ms close. These are end-to-end software-renderer intervals, not GPU timings or physical-device evidence.
 
 ## Highest-impact limitations
 
 - Public identity, contact destination, commercial scope, pricing, support terms, backend, and integrations are not supplied and remain inactive/configurable.
 - Pexels photographs and project-generated harvest layers are illustrative and do not depict a client or verified property.
-- The basket image generator retained a graduated backdrop instead of true alpha; the implementation uses a soft CSS alpha mask. It is credible at the inspected sizes but a professionally cut transparent basket would improve edge fidelity.
 - The hero’s lazy Three.js chunk remains above Vite’s generic 500 kB raw advisory. It is off the main bundle and pauses when offscreen, but a later measured optimization pass could consider deeper module splitting.
-- Physical-device, hardware-GPU, screen-reader, and human art-direction reviews remain outstanding. Browser captures and publication do not constitute artistic approval.
+- The seven-second decorative weather clip uses a 146 kB observed range during the measured journey, but its full delivered file is about 1.2 MB; a real client could choose a longer or property-specific passage after content and network budgets are known.
+- Physical-device, hardware-GPU, screen-reader, background-tab, and independent human art-direction reviews remain outstanding. Browser captures and publication do not constitute artistic approval.
 
 ## Next action
 

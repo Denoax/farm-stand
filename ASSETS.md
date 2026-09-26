@@ -26,3 +26,13 @@ The v2 expansion uses locally delivered derivatives of Pexels photographs under 
 - Farm life: hens by Eline Spee; cattle by Alina Vilchenko; sheep by cottonbro studio.
 - Apple and onion catalogue images are dedicated 960×640 renders of the retained CC0 models, made with a neutral green backdrop, warm wooden ground, catalogue lighting, and contact shadows. They are independent of the hero composition; exact derivative hashes are in the manifest.
 - `public/media/farm-stand-social.jpg` is a 1200 px JPEG derivative of the existing desktop fallback poster for Open Graph clients that do not support AVIF.
+
+## v2.4 presentation media
+
+- **Hen and chicks** — Nguyen Huy, Pexels: https://www.pexels.com/photo/hen-with-chickens-on-ground-17904089/. The inspected 6000×4000 source was resized to a 1920 px AVIF at `public/media/farm-life/hens-v24.avif` for the ground-level hens scene.
+- **Cattle at sunset** — Helena Lopes, Pexels: https://www.pexels.com/photo/calves-feeding-grass-in-field-under-colorful-sky-at-sunset-4783410/. The inspected 5472×3648 source was resized to a 1920 px AVIF at `public/media/farm-life/cattle-v24.avif` for the wide pasture scene.
+- **Rain over a field** — Pixabay via Pexels: https://www.pexels.com/video/rainy-weather-at-the-field-855592/. Seven seconds of the inspected static-camera source were resized to 1280×720 and H.264-encoded without audio at `public/media/weather-rain.mp4`; a representative AVIF poster is delivered alongside it. Playback is decorative, muted, looped, visibility-bounded, and replaced by the poster/clear composition on failure or reduced motion.
+- **Harvest basket v2.4** — project-original extraction made with OpenAI's built-in image editing tool from the retained v2.3 basket source. The exact prompt is recorded in `assets/source/generated/PROMPT.md`. The inspected transparent derivative is `public/media/harvest-basket-v24.webp`.
+- **Harvest fallback posters** — first-frame captures of the implemented orchard/apple/basket composition at 1440×900 and 390×844, encoded as `public/media/harvest-poster-desktop.avif` and `public/media/harvest-poster-portrait.avif`. They are loading/failure fallbacks, not approved visual baselines.
+
+All Pexels media above is used under the [Pexels license](https://www.pexels.com/license/). Acquisition files remain in ignored source directories. Exact source URLs, SHA-256 hashes, derivative hashes, and transformations are recorded in `assets/manifest.json`.

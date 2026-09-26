@@ -75,7 +75,7 @@ function BasketDialog({ basket, dispatch, open, onClose, returnFocus }: ShopSect
         <button className="icon-button" type="button" onClick={close} aria-label="Close basket">×</button>
       </div>
       <div className="basket-drawer__scroll">
-        <p className="demo-boundary">Preview only — no order, payment, or reservation will be submitted.</p>
+        <p className="demo-boundary"><strong>Demo only.</strong> No order, payment, or reservation is submitted.</p>
         {removedLine && (
           <div className="basket-undo" role="status">
             <span>{removedLine.product.name} removed.</span>
@@ -339,7 +339,7 @@ export function ShopSection({ basket, dispatch, focusRequest }: ShopSectionProps
 
       <div className="product-grid">
         {visibleProducts.map((product) => (
-          <article className="product-card" id={`product-${product.id}`} key={product.id} data-available={product.available} tabIndex={-1}>
+          <article className={`product-card${product.id === 'harvest-box' ? ' product-card--feature' : ''}`} id={`product-${product.id}`} key={product.id} data-available={product.available} tabIndex={-1}>
             <ProductPicture product={product} />
             <div className="product-card__body">
               <div className="product-card__heading">

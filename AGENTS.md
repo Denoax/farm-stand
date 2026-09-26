@@ -2,7 +2,7 @@
 
 ## Authority and scope
 - Build a new farm-themed website-services showcase, not a produce business.
-- User-approved concept: sunlit stand; excellent real imagery; restrained spatial depth; usable farm-shop demo.
+- User-approved concept through v2.4: sunlit stand; editorial licensed imagery; a physical harvest-to-stand reveal; concise weather passage; distinct farm-life scenes; usable farm-shop demo.
 - “Farm Stand” is a working label. No exact scene, brand, copy, or rendered baseline is approved yet.
 - Do not restore, read through, or rebuild the cancelled Living Engraving project.
 - User changes override design defaults. Permission boundaries still apply.
@@ -57,5 +57,6 @@
 - Keep `.github/workflows/deploy-pages.yml`, the `/farm-stand/` base path, and GitHub Pages unless the user explicitly changes that infrastructure decision.
 - Keep state and the few important open defects current; do not create a sprawling register.
 - Preserve historical reports. Add or update the task-relevant review summary, selected captures, and honest motion evidence when the scope calls for them.
+- Keep v2.4 comparison captures, recordings, and `Farm-Stand-v2.4-Review.zip` ignored and outside Pages delivery; they are review evidence, not an approved visual baseline.
 - Identify exact source state and uncommitted changes; user retains artistic approval.
 - Report a precise blocker and continue independent work where useful; never invent completion.

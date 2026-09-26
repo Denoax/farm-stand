@@ -44,6 +44,8 @@ test('apple releases, lands behind the basket rim, and resolves into the stand w
   }
   expect(positions[1].top).toBeGreaterThan(positions[0].top + 75)
   expect(positions[2].top).toBeGreaterThanOrEqual(positions[1].top - 5)
+  const orchardScales = positions.slice(0, 3).map((position) => position.worldScale)
+  expect(Math.max(...orchardScales) - Math.min(...orchardScales)).toBeLessThan(.001)
   await expect(page.locator('.harvest-backdrop--stand')).toHaveCSS('opacity', /0\.[5-9]|1/)
   await expect(page.getByRole('button', { name: /Open demonstration basket, 0 items/ })).toBeVisible()
 })
@@ -100,17 +102,18 @@ test('product detail image transition is interruptible and returns keyboard focu
 test('weather bridge is seekable and its motion control does not hijack navigation', async ({ page }) => {
   await page.goto(`${projectPath}#shop`)
   await page.locator('.weather-story').scrollIntoViewIfNeeded()
-  await expect(page.getByRole('heading', { name: 'A shower passes. The farm carries on.' })).toBeVisible()
+  await expect(page.locator('.weather-story__video')).toBeVisible()
+  await expect(page.locator('.weather-story__label')).toContainText('Rain over the field')
   await page.getByRole('button', { name: 'Pause motion' }).click()
   await expect(page.locator('[data-motion-paused="true"]')).toHaveCount(1)
-  await page.getByRole('link', { name: 'Skip to farm life' }).click()
+  await page.getByRole('link', { name: 'Continue to farm life' }).click()
   await expect(page).toHaveURL(/#farm-life$/)
 })
 
 test('farm-life is three addressable scroll scenes and the hen link reveals eggs', async ({ page }) => {
   await page.goto(`${projectPath}#hens`)
   await expect(page.locator('#hens').getByRole('heading', { name: 'Hens' })).toBeVisible()
-  await expect(page.locator('#cattle').getByAltText(/cattle standing beneath/i)).toBeAttached()
+  await expect(page.locator('#cattle').getByAltText(/cattle spread across a wide pasture/i)).toBeAttached()
   await expect(page.locator('#sheep').getByAltText(/sheep facing the camera/i)).toBeAttached()
   await page.locator('#hens').getByRole('link', { name: 'View eggs' }).click()
   await expect(page).toHaveURL(/#product-eggs$/)
@@ -148,6 +151,16 @@ test('reduced motion produces static, fully usable story scenes', async ({ page 
   await expect(page.locator('.weather-story__sticky')).toHaveCSS('position', 'relative')
   await page.goto(`${projectPath}#sheep`)
   await expect(page.locator('#sheep').getByRole('heading', { name: 'Sheep' })).toBeVisible()
+})
+
+test('runtime reduced-motion changes stop and restore the cinematic layouts', async ({ page }) => {
+  await page.goto(projectPath)
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await expect(page.locator('.hero-sticky')).toHaveCSS('position', 'relative')
+  await expect(page.locator('.weather-story__video')).toHaveCSS('display', 'none')
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await expect(page.locator('.hero-sticky')).toHaveCSS('position', 'sticky')
+  await expect(page.locator('.weather-story__video')).not.toHaveCSS('display', 'none')
 })
 
 test('offscreen hero pauses rendering and resumes', async ({ page }) => {
@@ -193,6 +206,31 @@ test('layouts avoid horizontal overflow and portrait drawer stays within the vie
   await page.waitForTimeout(450)
   const rect = await page.getByRole('dialog', { name: /Your basket/ }).evaluate((node) => node.getBoundingClientRect())
   expect(rect.left).toBeGreaterThanOrEqual(0)
-  expect(rect.right).toBeLessThanOrEqual(390)
+  expect(rect.width).toBe(390)
+  expect(rect.right).toBe(390)
   expect(rect.bottom).toBeLessThanOrEqual(844)
+})
+
+test('two-hundred-percent text sizing reflows the shop without horizontal scrolling', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await openShop(page)
+  await page.addStyleTag({ content: 'html { font-size: 200% !important; }' })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1)
+  await expect(page.getByRole('heading', { name: 'Shop the stand.' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Boxes' })).toBeVisible()
+})
+
+test('weather media failure retains a scrollable visual bridge and farm-life access', async ({ page }) => {
+  await page.route('**/media/weather-rain.mp4', (route) => route.abort())
+  await page.goto(`${projectPath}#shop`)
+  const weather = page.locator('.weather-story')
+  await weather.scrollIntoViewIfNeeded()
+  await expect(weather).toHaveAttribute('data-media-state', 'fallback')
+  const before = Number(await weather.evaluate((node) => getComputedStyle(node).getPropertyValue('--weather-progress')))
+  await page.evaluate(() => scrollBy(0, innerHeight * .35))
+  await page.waitForTimeout(100)
+  const after = Number(await weather.evaluate((node) => getComputedStyle(node).getPropertyValue('--weather-progress')))
+  expect(after).toBeGreaterThan(before)
+  await page.getByRole('link', { name: 'Continue to farm life' }).click()
+  await expect(page).toHaveURL(/#farm-life$/)
 })

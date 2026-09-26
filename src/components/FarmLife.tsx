@@ -12,7 +12,11 @@ function FarmProfileScene({ profile, index, onViewProduct }: {
 }) {
   const sceneRef = useRef<HTMLElement>(null)
   const [imageFailed, setImageFailed] = useState(false)
-  const [shouldLoad, setShouldLoad] = useState(false)
+  const [imageReady, setImageReady] = useState(false)
+  const [shouldLoad, setShouldLoad] = useState(() => {
+    const target = decodeURIComponent(window.location.hash.slice(1))
+    return target === profile.id || (target === 'farm-life' && index === 0)
+  })
 
   useEffect(() => {
     const scene = sceneRef.current
@@ -45,18 +49,20 @@ function FarmProfileScene({ profile, index, onViewProduct }: {
       if (!entry.isIntersecting) return
       setShouldLoad(true)
       observer.disconnect()
-    }, { rootMargin: '600px 0px' })
+    }, { rootMargin: '900px 0px' })
     observer.observe(scene)
     return () => observer.disconnect()
   }, [])
 
   return (
-    <article className={`farm-profile farm-profile--${profile.id}`} id={profile.id} ref={sceneRef}>
+    <article className={`farm-profile farm-profile--${profile.id} farm-profile--${profile.variant}`} id={profile.id} ref={sceneRef} data-media-ready={imageReady ? 'true' : 'false'}>
       <div className="farm-profile__sticky">
         <figure className="farm-profile__figure">
-          <img src={shouldLoad && !imageFailed ? profile.image : undefined} alt={imageFailed ? '' : profile.alt} width="1200" height="1800" loading="lazy" decoding="async" style={{ objectPosition: profile.imagePosition }} onError={() => setImageFailed(true)} />
+          <div className="farm-profile__placeholder" aria-hidden="true" />
+          <img className="farm-profile__image farm-profile__image--wide" src={shouldLoad && !imageFailed ? profile.image : undefined} alt={imageFailed ? '' : profile.alt} width="1920" height="1280" loading="lazy" decoding="async" style={{ objectPosition: profile.imagePosition }} onLoad={() => setImageReady(true)} onError={() => setImageFailed(true)} />
+          {profile.variant === 'reveal' && !imageFailed && <img className="farm-profile__image farm-profile__image--detail" src={shouldLoad ? profile.image : undefined} alt="" width="1200" height="1800" loading="lazy" decoding="async" aria-hidden="true" />}
           {imageFailed && <span className="media-fallback" role="img" aria-label={`${profile.label} photograph unavailable. ${profile.alt}`}>{profile.label} photograph unavailable</span>}
-          <div className="farm-profile__foreground" aria-hidden="true" />
+          <div className="farm-profile__foreground" aria-hidden="true"><i /><i /></div>
           <figcaption>{profile.credit}</figcaption>
         </figure>
         <div className="farm-profile__copy">
@@ -78,7 +84,7 @@ export function FarmLife({ onViewProduct }: FarmLifeProps) {
     <section className="farm-life" id="farm-life" aria-labelledby="farm-life-heading">
       <div className="farm-life__intro">
         <p className="eyebrow eyebrow--light">Life beyond the stand</p>
-        <h2 id="farm-life-heading">Three views of the same working day.</h2>
+        <h2 id="farm-life-heading">Three subjects. Three ways into the story.</h2>
         <nav aria-label="Farm-life scenes">
           {farmLifeProfiles.map((profile) => <a key={profile.id} href={`#${profile.id}`}>{profile.label}</a>)}
         </nav>

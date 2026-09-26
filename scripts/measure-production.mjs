@@ -37,10 +37,11 @@ const summarize = (entries) => ({
 })
 
 const mediaSummary = (entries) => {
-  const assets = entries.filter((entry) => /\.(woff2|avif|webp|gltf|bin|jpe?g)(\?|$)/i.test(entry.path))
+  const assets = entries.filter((entry) => /\.(woff2|avif|webp|gltf|bin|jpe?g|mp4)(\?|$)/i.test(entry.path))
   return {
     ...summarize(assets),
     imageEncodedBytes: assets.filter((entry) => /\.(avif|webp|jpe?g)(\?|$)/i.test(entry.path)).reduce((sum, entry) => sum + entry.encodedBodyBytes, 0),
+    videoEncodedBytes: assets.filter((entry) => /\.mp4(\?|$)/i.test(entry.path)).reduce((sum, entry) => sum + entry.encodedBodyBytes, 0),
     fontEncodedBytes: assets.filter((entry) => /\.woff2(\?|$)/i.test(entry.path)).reduce((sum, entry) => sum + entry.encodedBodyBytes, 0),
     assets,
   }
@@ -131,7 +132,7 @@ const result = {
 }
 
 await fs.mkdir(path.resolve('evidence'), { recursive: true })
-await fs.writeFile(path.resolve('evidence/production-measurements-v2.3.json'), `${JSON.stringify(result, null, 2)}\n`)
+await fs.writeFile(path.resolve('evidence/v2.4/review/production-measurements-v2.4.json'), `${JSON.stringify(result, null, 2)}\n`)
 await browser.close()
 console.log(JSON.stringify({
   initial: { ...result.initial, media: { ...result.initial.media, assets: undefined } },

@@ -15,17 +15,17 @@
 }
 
 :root {
-  color: #173126;
-  background: #f3efdf;
+  color: #202a23;
+  background: #f5f1e6;
   font-family: 'Source Sans 3', 'Segoe UI', sans-serif;
   font-synthesis: none;
-  --pine: #173f30;
-  --pine-deep: #0d2b20;
-  --cream: #f5f0df;
-  --paper: #fffaf0;
-  --sun: #f4c550;
+  --pine: #173c32;
+  --pine-deep: #102b24;
+  --cream: #f5f1e6;
+  --paper: #fffdf7;
+  --sun: #e8b94c;
   --cider: #bd523c;
-  --ink: #173126;
+  --ink: #202a23;
   --stage-progress: 0;
 }
 
@@ -510,4 +510,255 @@ footer p { margin: 0; }
   .farm-profile { height: auto; min-height: 44rem; }
   .farm-profile__sticky { position: relative; min-height: 44rem; }
   .farm-profile__figure img, .farm-profile__foreground, .farm-profile__copy { transform: none; }
+}
+
+/* v2.4 cinematic rebuild: deliberate shot changes, source-led animal scenes, and a finished shop surface. */
+.button { border-radius: .55rem; box-shadow: none; }
+.button--sun:hover { background: #f0c65d; }
+.button--ink { background: var(--orchard, #173c32); }
+.button--ink:hover { background: #255747; }
+.nav-cta { border-radius: .45rem; background: rgb(10 35 27 / .22); }
+
+.hero-stage { --cut-progress: 0; height: 260vh; background: #173c32; }
+.hero-sticky { min-height: 42rem; background: #173c32; }
+.fallback-poster { z-index: 5; display: block; opacity: 1; transition: opacity .24s ease; }
+.hero-stage--ready .fallback-poster { visibility: hidden; opacity: 0; }
+.hero-stage--fallback .fallback-poster { visibility: visible; opacity: 1; }
+.hero-stage--loading .harvest-backdrop,
+.hero-stage--loading .harvest-basket,
+.hero-stage--loading .harvest-support,
+.hero-stage--loading .harvest-foreground { visibility: hidden; }
+.hero-stage--fallback .harvest-support,
+.hero-stage--fallback .harvest-foreground { display: none; }
+.harvest-backdrop--orchard {
+  background-image: linear-gradient(90deg, rgb(13 42 30 / .5), transparent 52%), url('/media/harvest-orchard.avif');
+  opacity: clamp(0, calc((.75 - var(--stage-progress)) * 80), 1);
+  transform: scale(calc(1 + var(--stage-progress) * .018));
+}
+.harvest-backdrop--stand {
+  background-image: linear-gradient(90deg, rgb(14 45 34 / .62), rgb(14 45 34 / .04) 70%), url('/media/farm-setting-1920.avif');
+  opacity: clamp(0, calc((var(--stage-progress) - .76) * 80), 1);
+  transform: none;
+}
+.scene-visual { z-index: 3; }
+.scene-host { transition: none; }
+.harvest-basket {
+  z-index: 2;
+  bottom: -8%;
+  width: min(48rem, 50vw);
+  aspect-ratio: 1538 / 1023;
+  background-image: url('/media/harvest-basket-v24.webp');
+  filter: drop-shadow(0 1.4rem 1.15rem rgb(18 34 22 / .34));
+  mask-image: none;
+  opacity: clamp(0, calc((.7 - var(--stage-progress)) * 30), 1);
+  transform: translateX(-50%);
+}
+.harvest-basket--front { z-index: 4; clip-path: inset(40% 0 0); }
+.harvest-support {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  bottom: 1.2%;
+  width: min(38rem, 41vw);
+  height: 5.5rem;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgb(18 29 16 / .54), rgb(18 29 16 / .2) 45%, transparent 72%);
+  filter: blur(5px);
+  opacity: clamp(0, calc((.7 - var(--stage-progress)) * 24), .88);
+  transform: translateX(-50%);
+}
+.harvest-foreground {
+  position: absolute;
+  z-index: 5;
+  right: -2%;
+  bottom: -3%;
+  left: -2%;
+  height: 9%;
+  background: linear-gradient(178deg, transparent, rgb(44 68 35 / .42) 62%, rgb(21 47 29 / .72));
+  filter: blur(3px);
+  opacity: clamp(0, calc((.7 - var(--stage-progress)) * 24), 1);
+  pointer-events: none;
+}
+.harvest-wipe {
+  position: absolute;
+  z-index: 9;
+  inset: -15vh auto -15vh -140vw;
+  width: 135vw;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translateX(calc(var(--cut-progress) * 280vw));
+  will-change: transform;
+}
+.harvest-wipe::before,
+.harvest-wipe::after,
+.harvest-wipe i {
+  content: '';
+  position: absolute;
+  border-radius: 65% 24% 68% 28%;
+  background: radial-gradient(ellipse at 68% 24%, #476f43, #153b2c 58%, #0d271d 82%);
+  box-shadow: inset -2rem -3rem 5rem rgb(4 24 17 / .34), 0 0 4rem rgb(8 33 24 / .24);
+  transform: rotate(18deg);
+}
+.harvest-wipe::before { inset: 0 6% 16% 2%; }
+.harvest-wipe::after { inset: 18% 0 -2% 12%; transform: rotate(-11deg); }
+.harvest-wipe i:nth-child(1) { inset: 7% 22% 44% -8%; transform: rotate(36deg); }
+.harvest-wipe i:nth-child(2) { inset: 42% 9% 4% 23%; transform: rotate(-28deg); }
+.harvest-wipe i:nth-child(3) { inset: 24% -5% 24% 58%; transform: rotate(52deg); }
+.hero-copy { width: min(42rem, 49vw); color: #fffdf7; }
+h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
+.hero-support { max-width: 34rem; }
+.hero-disclosure { color: rgb(255 255 255 / .82); }
+.catalogue { margin-top: -16vh; background: #f5f1e6; }
+
+.catalogue-toolbar { gap: .25rem; padding-bottom: .35rem; border-bottom: 1px solid #b8c0b6; }
+.catalogue-toolbar button { border: 0; border-bottom: 3px solid transparent; border-radius: 0; }
+.catalogue-toolbar button[aria-pressed="true"] { color: var(--ink); background: transparent; border-color: var(--pine); }
+.product-grid { grid-auto-flow: dense; }
+.product-card { border-color: #d3d1c5; border-radius: .7rem; background: #fffdf7; box-shadow: 0 1rem 2.6rem rgb(32 42 35 / .06); }
+.product-picture { background: #e2e2d5; }
+.product-picture img { filter: saturate(.94) contrast(.98); }
+.product-card--feature { grid-column: span 2; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(18rem, .85fr); }
+.product-card--feature .product-picture { min-height: 100%; aspect-ratio: auto; }
+.product-card--feature .product-card__body { align-self: center; padding: clamp(1.5rem, 4vw, 3rem); }
+.availability { border-radius: .32rem; }
+
+.demo-boundary { display: inline-flex; gap: .35rem; margin: 1rem 0 .8rem; padding: .45rem .62rem; color: #425248; background: #edf0e5; border: 0; border-left: 2px solid #75877a; border-radius: .2rem; font-size: .82rem; }
+.basket-dialog.basket-drawer { color: var(--ink); background: var(--paper); box-shadow: -1.5rem 0 4rem rgb(8 29 21 / .2); }
+.basket-drawer__header { padding: max(1.25rem, env(safe-area-inset-top)) 1.4rem 1rem; }
+.basket-drawer__scroll { scrollbar-gutter: stable; }
+.basket-drawer .basket-lines { border-top-color: #d5d7cd; }
+.basket-drawer .basket-lines li { margin: 0 -.2rem; padding: 1rem .2rem; }
+.basket-quantity { background: #f3f2e9; }
+.basket-quantity button { color: var(--ink); background: transparent; }
+.basket-quantity button:disabled { color: #8d968e; opacity: 1; }
+.basket-drawer__footer { padding-bottom: max(1.3rem, env(safe-area-inset-bottom)); }
+
+.weather-story { --weather-progress: 0; height: 150vh; color: white; background: #132d25; }
+.weather-story__sticky { min-height: 38rem; background: #273f33; isolation: isolate; }
+.weather-story__sticky::before,
+.weather-story__rain,
+.weather-story__sun,
+.weather-story__copy,
+.weather-story__waterline { display: none; }
+.weather-story__video,
+.weather-story__poster,
+.weather-story__clear { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.weather-story__poster { z-index: -2; background: #2f4a3c url('/media/weather-rain-poster.avif') center / cover no-repeat; }
+.weather-story__video { z-index: -1; filter: saturate(.76) contrast(1.06) brightness(.72); }
+.weather-story__clear {
+  z-index: 1;
+  overflow: hidden;
+  background: #304b3b;
+  clip-path: inset(calc((1 - var(--weather-progress)) * 100%) 0 0);
+  filter: saturate(.92) contrast(1.02) brightness(.9);
+}
+.weather-story__clear img { width: 100%; height: 100%; object-fit: cover; object-position: center 56%; }
+.weather-story__clear::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgb(15 46 34 / .32), transparent 54%); }
+.weather-story__water {
+  position: absolute;
+  z-index: 2;
+  top: calc((1 - var(--weather-progress)) * 100% - 4rem);
+  right: -5%;
+  left: -5%;
+  height: 8rem;
+  background: linear-gradient(180deg, transparent, rgb(213 230 218 / .34) 46%, rgb(245 241 230 / .72) 50%, rgb(89 125 102 / .24) 56%, transparent);
+  transform: rotate(-1deg);
+}
+.weather-story__water i { position: absolute; left: 10%; right: 18%; top: 51%; height: 1px; background: rgb(255 255 255 / .55); }
+.weather-story__water i:nth-child(2) { left: 38%; right: 6%; top: 59%; opacity: .6; }
+.weather-story__water i:nth-child(3) { left: 5%; right: 44%; top: 42%; opacity: .45; }
+.weather-story__label { position: absolute; z-index: 3; left: clamp(1.25rem, 5vw, 5rem); top: 50%; font: 600 clamp(2.6rem, 6vw, 6rem)/.92 Fraunces, Georgia, serif; text-shadow: 0 2px 2rem rgb(4 25 18 / .38); transform: translateY(-50%); }
+.weather-story__label span { display: block; }
+.weather-story__label span:first-child { opacity: clamp(0, calc(1 - var(--weather-progress) * 3), 1); }
+.weather-story__label span:last-child { margin-top: -1em; opacity: clamp(0, calc((var(--weather-progress) - .55) * 4), 1); }
+.weather-story__controls { position: absolute; z-index: 4; right: clamp(1rem, 3vw, 3rem); bottom: clamp(1rem, 3vw, 2rem); display: flex; align-items: center; gap: 1rem; padding: .45rem; border-radius: .45rem; background: rgb(8 31 23 / .68); }
+.weather-story__controls button { min-height: 2.5rem; padding: .45rem .75rem; border: 1px solid rgb(255 255 255 / .5); border-radius: .35rem; color: white; background: transparent; cursor: pointer; }
+
+.farm-life { display: block; background: #102b24; }
+.farm-life__intro { min-height: 0; padding: clamp(4rem, 7vw, 6rem) clamp(1.25rem, 8vw, 8rem); }
+.farm-life__intro h2 { max-width: 15ch; font-size: clamp(3rem, 6vw, 6rem); }
+.farm-profile { height: 165vh; }
+.farm-profile__sticky { isolation: isolate; }
+.farm-profile__placeholder { position: absolute; inset: 0; background: linear-gradient(135deg, #304b3b, #6c7258); }
+.farm-profile__image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .25s linear; }
+.farm-profile[data-media-ready="true"] .farm-profile__image { opacity: 1; }
+.farm-profile__figure::after { z-index: 2; background: linear-gradient(90deg, rgb(8 31 23 / .76), rgb(8 31 23 / .17) 49%, transparent 72%); }
+.farm-profile__foreground { z-index: 3; filter: none; }
+.farm-profile--ground .farm-profile__image--wide { object-position: center 58% !important; transform: scale(calc(1.08 - var(--profile-progress) * .045)) translateY(calc(var(--profile-progress) * -1.5%)); }
+.farm-profile--ground .farm-profile__foreground { inset: 0; height: auto; background: none; transform: none; }
+.farm-profile--ground .farm-profile__foreground i { position: absolute; top: -5%; bottom: -5%; width: 11%; border-radius: 50%; background: linear-gradient(90deg, #173b2d, #31513c); filter: blur(3px); opacity: calc(1 - var(--profile-progress) * 1.8); }
+.farm-profile--ground .farm-profile__foreground i:first-child { left: calc(-2% - var(--profile-progress) * 14%); transform: rotate(-3deg); }
+.farm-profile--ground .farm-profile__foreground i:last-child { right: calc(-3% - var(--profile-progress) * 17%); transform: rotate(4deg); }
+.farm-profile--wide .farm-profile__image--wide { width: 112%; max-width: none; object-position: center !important; transform: translateX(calc(-7% + var(--profile-progress) * 7%)) scale(1.02); }
+.farm-profile--wide .farm-profile__foreground { inset: auto -4% -5%; height: 24%; background: linear-gradient(180deg, transparent, rgb(36 64 37 / .56)); transform: translateX(calc(var(--profile-progress) * -3%)); }
+.farm-profile--reveal .farm-profile__image--wide { transform: scale(calc(1.04 - var(--profile-progress) * .04)); }
+.farm-profile--reveal .farm-profile__image--detail { z-index: 1; object-position: 39% 42%; transform: scale(calc(1.44 - var(--profile-progress) * .12)); clip-path: circle(calc((1 - var(--profile-progress)) * 88%) at 38% 48%); }
+.farm-profile--reveal .farm-profile__foreground { display: none; }
+.farm-profile__copy { width: min(33rem, 42vw); padding: 1.25rem; border-left: 2px solid rgb(232 185 76 / .72); background: linear-gradient(90deg, rgb(11 39 29 / .62), transparent); }
+.farm-profile__copy h2 { font-size: clamp(3.8rem, 7vw, 7.2rem); }
+
+@media (max-width: 1040px) {
+  .product-card--feature { grid-column: span 2; }
+}
+
+@media (max-width: 760px) {
+  .hero-stage { height: 235vh; }
+  .hero-sticky { min-height: 39rem; }
+  .harvest-backdrop--orchard { background-position: 42% center; }
+  .harvest-backdrop--stand { background-image: linear-gradient(180deg, rgb(8 32 24 / .58), rgb(8 32 24 / .03) 60%), url('/media/farm-setting-1280.avif'); background-position: 58% center; }
+  .harvest-basket { bottom: -3%; width: min(35rem, 112vw); }
+  .harvest-support { bottom: 5%; width: 84vw; }
+  .harvest-foreground { height: 8%; }
+  .hero-copy { top: 18%; width: auto; }
+  h1 { max-width: 10ch; font-size: clamp(3rem, 12.4vw, 4.25rem); }
+  .catalogue { margin-top: -10vh; }
+  .product-card--feature { grid-column: auto; display: block; }
+  .product-card--feature .product-picture { min-height: 0; aspect-ratio: 16 / 8.5; }
+  .weather-story { height: 135vh; }
+  .weather-story__clear img { object-position: 68% center; }
+  .weather-story__label { top: 44%; font-size: clamp(2.9rem, 14vw, 4.8rem); }
+  .weather-story__controls { right: .75rem; bottom: .75rem; left: .75rem; justify-content: space-between; }
+  .farm-life__intro { padding-block: 4rem; }
+  .farm-life__intro h2 { font-size: clamp(2.8rem, 13vw, 4.5rem); }
+  .farm-profile { height: 140vh; }
+  .farm-profile__copy { right: 1rem; bottom: 5%; left: 1rem; width: auto; padding: 1rem; }
+  .farm-profile__copy h2 { font-size: clamp(3.5rem, 18vw, 5.4rem); }
+  .farm-profile--ground .farm-profile__image--wide { object-position: 70% center !important; }
+  .farm-profile--wide .farm-profile__image--wide { width: 150%; object-position: 49% center !important; transform: translateX(calc(-22% + var(--profile-progress) * 8%)) scale(1.02); }
+  .farm-profile--reveal .farm-profile__image--wide { object-position: 45% center !important; }
+  .farm-profile--reveal .farm-profile__image--detail { object-position: 39% center !important; }
+  .basket-dialog.basket-drawer { inset: 0; box-sizing: border-box; width: 100dvw; max-width: none; height: 100dvh; max-height: none; border-radius: 0; }
+  .basket-drawer__header { padding-inline: 1rem; }
+  .basket-drawer__scroll { padding-inline: 1rem; }
+  .basket-drawer__footer { padding-inline: 1rem; }
+}
+
+@media (max-width: 350px) {
+  .basket-drawer .basket-lines li { grid-template-columns: 4.25rem minmax(0, 1fr) auto; }
+  .basket-drawer .basket-lines img { width: 4.25rem; height: 3.5rem; }
+  .basket-drawer__header h2 { font-size: 1.7rem; }
+  .weather-story__controls { align-items: flex-start; flex-direction: column; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-stage { height: auto; }
+  .harvest-backdrop--orchard,
+  .harvest-basket,
+  .harvest-support,
+  .harvest-foreground,
+  .harvest-wipe,
+  .harvest-caption { display: none; }
+  .harvest-backdrop--stand { display: block; opacity: 1; }
+  .weather-story { height: auto; }
+  .weather-story__sticky { position: relative; min-height: 34rem; }
+  .weather-story__video,
+  .weather-story__water { display: none; }
+  .weather-story__clear { clip-path: none; }
+  .weather-story__label span:first-child { display: none; }
+  .weather-story__label span:last-child { margin: 0; opacity: 1; }
+  .farm-profile { height: auto; min-height: 44rem; }
+  .farm-profile__image,
+  .farm-profile__foreground,
+  .farm-profile__copy { transform: none !important; }
+  .farm-profile--reveal .farm-profile__image--detail { display: none; }
 }

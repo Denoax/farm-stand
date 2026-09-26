@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_on": "2026-09-25",
+  "checked_on": "2026-09-26",
   "project_label": "Farm Stand (working label)",
   "media_bundled": true,
   "notice": "Retained model, font, photography, and generated-background media have been downloaded, inspected, and recorded below. Captured evidence is review material, not a user-approved visual baseline.",
@@ -88,6 +88,31 @@
       "derivative_path": "public/media/harvest-basket.webp",
       "derivative_sha256": "e8f566f9b9cfa54369cfbc716334fda4665b4571d4df681a67afd3bd372386fc",
       "transformation": "Selected source resized to 1000 px width and WebP-encoded with FFmpeg; composited through a soft CSS alpha mask with a clipped duplicate front-rim layer."
+    },
+    {
+      "id": "harvest_basket_layer_v24",
+      "source": "Project-original extraction made with OpenAI's built-in image editing tool; exact prompt retained in assets/source/generated/PROMPT.md",
+      "source_sha256": "38e07929e8d1fd60cdcfae3b2138735d2d677555f0280484ff545849df3b4899",
+      "derivative_path": "public/media/harvest-basket-v24.webp",
+      "derivative_sha256": "ac0ab8278b6e106fdcd342b00dd6f81315333c0b44fbce1fd63030d9641d1468",
+      "transformation": "The retained v2.3 basket was isolated onto genuine transparent alpha without changing its wicker geometry, resized to 1200 px width, and WebP-encoded with FFmpeg. Browser composites were inspected against light and dark fields before use."
+    },
+    {
+      "id": "harvest_fallback_posters_v24",
+      "source": "Deterministic first-frame captures of the implemented orchard, live apple, transparent basket, and foreground support layers",
+      "source_sha256": [
+        "182f467b051ddae83aaa4ac34f3a5ff8c66c80fceeec8e0e33c6d76ad712b1c7",
+        "1da5f042862dd016e4feb840b4e7fa0a14d9df5551084fb3916e33c8b2dcb463"
+      ],
+      "derivative_path": [
+        "public/media/harvest-poster-desktop.avif",
+        "public/media/harvest-poster-portrait.avif"
+      ],
+      "derivative_sha256": [
+        "ef21572375c96114e27fa2315abd8b14bf585f8d77ccae30335907d8e6606f65",
+        "f5edc35ddeb54cb7ee19b4a9842551ea2b1b1e8876f08f5ec12acc065558d231"
+      ],
+      "transformation": "Captured at 1440 by 900 and 390 by 844 CSS pixels with interface copy and controls suppressed, then still-image AVIF-encoded with FFmpeg. These are functional loading/failure fallbacks, not review baselines."
     }
   ],
   "photography": [
@@ -186,6 +211,52 @@
       "source_sha256": "c9955978c039ed93cf4a0ed55d037f1917dbf706397963ee4bf65a47c5a25e17",
       "derivative_path": "public/media/farm-life/sheep.avif",
       "transformation": "Pexels 1600 px delivery inspected locally; resized to 1200 px width and AVIF-encoded with FFmpeg."
+    },
+    {
+      "id": "farm_life_hens_v24",
+      "creator": "Nguyen Huy",
+      "page": "https://www.pexels.com/photo/hen-with-chickens-on-ground-17904089/",
+      "download_url": "https://images.pexels.com/photos/17904089/pexels-photo-17904089.jpeg",
+      "license_claim": "Pexels free-use license",
+      "license_evidence": "https://www.pexels.com/license/",
+      "acquired_on": "2026-09-26",
+      "source_sha256": "83eb1ce5c519f446b120ed6bd10e21fd5d2c6e69c6fa5ab0e401c28d3082e1e3",
+      "derivative_path": "public/media/farm-life/hens-v24.avif",
+      "derivative_sha256": "3ad30ffc03993ced258c296d348d7d4550a11e71fea416b819c2e0247caa2d7c",
+      "transformation": "The 6000 by 4000 source was inspected for ground-level action and portrait/desktop crops, resized to 1920 px width, and AVIF-encoded with FFmpeg."
+    },
+    {
+      "id": "farm_life_cattle_v24",
+      "creator": "Helena Lopes",
+      "page": "https://www.pexels.com/photo/calves-feeding-grass-in-field-under-colorful-sky-at-sunset-4783410/",
+      "download_url": "https://images.pexels.com/photos/4783410/pexels-photo-4783410.jpeg",
+      "license_claim": "Pexels free-use license",
+      "license_evidence": "https://www.pexels.com/license/",
+      "acquired_on": "2026-09-26",
+      "source_sha256": "4aa4533f4383228da0f5138c3f598d65ff2a31522a6b0a4a9b67a4fc802e8141",
+      "derivative_path": "public/media/farm-life/cattle-v24.avif",
+      "derivative_sha256": "d6cad3a846a79f9450eb9317da5dd8c4eecefb9e2d5061eb99996f26117da984",
+      "transformation": "The 5472 by 3648 source was inspected for a wide herd composition and portrait subject retention, resized to 1920 px width, and AVIF-encoded with FFmpeg."
+    },
+    {
+      "id": "weather_rain_v24",
+      "media_type": "video",
+      "creator": "Pixabay",
+      "page": "https://www.pexels.com/video/rainy-weather-at-the-field-855592/",
+      "download_url": "https://videos.pexels.com/video-files/855592/855592-hd_1920_1080_25fps.mp4",
+      "license_claim": "Pexels free-use license; provider page labels the source Free to use (CC0)",
+      "license_evidence": "https://www.pexels.com/license/",
+      "acquired_on": "2026-09-26",
+      "source_sha256": "bbce57e2d5240cd72377e4e837344508ec7f4658db96b57ad552d1a16a58a1b8",
+      "derivative_path": [
+        "public/media/weather-rain.mp4",
+        "public/media/weather-rain-poster.avif"
+      ],
+      "derivative_sha256": [
+        "f75dab41391cf1b939ae2bc0f463b9e5cba633ee4cb93903a59baae066512f23",
+        "00659c9941aed982c8d24cba73bff3de1c40d8bb53f0c33df5130d4f853dddf0"
+      ],
+      "transformation": "The first seven seconds of the static-camera 1920 by 1080 source were resized to 1280 by 720 and H.264-encoded without audio; a representative frame was AVIF-encoded as the poster."
     }
   ],
   "requirements_not_yet_sourced": [

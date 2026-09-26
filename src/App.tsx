@@ -62,6 +62,7 @@ export function App() {
       if (reducedMotion.matches) {
         progressRef.current = 1
         stage.style.setProperty('--stage-progress', '1')
+        stage.style.setProperty('--cut-progress', '1')
         document.documentElement.style.setProperty('--stage-progress', '1')
         setInteractive('.hero-copy', true)
         previousHeroActive = true
@@ -72,6 +73,7 @@ export function App() {
         const heroActive = progress < 0.34
         progressRef.current = progress
         stage.style.setProperty('--stage-progress', progress.toFixed(4))
+        stage.style.setProperty('--cut-progress', Math.min(1, Math.max(0, (progress - 0.64) / 0.16)).toFixed(4))
         document.documentElement.style.setProperty('--stage-progress', progress.toFixed(4))
         if (heroActive !== previousHeroActive) setInteractive('.hero-copy', heroActive)
         previousHeroActive = heroActive
@@ -119,11 +121,12 @@ export function App() {
           <div className="hero-sticky">
             <div className="harvest-backdrop harvest-backdrop--orchard" aria-hidden="true" />
             <div className="harvest-backdrop harvest-backdrop--stand" aria-hidden="true" />
+            <div className="harvest-support" aria-hidden="true" />
             <div className="harvest-basket harvest-basket--back" aria-hidden="true" />
             <div className="scene-visual" aria-label="An apple falls from an orchard branch into a harvest basket before the scene resolves into a sunlit farm stand">
               <picture className="fallback-poster" aria-hidden="true">
-                <source media="(max-width: 760px)" srcSet={publicAsset('media/farm-stand-poster-portrait.avif')} />
-                <img src={publicAsset('media/farm-stand-poster-desktop.avif')} alt="" />
+                <source media="(max-width: 760px)" srcSet={publicAsset('media/harvest-poster-portrait.avif')} />
+                <img src={publicAsset('media/harvest-poster-desktop.avif')} alt="" />
               </picture>
               <Suspense fallback={null}>
                 <FarmScene progressRef={progressRef} motionPaused={motionPaused} onStateChange={onSceneState} />
@@ -134,6 +137,7 @@ export function App() {
               </p>
             </div>
             <div className="harvest-basket harvest-basket--front" aria-hidden="true" />
+            <div className="harvest-foreground" aria-hidden="true" />
 
             <div className="hero-copy">
               <p className="eyebrow eyebrow--hero">{business.service_descriptor}</p>
@@ -148,6 +152,7 @@ export function App() {
 
             <div className="harvest-caption" aria-hidden="true"><span>01</span> Picked this morning <i /> <span>02</span> At the stand</div>
             <div className="scroll-cue" aria-hidden="true"><span /> Scroll to follow the harvest</div>
+            <div className="harvest-wipe" aria-hidden="true"><i /><i /><i /></div>
           </div>
           <span className="demo-anchor" id="demo" aria-hidden="true" />
         </section>
