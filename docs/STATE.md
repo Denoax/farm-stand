@@ -26,6 +26,10 @@ Below-fold media is intersection-deferred with reserved dimensions. The hero ren
 - Selected desktop/portrait captures and an end-to-end recording are under ignored `evidence/`; they are review evidence, not a human-approved baseline.
 - Firefox, WebKit, physical-device, hardware-accelerated, and assistive-technology checks remain unperformed because only Chromium is locally installed for this pass.
 
+## Publication status
+
+The v2 site is published through the existing push-to-main GitHub Pages workflow. Its gated production build and browser suite passed before deployment, and the live HTTPS origin was verified afterward for desktop and portrait rendering, refresh, catalogue/details, basket/collection, farm-life, visit/service/contact content, asset delivery, keyboard interaction, and console/network health.
+
 ## Open inputs and highest-impact limitations
 
 - Public business/brand name, contact destination, commercial scope, pricing, support terms, backend, and integrations are not supplied; configuration keeps them inactive.
@@ -36,4 +40,4 @@ Below-fold media is intersection-deferred with reserved dimensions. The hero ren
 
 ## Next action
 
-Publish this verified v2 tree through the existing push-to-main Pages workflow, inspect the associated run, and verify the live v2 interactions. Future completed and verified website changes should follow the same publication loop. A later pass may incorporate approved identity/contact inputs or human visual corrections, but must not activate orders, payment, contact delivery, analytics, or commercial integrations without new authorization.
+Future completed and verified website changes should follow the standing publication loop. A later pass may incorporate approved identity/contact inputs or human visual corrections, but must not activate orders, payment, contact delivery, analytics, or commercial integrations without new authorization.
