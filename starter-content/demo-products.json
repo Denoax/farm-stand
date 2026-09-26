@@ -1,0 +1,39 @@
+{
+  "demo": true,
+  "disclosure": "Example farm shop — no produce is sold here.",
+  "orders_enabled": false,
+  "payments_enabled": false,
+  "items": [
+    {
+      "id": "apple",
+      "name": "Apples",
+      "unit_label": "example bag",
+      "availability_label": "Example availability",
+      "asset_candidate_id": "food_apple_01",
+      "price": null,
+      "stock_quantity": null
+    },
+    {
+      "id": "onion",
+      "name": "Yellow onions",
+      "unit_label": "example bag",
+      "availability_label": "Example availability",
+      "asset_candidate_id": "yellow_onion",
+      "price": null,
+      "stock_quantity": null
+    }
+  ],
+  "quantity_bounds": {
+    "min": 1,
+    "max": 10,
+    "step": 1
+  },
+  "pickup_preview": {
+    "title": "Pickup request preview",
+    "delivery_mode": "local_preview_only",
+    "collection_option_label": "Example collection option",
+    "confirmation": "Demo preview only. No request has been sent.",
+    "collect_personal_data": false,
+    "endpoint": null
+  }
+}

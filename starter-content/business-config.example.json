@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "working_project_label": "Farm Stand",
+  "public_brand_name": null,
+  "service_descriptor": "Websites for growers and local businesses.",
+  "contact_mode": "preview",
+  "contact_email": null,
+  "contact_endpoint": null,
+  "contact_action_without_destination": "copy_website_brief",
+  "real_submissions_enabled": false,
+  "approved_prices": null,
+  "ongoing_maintenance_promised": false,
+  "analytics_enabled": false,
+  "deploy_authorized": false,
+  "configuration_note": "These are local-build defaults. Do not invent business details or enable delivery. Missing contact configuration blocks public launch, not local art/demo work."
+}

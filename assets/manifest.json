@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "checked_on": "2026-09-25",
+  "project_label": "Farm Stand (working label)",
+  "media_bundled": false,
+  "notice": "No model binaries were downloaded or inspected while creating this handoff. Listing-level verification is not runtime approval. Do not treat webpage example renders as licensed production assets.",
+  "candidates": [
+    {
+      "id": "food_apple_01",
+      "role": "proposed primary produce",
+      "title": "Food Apple 01",
+      "creator": "Oliver Harries",
+      "page": "https://polyhaven.com/a/food_apple_01",
+      "license_claim": "CC0 (provider asset listing)",
+      "license_evidence": "https://polyhaven.com/license",
+      "catalogue_triangle_count_approx": 7000,
+      "catalogue_formats_include": [
+        "glTF"
+      ],
+      "status": "inspected_retained",
+      "download_url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/food_apple_01/food_apple_01_1k.gltf",
+      "source_sha256": "6a7dc1cda1271c8b08e36e2b9fd44371b7149cca6262c71bc36d971cdac4325f",
+      "local_source_path": "assets/source/polyhaven/food_apple_01/",
+      "derivative_path": "public/models/food_apple_01/",
+      "inspection_result": "Geometry, UVs and supplied 1K colour/OpenGL-normal/roughness maps loaded correctly in Three.js. The source scale is normalized at runtime; the retained mesh reads convincingly at desktop and portrait hero size.",
+      "inspection_required": [
+        "geometry/material fidelity",
+        "UV and texture completeness",
+        "normal-map convention",
+        "physical scale",
+        "delivery sizes",
+        "scene lighting and crop"
+      ]
+    },
+    {
+      "id": "yellow_onion",
+      "role": "proposed second produce / material contrast",
+      "title": "Yellow Onion",
+      "creator": "Kuutti Siitonen",
+      "page": "https://polyhaven.com/a/yellow_onion",
+      "license_claim": "CC0 (provider asset listing)",
+      "license_evidence": "https://polyhaven.com/license",
+      "catalogue_triangle_count_approx": 5000,
+      "catalogue_formats_include": [
+        "glTF"
+      ],
+      "status": "inspected_retained",
+      "download_url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/yellow_onion/yellow_onion_1k.gltf",
+      "source_sha256": "0d4aaa4046c5b471ea7f9197c453f3d48699bc85e06fd13606c8ea09a1dce699",
+      "local_source_path": "assets/source/polyhaven/yellow_onion/",
+      "derivative_path": "public/models/yellow_onion/",
+      "inspection_result": "Geometry, UVs and supplied 1K colour/OpenGL-normal/ARM maps loaded correctly in Three.js. The source scale is normalized at runtime and the dry skin provides the intended material contrast.",
+      "inspection_required": [
+        "geometry/material fidelity",
+        "UV and texture completeness",
+        "normal-map convention",
+        "physical scale",
+        "delivery sizes",
+        "scene lighting and crop"
+      ]
+    }
+  ],
+  "requirements_not_yet_sourced": [
+    {
+      "id": "farm_setting",
+      "role": "soft agricultural background",
+      "preferred_representation": "licensed photograph or project render",
+      "status": "project_generated_inspected",
+      "constraint": "coherent light/perspective; no assumed local farm identity",
+      "source_path": "assets/source/generated/farm-setting-v1.png",
+      "source_sha256": "33ab7a6b4b23d4c440229fc27bb899e29afe0ef19b87027bd6ebfc9efecf17c7",
+      "derivative_paths": [
+        "public/media/farm-setting-1920.avif",
+        "public/media/farm-setting-1280.avif"
+      ],
+      "transformation": "Original unbranded background generated for this project; resized and AVIF-encoded locally."
+    },
+    {
+      "id": "table_crate",
+      "role": "grounded support and natural texture",
+      "preferred_representation": "licensed asset or simple authored structure with licensed materials",
+      "status": "authored_inspected",
+      "constraint": "credible scale/contact; no heavy whole-farm model",
+      "derivative_path": "public/media/crate-wood.webp",
+      "transformation": "Shallow crate authored as live Three.js box geometry; material colour texture cropped from the project-generated foreground wood for a coherent light response."
+    },
+    {
+      "id": "lighting",
+      "role": "match scene and foreground",
+      "preferred_representation": "small suitable environment or authored simple lighting",
+      "status": "authored_inspected",
+      "constraint": "no full-resolution environment map by default",
+      "implementation": "Bounded HemisphereLight and shadow-casting DirectionalLight, matched to the upper-left sun in the background plate."
+    },
+    {
+      "id": "third_crop",
+      "role": "optional colour/shape contrast",
+      "preferred_representation": "licensed photograph or model",
+      "status": "optional_unsourced",
+      "constraint": "omit unless it improves the composition without new asset bottlenecks"
+    }
+  ],
+  "font_candidates": [
+    {
+      "family": "Fraunces",
+      "role": "trial display 600",
+      "source": "https://github.com/google/fonts/tree/main/ofl/fraunces",
+      "status": "trial_downloaded_from_official_distribution",
+      "binary_bundled": true,
+      "delivery_path": "public/fonts/fraunces-latin-600.woff2",
+      "license_path": "assets/licenses/Fraunces-OFL.txt"
+    },
+    {
+      "family": "Source Sans 3",
+      "role": "trial supporting text",
+      "source": "https://github.com/google/fonts/tree/main/ofl/sourcesans3",
+      "status": "trial_downloaded_from_official_distribution",
+      "binary_bundled": true,
+      "delivery_path": "public/fonts/source-sans-3-latin.woff2",
+      "license_path": "assets/licenses/Source-Sans-3-OFL.txt"
+    }
+  ]
+}
