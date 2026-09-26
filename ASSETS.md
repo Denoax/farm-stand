@@ -16,3 +16,12 @@ The models are normalized at runtime to a shared authored scale, receive/cast co
 ## Fonts
 
 - Fraunces 600 and Source Sans 3 are sourced from the official Google Fonts distribution under OFL 1.1. Only Latin WOFF2 delivery files are used. Notices are retained under `assets/licenses/`.
+
+## v2 catalogue and farm-life photography
+
+The v2 expansion uses locally delivered derivatives of Pexels photographs under the [Pexels license](https://www.pexels.com/license/). Acquisition copies remain outside public delivery under the ignored `assets/source/photography/v2/` directory. Each retained image was inspected at the intended crop, resized to 960 px (catalogue) or 1200 px (farm life), and AVIF-encoded with FFmpeg. Exact source URLs, creators, hashes, and derivative paths are recorded in `assets/manifest.json`.
+
+- Catalogue: carrots by Joao Teles; potatoes by Ellie Burgin; squash by MART PRODUCTION; eggs by Sophia Martin; produce crate by Snappr.
+- Farm life: hens by Eline Spee; cattle by Alina Vilchenko; sheep by cottonbro studio.
+- Apple and onion catalogue images are 960×640 crops of the existing WebGL hero scene with interface overlays removed. They reuse the retained CC0 models and project-generated background rather than introducing replacement photography; exact derivative hashes are in the manifest.
+- `public/media/farm-stand-social.jpg` is a 1200 px JPEG derivative of the existing desktop fallback poster for Open Graph clients that do not support AVIF.

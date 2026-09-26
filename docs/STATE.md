@@ -1,42 +1,35 @@
 # Current state
 
-## Approved
+## Approved direction
 
-The user approved the **sunlit farm-stand direction**: Oryzo product storytelling; restrained Shopify Winter '26 depth; Wild Souls appetite appeal; usable farm-shop demonstration; website services for growers and local businesses.
+The user approved the sunlit farm-stand direction and the v2 local expansion. Preserve the current hero, rural setting, Fraunces/Source Sans 3 typography, wood/green/yellow palette, useful first frame, short stand-to-shop transition, static fallback, and explicit demonstration boundaries. The cancelled anatomy project is out of scope.
 
-The old anatomy project is cancelled. Its production is not being resumed.
+## Repository state
 
-## Not yet approved or established
-
-Exact hero composition, image/model selection, branding, typography, motion, business copy, prices, maintenance terms, contact destination, backend, rendered baseline, hardware performance, and deployment.
-
-“Farm Stand” is a working label. Fraunces/Source Sans 3, the proposed palette and the example wording are trial defaults, not a recorded user choice.
-
-## Evidence available
-
-Research/source links and candidate catalogue metadata in this handoff. No farm-scene rendering, downloaded model inspection, local implementation, or successful runtime test exists in this package.
+This is the existing `Denoax/farm-stand` Git worktree. Local development is on `farm-stand-v2`, based on main commit `893a48cacaf9d44ff995053d4334e5be8804c774`. Main is not being merged or deployed by this pass.
 
 ## Current implementation
 
-The integrated local build is complete in this directory. It includes inspected Poly Haven apple/onion glTFs, a project-generated setting, live authored crate/shadows, desktop/portrait hero compositions, a short stand-to-shop transition, persistent two-product selection, truthful pickup preview, concise service explanation, and copy-only contact preview. Exact scene posters cover failed models/WebGL. Reduced motion uses normal flow.
+The integrated v2 build adds a seven-product catalogue, filters and details, deterministic multi-item basket operations, quantity/removal/reset handling, sample totals, and a no-submission collection preview. It also adds three sourced-photography farm-life profiles, clearly fictional visit information, a concrete website-service process, and a copy-only contact brief whose destination remains unconfigured.
 
-Production build passes. The final Playwright matrix passes 22/22 at 1440×960 and 390×844; selected evidence also covers 320×740, reduced motion, fallback, contact, and forward/reverse movement. See `REVIEW.md`, `review-summary.json`, and `evidence/`.
+Below-fold media is intersection-deferred with reserved dimensions. The hero renderer pauses offscreen, resumes with current state, and retains model/WebGL and media-failure fallbacks. Inactive scroll-transition controls become inert; reduced motion uses ordinary document flow. Metadata, favicon, social image, asset provenance, and the `/farm-stand/` production path are present.
 
-This folder is not a Git worktree, so no source SHA exists.
+## Evidence checked
 
-## Open inputs and material defects
+- Production build passes; Vite retains a raw-size warning for the lazy Three.js scene chunk.
+- Playwright Chromium matrix passes 28/28 at 1440×960 and 390×844, including 320 px, 900 px, short landscape, 200% text, keyboard/dialog behavior, failures, reduced motion, refresh, asset paths, state independence, and renderer pause/resume.
+- Measured enhanced opening: 2,793,186 encoded bytes with zero catalogue/farm-life requests at arrival; full visited page: 3,415,399 encoded bytes. Observed CLS was 0.0143. Headless SwiftShader is software rendering, not hardware evidence.
+- Selected desktop/portrait captures and an end-to-end recording are under ignored `evidence/`; they are review evidence, not a human-approved baseline.
+- Firefox, WebKit, physical-device, hardware-accelerated, and assistive-technology checks remain unperformed because only Chromium is locally installed for this pass.
 
-- Project destination/repository: not supplied in the chat.
-- Public business/brand name and contact destination: not supplied.
-- Real service scope, ongoing care, pricing and launch permissions: not supplied.
-- Hardware-accelerated desktop, physical portrait device, Safari/WebKit and Firefox: untested.
-- Portrait pickup detail is usable but uses a bounded internally scrolling panel that reduces scene continuity.
-- Exact composition, generated backdrop, trial typography and copy await human visual approval.
+## Open inputs and highest-impact limitations
 
-## Next task
+- Public business/brand name, contact destination, commercial scope, pricing, support terms, backend, and integrations are not supplied; configuration keeps them inactive.
+- The selected Pexels photography is licensed demonstration material, not verified client/property imagery.
+- The lazy Three.js scene chunk is 615.02 kB raw (155.12 kB gzip), above Vite's generic chunk-warning threshold.
+- Physical portrait-device, hardware GPU, Firefox/WebKit, and screen-reader behavior remain unverified.
+- Composition, photography, type, and copy still require human visual/editorial approval; local captures are not self-approved baselines.
 
-Review the selected stills and motion evidence. Approve or refine the visual direction; alternatively, provide real brand/contact/service configuration for a later launch-preparation pass. Do not deploy or activate contact/order handling from the current preview.
+## Next action
 
-## Update discipline
-
-Keep this file short. At handoff, record current source state, completed work, tested conditions, three to five material defects, and next action. Do not repeatedly create new milestone systems. Findings from workers return to Codex for reconciliation; one owner updates shared state.
+Review `REVIEW-v2.md`, its machine summary, the selected stills, and the end-to-end recording. A later pass may incorporate approved identity/contact inputs or human visual corrections, but must not activate orders, payment, contact delivery, analytics, deployment, or commercial integrations without new authorization.

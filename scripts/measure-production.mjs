@@ -10,28 +10,47 @@ const cdp = await context.newCDPSession(page)
 await cdp.send('Network.enable')
 await cdp.send('Network.clearBrowserCache')
 
-const summarizeResources = async () => page.evaluate(() => {
-  const entries = [performance.getEntriesByType('navigation')[0], ...performance.getEntriesByType('resource')]
-    .filter(Boolean)
-    .map((entry) => ({
-      name: entry.name,
-      initiatorType: entry.initiatorType,
-      transferSize: entry.transferSize,
-      encodedBodySize: entry.encodedBodySize,
-      decodedBodySize: entry.decodedBodySize,
-    }))
-  return {
-    transferBytes: entries.reduce((total, entry) => total + entry.transferSize, 0),
-    encodedBodyBytes: entries.reduce((total, entry) => total + entry.encodedBodySize, 0),
-    decodedBodyBytes: entries.reduce((total, entry) => total + entry.decodedBodySize, 0),
-    entries,
-  }
+await page.addInitScript(() => {
+  window.__farmStandLayoutShifts = []
+  new PerformanceObserver((list) => {
+    for (const entry of list.getEntries()) {
+      if (!entry.hadRecentInput) window.__farmStandLayoutShifts.push(entry.value)
+    }
+  }).observe({ type: 'layout-shift', buffered: true })
 })
+
+const resources = async () => page.evaluate(() => [performance.getEntriesByType('navigation')[0], ...performance.getEntriesByType('resource')]
+  .filter(Boolean)
+  .map((entry) => ({
+    path: new URL(entry.name).pathname,
+    initiatorType: entry.initiatorType,
+    transferBytes: entry.transferSize,
+    encodedBodyBytes: entry.encodedBodySize,
+    decodedBodyBytes: entry.decodedBodySize,
+  })))
+
+const summarize = (entries) => ({
+  requests: entries.length,
+  transferBytes: entries.reduce((sum, entry) => sum + entry.transferBytes, 0),
+  encodedBodyBytes: entries.reduce((sum, entry) => sum + entry.encodedBodyBytes, 0),
+  decodedBodyBytes: entries.reduce((sum, entry) => sum + entry.decodedBodyBytes, 0),
+})
+
+const mediaSummary = (entries) => {
+  const assets = entries.filter((entry) => /\.(woff2|avif|webp|gltf|bin|jpe?g)(\?|$)/i.test(entry.path))
+  return {
+    ...summarize(assets),
+    imageEncodedBytes: assets.filter((entry) => /\.(avif|webp|jpe?g)(\?|$)/i.test(entry.path)).reduce((sum, entry) => sum + entry.encodedBodyBytes, 0),
+    fontEncodedBytes: assets.filter((entry) => /\.woff2(\?|$)/i.test(entry.path)).reduce((sum, entry) => sum + entry.encodedBodyBytes, 0),
+    assets,
+  }
+}
 
 await page.goto(baseURL, { waitUntil: 'networkidle' })
 await page.waitForSelector('.hero-stage--ready, .hero-stage--fallback')
 await page.evaluate(() => document.fonts.ready)
-const cold = await summarizeResources()
+const initialEntries = await resources()
+const initialBelowFoldRequests = initialEntries.filter((entry) => /\/media\/(catalogue|farm-life)\//.test(entry.path))
 
 const renderer = await page.evaluate(() => {
   const canvas = document.querySelector('canvas')
@@ -46,112 +65,78 @@ const renderer = await page.evaluate(() => {
   }
 })
 
-const scene = await page.locator('.scene-host').evaluate((node) => ({
+const sceneBefore = await page.locator('.scene-host').evaluate((node) => ({
+  renderCount: Number(node.dataset.renderCount),
   drawCalls: Number(node.dataset.drawCalls),
   triangles: Number(node.dataset.triangles),
-  devicePixelRatio: window.devicePixelRatio,
+  rendering: node.dataset.rendering,
 }))
 
-const stats = (values) => {
-  const ordered = [...values].sort((a, b) => a - b)
-  const percentile = (value) => ordered[Math.min(ordered.length - 1, Math.floor((ordered.length - 1) * value))]
-  return {
-    samples: values.length,
-    medianMs: percentile(0.5),
-    p95Ms: percentile(0.95),
-    maxMs: ordered.at(-1),
-    over20ms: values.filter((value) => value > 20).length,
-    over34ms: values.filter((value) => value > 34).length,
-    rawMs: values,
-  }
+await page.locator('#shop').scrollIntoViewIfNeeded()
+for (const id of ['apple', 'onion', 'carrots', 'potatoes', 'squash', 'eggs', 'harvest-box']) {
+  await page.locator(`#product-${id}`).scrollIntoViewIfNeeded()
+  await page.waitForTimeout(80)
 }
+await page.locator('#farm-life').scrollIntoViewIfNeeded()
+for (const label of ['Hens', 'Cattle', 'Sheep']) {
+  await page.getByRole('tab', { name: label }).click()
+  await page.waitForTimeout(180)
+}
+await page.locator('#contact').scrollIntoViewIfNeeded()
+await page.waitForTimeout(500)
+const offscreenFirst = await page.locator('.scene-host').evaluate((node) => ({ renderCount: Number(node.dataset.renderCount), rendering: node.dataset.rendering }))
+await page.waitForTimeout(500)
+const offscreenSecond = await page.locator('.scene-host').evaluate((node) => ({ renderCount: Number(node.dataset.renderCount), rendering: node.dataset.rendering }))
+await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }))
+await page.waitForTimeout(500)
+const resumed = await page.locator('.scene-host').evaluate((node) => ({ renderCount: Number(node.dataset.renderCount), rendering: node.dataset.rendering }))
 
-const continuousIntervals = await page.evaluate(() => new Promise((resolve) => {
-  const values = []
-  let last = performance.now()
-  const sample = (now) => {
-    values.push(now - last)
-    last = now
-    window.dispatchEvent(new Event('farmstageprogress'))
-    if (values.length >= 180) resolve(values.slice(5))
-    else requestAnimationFrame(sample)
-  }
-  requestAnimationFrame(sample)
+const totalEntries = await resources()
+const layoutShifts = await page.evaluate(() => ({
+  values: window.__farmStandLayoutShifts,
+  cumulative: window.__farmStandLayoutShifts.reduce((sum, value) => sum + value, 0),
 }))
-
-const steadyIntervals = await page.evaluate(() => new Promise((resolve) => {
-  const values = []
-  let last = performance.now()
-  const sample = (now) => {
-    values.push(now - last)
-    last = now
-    if (values.length >= 180) resolve(values.slice(5))
-    else requestAnimationFrame(sample)
-  }
-  requestAnimationFrame(sample)
-}))
-
-const scrollIntervals = await page.evaluate(() => new Promise((resolve) => {
-  const stage = document.querySelector('.hero-stage')
-  const end = Math.max((stage?.offsetHeight ?? innerHeight) - innerHeight, 1)
-  const values = []
-  let last = performance.now()
-  let frame = 0
-  const sample = (now) => {
-    values.push(now - last)
-    last = now
-    frame += 1
-    const phase = frame <= 90 ? frame / 90 : (180 - frame) / 90
-    scrollTo(0, end * Math.max(0, phase))
-    if (frame >= 180) resolve(values.slice(5))
-    else requestAnimationFrame(sample)
-  }
-  requestAnimationFrame(sample)
-}))
-
-await page.reload({ waitUntil: 'networkidle' })
-await page.waitForSelector('.hero-stage--ready, .hero-stage--fallback')
-const warm = await summarizeResources()
-
-const pickAssets = (entries) => entries
-  .filter((entry) => /\.(woff2|avif|webp|gltf|bin|jpg)(\?|$)/.test(entry.name))
-  .map((entry) => ({ name: new URL(entry.name).pathname, transferBytes: entry.transferSize, encodedBodyBytes: entry.encodedBodySize }))
-
 const rendererName = renderer?.unmaskedRenderer ?? renderer?.renderer ?? 'Unavailable'
+
 const result = {
   measuredAt: new Date().toISOString(),
-  method: 'Playwright Chromium 153 production preview on localhost; 1440×960 CSS px; DPR 1; screenshots/video disabled during interval sampling.',
-  cache: {
-    cold: { transferBytes: cold.transferBytes, encodedBodyBytes: cold.encodedBodyBytes, decodedBodyBytes: cold.decodedBodyBytes },
-    warm: { transferBytes: warm.transferBytes, encodedBodyBytes: warm.encodedBodyBytes, decodedBodyBytes: warm.decodedBodyBytes },
+  source: { baseURL, viewport: '1440x960 CSS px', devicePixelRatio: 1, browser: 'project Playwright Chromium' },
+  initial: {
+    ...summarize(initialEntries),
+    media: mediaSummary(initialEntries),
+    belowFoldMediaRequests: initialBelowFoldRequests,
   },
-  requestedAssets: pickAssets(cold.entries),
-  scene,
+  afterFullPageVisit: {
+    ...summarize(totalEntries),
+    media: mediaSummary(totalEntries),
+  },
+  scene: {
+    before: sceneBefore,
+    offscreenFirst,
+    offscreenSecond,
+    resumed,
+    pausedWithoutNewRenders: offscreenFirst.renderCount === offscreenSecond.renderCount && offscreenSecond.rendering === 'paused',
+    resumedWithCurrentScene: resumed.renderCount > offscreenSecond.renderCount && resumed.rendering === 'active',
+  },
+  layoutShifts,
   renderer: {
     ...renderer,
     accelerationClassification: /swiftshader|llvmpipe|software/i.test(rendererName) ? 'software' : 'not identified as software; physical hardware not established',
   },
-  frameIntervals: {
-    forcedContinuousBaseline: stats(continuousIntervals),
-    settledOnDemand: stats(steadyIntervals),
-    forwardReverseScroll: stats(scrollIntervals),
-  },
   limitations: [
-    'Frame intervals are requestAnimationFrame wall-clock intervals, not GPU timings.',
-    'Headless Chromium and the reported renderer do not establish physical-device or hardware performance.',
-    'Localhost transfer does not predict rural-network latency; encoded bytes are still useful delivery evidence.',
+    'Localhost transfer sizes do not predict rural-network latency.',
+    'Headless Chromium does not establish physical-device performance or cross-browser parity.',
+    'The historical approximately 2.8 MB opening figure was not reused as a fresh measurement.',
   ],
 }
 
-await fs.writeFile(path.resolve('evidence/production-measurements.json'), `${JSON.stringify(result, null, 2)}\n`)
+await fs.mkdir(path.resolve('evidence'), { recursive: true })
+await fs.writeFile(path.resolve('evidence/production-measurements-v2.json'), `${JSON.stringify(result, null, 2)}\n`)
 await browser.close()
 console.log(JSON.stringify({
-  cache: result.cache,
+  initial: { ...result.initial, media: { ...result.initial.media, assets: undefined } },
+  afterFullPageVisit: { ...result.afterFullPageVisit, media: { ...result.afterFullPageVisit.media, assets: undefined } },
   scene: result.scene,
+  layoutShifts: result.layoutShifts,
   renderer: result.renderer,
-  frameIntervals: {
-    forcedContinuousBaseline: { ...result.frameIntervals.forcedContinuousBaseline, rawMs: undefined },
-    settledOnDemand: { ...result.frameIntervals.settledOnDemand, rawMs: undefined },
-    forwardReverseScroll: { ...result.frameIntervals.forwardReverseScroll, rawMs: undefined },
-  },
 }, null, 2))

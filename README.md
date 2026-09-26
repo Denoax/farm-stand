@@ -1,6 +1,6 @@
 # Farm stand website demonstration
 
-A local, single-page website-services showcase for growers and local businesses. The farm shop is a fictional interaction demo: it cannot accept orders, payments, or contact submissions.
+A local, single-page website-services showcase for growers and local businesses. Its fictional farm includes a seven-product catalogue, multi-item demonstration basket, collection preview, farm-life stories, practical visit content, service explanation, and copy-only website brief. It cannot accept orders, payments, bookings, or contact submissions.
 
 ## Run locally
 
@@ -21,4 +21,4 @@ npm run build
 npm run preview -- --host 127.0.0.1
 ```
 
-Run the browser tests with `npm run test:e2e`. Asset provenance and transformations are recorded in [ASSETS.md](./ASSETS.md). Local review evidence and reports are deliberately ignored by Git and remain in the working directory only.
+Run the browser tests with `npm run test:e2e` and the production-build resource check with `npm run measure` while the preview server is running. Asset provenance and transformations are recorded in [ASSETS.md](./ASSETS.md). Bulky captures and recordings under `evidence/` are deliberately ignored; the concise v2 review and machine-readable summary are tracked with the source.

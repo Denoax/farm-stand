@@ -1,13 +1,13 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import type { ProductId } from '../content/config'
+import type { HeroProductId } from '../content/config'
 
 type SceneState = 'loading' | 'ready' | 'fallback'
 
 interface FarmSceneProps {
   progressRef: React.RefObject<number>
-  selectedProduct: ProductId
+  selectedProduct: HeroProductId
   onStateChange: (state: SceneState) => void
 }
 
@@ -138,10 +138,10 @@ export function FarmScene({ progressRef, selectedProduct, onStateChange }: FarmS
     contact.receiveShadow = true
     stillLife.add(contact)
 
-    const modelGroups: Partial<Record<ProductId, THREE.Group>> = {}
+    const modelGroups: Partial<Record<HeroProductId, THREE.Group>> = {}
     let disposed = false
     const loader = new GLTFLoader()
-    const loadModel = (id: ProductId, url: string, height: number) =>
+    const loadModel = (id: HeroProductId, url: string, height: number) =>
       new Promise<void>((resolve, reject) => {
         loader.load(
           url,
@@ -164,7 +164,7 @@ export function FarmScene({ progressRef, selectedProduct, onStateChange }: FarmS
       .then(() => {
         if (!disposed) {
           onStateChange('ready')
-          requestRender(3)
+          requestRender()
         }
       })
       .catch(() => {
@@ -172,28 +172,31 @@ export function FarmScene({ progressRef, selectedProduct, onStateChange }: FarmS
       })
 
     let frame = 0
-    let remainingFrames = 0
     let renderEnabled = true
+    let heroVisible = true
+    let selectionAnimationStart: number | null = null
+    let appleStartScale = 1
+    let onionStartScale = 1
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
     const resize = () => {
       const width = sceneHost.clientWidth
       const height = sceneHost.clientHeight
       renderer.setSize(width, height, false)
       camera.aspect = width / Math.max(height, 1)
       camera.updateProjectionMatrix()
-      requestRender(2)
+      requestRender()
     }
     resize()
     const resizeObserver = new ResizeObserver(resize)
     resizeObserver.observe(sceneHost)
 
-    function requestRender(frames = 1) {
-      if (!renderEnabled) return
-      remainingFrames = Math.max(remainingFrames, frames)
-      if (!frame && !document.hidden) frame = requestAnimationFrame(render)
+    function requestRender() {
+      if (!renderEnabled || !heroVisible || document.hidden) return
+      if (!frame) frame = requestAnimationFrame(render)
     }
-    function render() {
+    function render(now: number) {
       frame = 0
-      if (document.hidden) return
+      if (document.hidden || !heroVisible) return
       const progress = progressRef.current ?? 0
       const portrait = sceneHost.clientWidth < 700
       const selected = selectedRef.current
@@ -207,17 +210,25 @@ export function FarmScene({ progressRef, selectedProduct, onStateChange }: FarmS
 
       const apple = modelGroups.apple
       const onion = modelGroups.onion
+      const selectionDuration = reducedMotion.matches ? 0 : 260
+      const selectionProgress = selectionAnimationStart === null || selectionDuration === 0
+        ? 1
+        : Math.min(1, (now - selectionAnimationStart) / selectionDuration)
+      const easedSelection = 1 - Math.pow(1 - selectionProgress, 3)
+
       if (apple) {
         apple.position.set(-0.42, -0.7, 0.08)
         apple.rotation.y = -0.28
-        const scale = selected === 'apple' ? 1.05 : 0.94
-        apple.scale.lerp(new THREE.Vector3(scale, scale, scale), 0.11)
+        const target = selected === 'apple' ? 1.05 : 0.94
+        const scale = THREE.MathUtils.lerp(appleStartScale, target, easedSelection)
+        apple.scale.setScalar(selectionProgress === 1 ? target : scale)
       }
       if (onion) {
         onion.position.set(0.82, -0.7, -0.03)
         onion.rotation.y = 0.36
-        const scale = selected === 'onion' ? 1.08 : 0.94
-        onion.scale.lerp(new THREE.Vector3(scale, scale, scale), 0.11)
+        const target = selected === 'onion' ? 1.08 : 0.94
+        const scale = THREE.MathUtils.lerp(onionStartScale, target, easedSelection)
+        onion.scale.setScalar(selectionProgress === 1 ? target : scale)
       }
 
       camera.position.x = THREE.MathUtils.lerp(0, 0.32, progress)
@@ -226,25 +237,35 @@ export function FarmScene({ progressRef, selectedProduct, onStateChange }: FarmS
       renderer.render(scene, camera)
       sceneHost.dataset.drawCalls = String(renderer.info.render.calls)
       sceneHost.dataset.triangles = String(renderer.info.render.triangles)
-      remainingFrames -= 1
-      if (remainingFrames > 0) frame = requestAnimationFrame(render)
+      sceneHost.dataset.renderCount = String(Number(sceneHost.dataset.renderCount ?? 0) + 1)
+      sceneHost.dataset.rendering = 'active'
+      if (selectionProgress < 1) frame = requestAnimationFrame(render)
+      else selectionAnimationStart = null
     }
-    requestRender(2)
+    requestRender()
 
     const onVisibility = () => {
       if (document.hidden) {
         cancelAnimationFrame(frame)
         frame = 0
       } else {
-        requestRender(2)
+        requestRender()
       }
     }
-    const onProgress = () => requestRender(2)
-    const onSelection = () => requestRender(18)
+    const onProgress = () => requestRender()
+    const onSelection = () => {
+      appleStartScale = modelGroups.apple?.scale.x ?? 1
+      onionStartScale = modelGroups.onion?.scale.x ?? 1
+      selectionAnimationStart = performance.now()
+      requestRender()
+    }
+    const onMotionChange = () => {
+      selectionAnimationStart = null
+      requestRender()
+    }
     const onContextLost = (event: Event) => {
       event.preventDefault()
       renderEnabled = false
-      remainingFrames = 0
       cancelAnimationFrame(frame)
       frame = 0
       onStateChange('fallback')
@@ -252,7 +273,18 @@ export function FarmScene({ progressRef, selectedProduct, onStateChange }: FarmS
     document.addEventListener('visibilitychange', onVisibility)
     window.addEventListener('farmstageprogress', onProgress)
     window.addEventListener('farmsceneselection', onSelection)
+    reducedMotion.addEventListener('change', onMotionChange)
     renderer.domElement.addEventListener('webglcontextlost', onContextLost)
+    const intersectionObserver = new IntersectionObserver(([entry]) => {
+      heroVisible = entry.isIntersecting
+      sceneHost.dataset.rendering = heroVisible ? 'active' : 'paused'
+      if (heroVisible) requestRender()
+      else {
+        cancelAnimationFrame(frame)
+        frame = 0
+      }
+    }, { rootMargin: '80px 0px' })
+    intersectionObserver.observe(sceneHost)
 
     return () => {
       disposed = true
@@ -261,7 +293,9 @@ export function FarmScene({ progressRef, selectedProduct, onStateChange }: FarmS
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('farmstageprogress', onProgress)
       window.removeEventListener('farmsceneselection', onSelection)
+      reducedMotion.removeEventListener('change', onMotionChange)
       renderer.domElement.removeEventListener('webglcontextlost', onContextLost)
+      intersectionObserver.disconnect()
       resizeObserver.disconnect()
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh) {

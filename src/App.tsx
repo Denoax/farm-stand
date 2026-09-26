@@ -1,7 +1,11 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
-import { business, type ProductId } from './content/config'
+import { lazy, Suspense, useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { business, type HeroProductId } from './content/config'
 import { ContactPreview } from './components/ContactPreview'
 import { ShopDemo } from './components/ShopDemo'
+import { ShopSection } from './components/ShopSection'
+import { FarmLife } from './components/FarmLife'
+import { VisitSection } from './components/VisitSection'
+import { basketReducer } from './state/basket'
 
 const FarmScene = lazy(() => import('./components/FarmScene').then((module) => ({ default: module.FarmScene })))
 const publicAsset = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`
@@ -11,8 +15,9 @@ type SceneState = 'loading' | 'ready' | 'fallback'
 export function App() {
   const stageRef = useRef<HTMLElement>(null)
   const progressRef = useRef(0)
-  const [selectedProduct, setSelectedProduct] = useState<ProductId>('apple')
+  const [selectedProduct, setSelectedProduct] = useState<HeroProductId>('apple')
   const [sceneState, setSceneState] = useState<SceneState>('loading')
+  const [basket, dispatchBasket] = useReducer(basketReducer, {})
   const onSceneState = useCallback((state: SceneState) => setSceneState(state), [])
 
   useEffect(() => {
@@ -20,20 +25,41 @@ export function App() {
     if (!stage) return
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
     let raf = 0
+    let previousDemoActive: boolean | null = null
+    let previousHeroActive: boolean | null = null
+
+    const setInteractive = (selector: string, active: boolean) => {
+      const element = stage.querySelector<HTMLElement>(selector)
+      if (!element) return
+      if (active) element.removeAttribute('inert')
+      else element.setAttribute('inert', '')
+      element.setAttribute('aria-hidden', active ? 'false' : 'true')
+    }
 
     const update = () => {
       raf = 0
       if (reducedMotion.matches) {
         progressRef.current = 1
         stage.style.setProperty('--stage-progress', '1')
-        return
+        stage.dataset.demoActive = 'true'
+        setInteractive('.hero-copy', true)
+        setInteractive('.stand-transition', true)
+        previousDemoActive = true
+        previousHeroActive = true
+      } else {
+        const bounds = stage.getBoundingClientRect()
+        const scrollable = Math.max(stage.offsetHeight - window.innerHeight, 1)
+        const progress = Math.min(1, Math.max(0, -bounds.top / scrollable))
+        const demoActive = progress > 0.66
+        const heroActive = progress < 0.46
+        progressRef.current = progress
+        stage.style.setProperty('--stage-progress', progress.toFixed(4))
+        stage.dataset.demoActive = demoActive ? 'true' : 'false'
+        if (demoActive !== previousDemoActive) setInteractive('.stand-transition', demoActive)
+        if (heroActive !== previousHeroActive) setInteractive('.hero-copy', heroActive)
+        previousDemoActive = demoActive
+        previousHeroActive = heroActive
       }
-      const bounds = stage.getBoundingClientRect()
-      const scrollable = Math.max(stage.offsetHeight - window.innerHeight, 1)
-      const progress = Math.min(1, Math.max(0, -bounds.top / scrollable))
-      progressRef.current = progress
-      stage.style.setProperty('--stage-progress', progress.toFixed(4))
-      stage.dataset.demoActive = progress > 0.72 ? 'true' : 'false'
       window.dispatchEvent(new Event('farmstageprogress'))
     }
     const scheduleUpdate = () => {
@@ -60,8 +86,10 @@ export function App() {
           <span>Farm stand <small>website demonstration</small></span>
         </a>
         <nav aria-label="Main navigation">
-          <a href="#demo">Try the demo</a>
-          <a className="nav-cta" href="#contact">Discuss my website</a>
+          <a href="#shop">Shop</a>
+          <a href="#farm-life">Around the farm</a>
+          <a href="#website">Your website</a>
+          <a className="nav-cta" href="#contact">Discuss a website</a>
         </nav>
       </header>
 
@@ -92,7 +120,7 @@ export function App() {
               <h1 id="hero-heading">This is what your farm could look like online.</h1>
               <p className="hero-support">Show what’s available. Help customers find you. Make enquiries straightforward.</p>
               <div className="hero-actions">
-                <a className="button button--sun" href="#demo">Explore the demo <span aria-hidden="true">↓</span></a>
+                <a className="button button--sun" href="#shop">Explore the demo <span aria-hidden="true">↓</span></a>
                 <a className="text-link" href="#contact">Discuss my website <span aria-hidden="true">↗</span></a>
               </div>
               <p className="hero-disclosure">A fictional farm-shop experience demonstrating a real website service. No produce is sold here.</p>
@@ -104,29 +132,29 @@ export function App() {
           <span className="demo-anchor" id="demo" aria-hidden="true" />
         </section>
 
-        <section className="service" id="service" aria-labelledby="service-heading">
+        <ShopSection basket={basket} dispatch={dispatchBasket} />
+        <FarmLife />
+        <VisitSection />
+
+        <section className="service" id="website" aria-labelledby="service-heading">
           <div className="service-heading">
-            <p className="eyebrow">From today’s crop to a useful website</p>
-            <h2 id="service-heading">The stand is the story. The clear next step is the service.</h2>
+            <p className="eyebrow">Your website</p>
+            <h2 id="service-heading">A website built around how your business works.</h2>
+            <p className="service-lead">This demonstration brings distinctive presentation, scannable products, practical information, and a clear enquiry path into one coherent experience.</p>
           </div>
           <div className="service-story">
-            <p className="service-lead">A good farm website can keep practical information close to the character of the place—without making visitors work for either.</p>
-            <dl>
-              <div>
-                <dt>Show what’s current</dt>
-                <dd>Present produce or services in a form people can scan and understand.</dd>
-              </div>
-              <div>
-                <dt>Make visiting clearer</dt>
-                <dd>Give opening, collection, and location information an obvious home when real details are available.</dd>
-              </div>
-              <div>
-                <dt>Invite the right enquiry</dt>
-                <dd>Shape a short, honest path from interest to a useful conversation.</dd>
-              </div>
-            </dl>
+            <p className="eyebrow">A plain-language process</p>
+            <ol className="process-list">
+              <li><span>01</span><div><strong>Understand the business</strong><p>Start with what customers need to know and what the owner needs the website to make easier.</p></div></li>
+              <li><span>02</span><div><strong>Organize the content</strong><p>Shape products, services, visiting details, and enquiries into a structure people can scan.</p></div></li>
+              <li><span>03</span><div><strong>Design and build</strong><p>Create the visual system and responsive frontend around the real material available.</p></div></li>
+              <li><span>04</span><div><strong>Review and launch</strong><p>Test the important journeys, refine the result, and configure approved hosting and contact details.</p></div></li>
+            </ol>
           </div>
-          <p className="service-footnote">This local build demonstrates the public-facing experience. It does not claim a management system, ordering backend, or ongoing service arrangement.</p>
+          <div className="service-boundary">
+            <p><strong>Demonstrated here:</strong> responsive frontend design, product presentation, basket interactions, useful information architecture, fallbacks, and an enquiry-preview interface.</p>
+            <p><strong>Configured separately if approved:</strong> inventory, payments, booking, a CMS, message delivery, analytics, or ongoing support.</p>
+          </div>
         </section>
 
         <ContactPreview />
@@ -134,8 +162,8 @@ export function App() {
 
       <footer>
         <a href="#top">Return to the farm stand ↑</a>
-        <p>Working project label · local preview · no orders or submissions</p>
-        <p>Produce models: Poly Haven, CC0 · background: project-generated original</p>
+        <p>Working project label · public demonstration · no orders, payments, bookings, or submissions</p>
+        <p>Produce models: Poly Haven, CC0 · photography: credited Pexels contributors · background: project-generated original</p>
       </footer>
     </>
   )

@@ -2,8 +2,8 @@
   "schema_version": 1,
   "checked_on": "2026-09-25",
   "project_label": "Farm Stand (working label)",
-  "media_bundled": false,
-  "notice": "No model binaries were downloaded or inspected while creating this handoff. Listing-level verification is not runtime approval. Do not treat webpage example renders as licensed production assets.",
+  "media_bundled": true,
+  "notice": "Retained model, font, photography, and generated-background media have been downloaded, inspected, and recorded below. Captured evidence is review material, not a user-approved visual baseline.",
   "candidates": [
     {
       "id": "food_apple_01",
@@ -58,6 +58,120 @@
         "delivery sizes",
         "scene lighting and crop"
       ]
+    }
+  ],
+  "project_derivatives": [
+    {
+      "id": "catalogue_apple_render",
+      "source": "Existing project WebGL hero scene using the retained CC0 Poly Haven apple model and project-generated background",
+      "derivative_path": "public/media/catalogue/apple.avif",
+      "derivative_sha256": "05b07d1abb15f440634c02b7ff6eeaa5c68b116e673413555158acc9bb5cbf24",
+      "transformation": "Captured without interface overlays, cropped to the apple-and-crate composition, resized to 960 by 640, and AVIF-encoded with FFmpeg."
+    },
+    {
+      "id": "catalogue_onion_render",
+      "source": "Existing project WebGL hero scene using the retained CC0 Poly Haven onion model and project-generated background",
+      "derivative_path": "public/media/catalogue/onion.avif",
+      "derivative_sha256": "41b27e23477c6f5547109b71b3999d6ba8e54877454a02b9d6ca359d38ff4bef",
+      "transformation": "Captured without interface overlays, cropped to the onion-and-crate composition, resized to 960 by 640, and AVIF-encoded with FFmpeg."
+    }
+  ],
+  "photography": [
+    {
+      "id": "catalogue_carrots",
+      "creator": "Joao Teles",
+      "page": "https://www.pexels.com/photo/carrots-on-brown-wooden-table-5959110/",
+      "download_url": "https://images.pexels.com/photos/5959110/pexels-photo-5959110.jpeg",
+      "license_claim": "Pexels free-use license",
+      "license_evidence": "https://www.pexels.com/license/",
+      "acquired_on": "2026-09-25",
+      "source_sha256": "8d4f2bd05bdb7ceff4f5283c8a4f733baaf01ab5ed188286ddb236b1fb41a7da",
+      "derivative_path": "public/media/catalogue/carrots.avif",
+      "transformation": "Pexels 1600 px delivery inspected locally; resized to 960 px width and AVIF-encoded with FFmpeg."
+    },
+    {
+      "id": "catalogue_potatoes",
+      "creator": "Ellie Burgin",
+      "page": "https://www.pexels.com/photo/close-up-of-potatoes-17617617/",
+      "download_url": "https://images.pexels.com/photos/17617617/pexels-photo-17617617.jpeg",
+      "license_claim": "Pexels free-use license",
+      "license_evidence": "https://www.pexels.com/license/",
+      "acquired_on": "2026-09-25",
+      "source_sha256": "cbec922635a48b9ac4f999288e530df0deb21a3c033777efbfd48b830fd8c3d0",
+      "derivative_path": "public/media/catalogue/potatoes.avif",
+      "transformation": "Pexels 1600 px delivery inspected locally; resized to 960 px width and AVIF-encoded with FFmpeg."
+    },
+    {
+      "id": "catalogue_squash",
+      "creator": "MART PRODUCTION",
+      "page": "https://www.pexels.com/photo/squashes-on-a-wooden-table-7890122/",
+      "download_url": "https://images.pexels.com/photos/7890122/pexels-photo-7890122.jpeg",
+      "license_claim": "Pexels free-use license",
+      "license_evidence": "https://www.pexels.com/license/",
+      "acquired_on": "2026-09-25",
+      "source_sha256": "866ccd421ccb979726b9f8cf86a04248a959dd0dff0bf7a6b53d946ecf7b0d31",
+      "derivative_path": "public/media/catalogue/squash.avif",
+      "transformation": "Pexels 1600 px delivery inspected locally; resized to 960 px width and AVIF-encoded with FFmpeg."
+    },
+    {
+      "id": "catalogue_eggs",
+      "creator": "Sophia Martin",
+      "page": "https://www.pexels.com/photo/eggs-in-basket-on-ground-22764388/",
+      "download_url": "https://images.pexels.com/photos/22764388/pexels-photo-22764388.jpeg",
+      "license_claim": "Pexels free-use license",
+      "license_evidence": "https://www.pexels.com/license/",
+      "acquired_on": "2026-09-25",
+      "source_sha256": "7f79cb4eb647d7eafcd9e2b9347f365ca7b28937d438d4b1faa9da202abdb74a",
+      "derivative_path": "public/media/catalogue/eggs.avif",
+      "transformation": "Pexels 1600 px delivery inspected locally; resized to 960 px width and AVIF-encoded with FFmpeg."
+    },
+    {
+      "id": "catalogue_produce_box",
+      "creator": "Snappr",
+      "page": "https://www.pexels.com/photo/fresh-assortment-of-vegetables-in-wooden-crate-29850889/",
+      "download_url": "https://images.pexels.com/photos/29850889/pexels-photo-29850889.jpeg",
+      "license_claim": "Pexels free-use license",
+      "license_evidence": "https://www.pexels.com/license/",
+      "acquired_on": "2026-09-25",
+      "source_sha256": "1566d6c455ddc95b35d73316be1cf3667c0cff245506458148be0791ab63ce18",
+      "derivative_path": "public/media/catalogue/produce-box.avif",
+      "transformation": "Pexels 1600 px delivery inspected locally; resized to 960 px width and AVIF-encoded with FFmpeg."
+    },
+    {
+      "id": "farm_life_hens",
+      "creator": "Eline Spee",
+      "page": "https://www.pexels.com/photo/chickens-in-a-fenced-in-area-28241463/",
+      "download_url": "https://images.pexels.com/photos/28241463/pexels-photo-28241463.jpeg",
+      "license_claim": "Pexels free-use license",
+      "license_evidence": "https://www.pexels.com/license/",
+      "acquired_on": "2026-09-25",
+      "source_sha256": "531eb055ec2e5dc5d38885ec57b5bd679360f8a67ef4be86d38bf3dd56e4b08b",
+      "derivative_path": "public/media/farm-life/hens.avif",
+      "transformation": "Pexels 1600 px delivery inspected locally; resized to 1200 px width and AVIF-encoded with FFmpeg."
+    },
+    {
+      "id": "farm_life_cattle",
+      "creator": "Alina Vilchenko",
+      "page": "https://www.pexels.com/photo/cows-on-pasture-18125473/",
+      "download_url": "https://images.pexels.com/photos/18125473/pexels-photo-18125473.jpeg",
+      "license_claim": "Pexels free-use license",
+      "license_evidence": "https://www.pexels.com/license/",
+      "acquired_on": "2026-09-25",
+      "source_sha256": "d43098bdb708159b503dddd968c3d1b002c5c19223912bc709835317ab7b86f3",
+      "derivative_path": "public/media/farm-life/cattle.avif",
+      "transformation": "Pexels 1600 px delivery inspected locally; resized to 1200 px width and AVIF-encoded with FFmpeg."
+    },
+    {
+      "id": "farm_life_sheep",
+      "creator": "cottonbro studio",
+      "page": "https://www.pexels.com/photo/herd-of-sheep-on-field-4921185/",
+      "download_url": "https://images.pexels.com/photos/4921185/pexels-photo-4921185.jpeg",
+      "license_claim": "Pexels free-use license",
+      "license_evidence": "https://www.pexels.com/license/",
+      "acquired_on": "2026-09-25",
+      "source_sha256": "c9955978c039ed93cf4a0ed55d037f1917dbf706397963ee4bf65a47c5a25e17",
+      "derivative_path": "public/media/farm-life/sheep.avif",
+      "transformation": "Pexels 1600 px delivery inspected locally; resized to 1200 px width and AVIF-encoded with FFmpeg."
     }
   ],
   "requirements_not_yet_sourced": [

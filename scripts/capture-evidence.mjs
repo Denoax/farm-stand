@@ -7,7 +7,7 @@ const evidenceDir = path.resolve('evidence')
 await fs.mkdir(evidenceDir, { recursive: true })
 
 const browser = await chromium.launch()
-const report = { consoleErrors: [], pageErrors: [], captures: [] }
+const report = { capturedAt: new Date().toISOString(), baseURL, consoleErrors: [], pageErrors: [], requestFailures: [], captures: [] }
 
 async function openPage(viewport, reducedMotion = 'no-preference', recordVideo = false) {
   const context = await browser.newContext({
@@ -21,97 +21,111 @@ async function openPage(viewport, reducedMotion = 'no-preference', recordVideo =
     if (message.type() === 'error') report.consoleErrors.push(message.text())
   })
   page.on('pageerror', (error) => report.pageErrors.push(error.message))
+  page.on('requestfailed', (request) => report.requestFailures.push({ url: request.url(), error: request.failure()?.errorText ?? 'unknown' }))
   await page.goto(baseURL, { waitUntil: 'networkidle' })
   await page.waitForSelector('.hero-stage--ready, .hero-stage--fallback')
+  await page.addStyleTag({ content: 'html { scroll-behavior: auto !important; }' })
   return { context, page }
 }
 
-async function shot(page, filename, fullPage = false) {
+async function shot(page, filename, locator) {
   const target = path.join(evidenceDir, filename)
-  await page.screenshot({ path: target, fullPage })
+  if (locator) await locator.screenshot({ path: target })
+  else await page.screenshot({ path: target })
   report.captures.push(filename)
+}
+
+async function reveal(page, selector) {
+  await page.locator(selector).evaluate((node) => node.scrollIntoView({ block: 'start', behavior: 'instant' }))
+  await page.waitForTimeout(300)
 }
 
 {
   const { context, page } = await openPage({ width: 1440, height: 960 })
-  await shot(page, 'desktop-hero.png')
-  await page.locator('.scene-visual').screenshot({ path: path.join(evidenceDir, 'poster-desktop-source.png') })
-  const stageHeight = await page.locator('.hero-stage').evaluate((node) => node.offsetHeight)
-  await page.evaluate((y) => window.scrollTo(0, y), (stageHeight - 960) * 0.56)
-  await page.waitForTimeout(350)
-  await shot(page, 'desktop-transition.png')
-  await page.evaluate(() => document.querySelector('#demo')?.scrollIntoView())
-  await page.waitForTimeout(350)
-  await page.getByText('Yellow onions', { exact: true }).click()
-  await page.getByLabel('Example quantity').fill('3')
-  await page.getByRole('button', { name: 'Pickup request preview' }).click()
-  await page.waitForTimeout(300)
-  await shot(page, 'desktop-pickup.png')
-  await page.locator('#service').scrollIntoViewIfNeeded()
-  await page.waitForTimeout(250)
-  await shot(page, 'desktop-service.png')
-  await page.locator('#contact').scrollIntoViewIfNeeded()
-  await page.waitForTimeout(250)
-  await page.getByLabel('What should your website make easier?').fill('Keep our opening information current and make seasonal produce easy to browse.')
-  await shot(page, 'desktop-contact.png')
-  await context.close()
-}
+  await shot(page, 'v2-desktop-hero.png')
+  const cleanSceneStyle = await page.addStyleTag({ content: '.site-header, .hero-copy, .stand-transition, .scroll-cue { visibility: hidden !important; }' })
+  await page.screenshot({ path: path.join(evidenceDir, 'v2-clean-hero-scene.png') })
+  await cleanSceneStyle.evaluate((node) => node.remove())
 
-{
-  const context = await browser.newContext({ viewport: { width: 1440, height: 960 }, deviceScaleFactor: 1 })
-  const page = await context.newPage()
-  await page.route('**/models/**', (route) => route.abort())
-  await page.goto(baseURL, { waitUntil: 'networkidle' })
-  await page.waitForSelector('.hero-stage--fallback')
-  await shot(page, 'desktop-fallback.png')
+  const transitionY = await page.locator('.hero-stage').evaluate((node) => (node.offsetHeight - innerHeight) * 0.82)
+  await page.evaluate((y) => scrollTo({ top: y, behavior: 'instant' }), transitionY)
+  await page.waitForTimeout(400)
+  await shot(page, 'v2-desktop-transition.png')
+
+  await reveal(page, '#shop')
+  await shot(page, 'v2-desktop-shop.png')
+  await page.locator('#product-eggs').getByRole('button', { name: 'View details' }).click()
+  await page.locator('.product-dialog img').evaluate((image) => image.complete || new Promise((resolve) => image.addEventListener('load', resolve, { once: true })))
+  await shot(page, 'v2-desktop-product-detail.png')
+  await page.getByRole('button', { name: 'Close product details' }).click()
+  await page.locator('#product-eggs').getByRole('button', { name: 'Add to basket' }).click()
+  await page.locator('#product-apple').getByRole('button', { name: 'Add to basket' }).click()
+  await page.getByRole('button', { name: /Basket/ }).click()
+  await shot(page, 'v2-desktop-basket.png')
+  await page.getByRole('button', { name: 'Preview collection options' }).click()
+  await shot(page, 'v2-desktop-collection.png')
+  await page.getByRole('button', { name: 'Close basket' }).click()
+
+  await reveal(page, '#farm-life')
+  await shot(page, 'v2-desktop-farm-life.png')
+  await reveal(page, '#visit')
+  await shot(page, 'v2-desktop-visit.png')
+  await reveal(page, '#website')
+  await shot(page, 'v2-desktop-service.png')
+  await reveal(page, '#contact')
+  await shot(page, 'v2-desktop-contact.png')
   await context.close()
 }
 
 {
   const { context, page } = await openPage({ width: 390, height: 844 })
-  await shot(page, 'portrait-hero.png')
-  await page.locator('.scene-visual').screenshot({ path: path.join(evidenceDir, 'poster-portrait-source.png') })
-  await page.evaluate(() => document.querySelector('#demo')?.scrollIntoView())
-  await page.waitForTimeout(350)
-  await shot(page, 'portrait-demo.png')
+  await shot(page, 'v2-portrait-hero.png')
+  await reveal(page, '#shop')
+  await shot(page, 'v2-portrait-shop.png')
+  await page.locator('#product-carrots').getByRole('button', { name: 'Add to basket' }).click()
+  await page.locator('#product-potatoes').getByRole('button', { name: 'Add to basket' }).click()
+  await page.getByRole('button', { name: /Basket/ }).click()
+  await shot(page, 'v2-portrait-basket.png')
+  await page.getByRole('button', { name: 'Close basket' }).click()
+  await reveal(page, '#farm-life')
+  await shot(page, 'v2-portrait-farm-life.png')
   await context.close()
 }
 
 {
-  const { context, page } = await openPage({ width: 320, height: 740 })
-  await page.evaluate(() => document.querySelector('#demo')?.scrollIntoView())
-  await page.waitForTimeout(250)
-  await shot(page, 'narrow-demo.png')
-  await context.close()
-}
-
-{
-  const { context, page } = await openPage({ width: 1440, height: 960 }, 'reduce')
-  await shot(page, 'reduced-motion.png', true)
+  const { context, page } = await openPage({ width: 1280, height: 800 }, 'reduce')
+  await shot(page, 'v2-reduced-motion-flow.png', page.locator('.hero-stage'))
   await context.close()
 }
 
 {
   const { context, page } = await openPage({ width: 960, height: 720 }, 'no-preference', true)
-  const scrollEnd = await page.locator('#demo').evaluate((node) => node.getBoundingClientRect().top + window.scrollY)
-  for (let step = 0; step <= 50; step += 1) {
-    await page.evaluate((y) => window.scrollTo(0, y), scrollEnd * (step / 50))
-    await page.waitForTimeout(20)
-  }
-  await page.getByText('Yellow onions', { exact: true }).click()
-  await page.waitForTimeout(350)
-  for (let step = 50; step >= 0; step -= 1) {
-    await page.evaluate((y) => window.scrollTo(0, y), scrollEnd * (step / 50))
-    await page.waitForTimeout(20)
-  }
+  await page.locator('#shop').scrollIntoViewIfNeeded()
+  await page.locator('#product-eggs').getByRole('button', { name: 'Add to basket' }).click()
+  await page.locator('#product-apple').getByRole('button', { name: 'Add to basket' }).click()
+  await page.getByRole('button', { name: /Basket/ }).click()
+  await page.getByRole('button', { name: 'Preview collection options' }).click()
+  await page.getByRole('button', { name: 'Review this example' }).click()
+  await page.waitForTimeout(500)
+  await page.getByRole('button', { name: 'Close basket' }).click()
+  await page.locator('#farm-life').scrollIntoViewIfNeeded()
+  await page.getByRole('tab', { name: 'Cattle' }).click()
+  await page.waitForTimeout(500)
+  await page.locator('#visit').scrollIntoViewIfNeeded()
+  await page.waitForTimeout(400)
+  await page.locator('#website').scrollIntoViewIfNeeded()
+  await page.waitForTimeout(400)
+  await page.locator('#contact').scrollIntoViewIfNeeded()
+  await page.waitForTimeout(600)
   const video = page.video()
   await context.close()
   if (video) {
     const original = await video.path()
-    await fs.rename(original, path.join(evidenceDir, 'stand-to-shop-forward-reverse.webm'))
+    await fs.rename(original, path.join(evidenceDir, 'v2-end-to-end.webm'))
+    report.captures.push('v2-end-to-end.webm')
   }
 }
 
 await browser.close()
-await fs.writeFile(path.join(evidenceDir, 'capture-runtime.json'), `${JSON.stringify(report, null, 2)}\n`)
-if (report.consoleErrors.length || report.pageErrors.length) process.exitCode = 1
+await fs.writeFile(path.join(evidenceDir, 'capture-runtime-v2.json'), `${JSON.stringify(report, null, 2)}\n`)
+if (report.consoleErrors.length || report.pageErrors.length || report.requestFailures.length) process.exitCode = 1

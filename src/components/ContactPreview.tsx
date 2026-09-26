@@ -5,7 +5,7 @@ export function ContactPreview() {
   const [copied, setCopied] = useState(false)
   const summaryRef = useRef<HTMLPreElement>(null)
   const summary = useMemo(
-    () => `Website discussion brief\n\nBusiness: [add your business name]\nWhat I need: ${brief.trim() || '[describe what you would like the website to help with]'}\n\nContact destination: not configured in this preview`,
+    () => `Website discussion brief\n\nBusiness: [add your business name]\nWhat I need: ${brief.trim() || '[describe what you would like the website to help with]'}\n\nContact destination: not configured in this demonstration`,
     [brief],
   )
 
@@ -28,10 +28,10 @@ export function ContactPreview() {
   return (
     <section className="contact" id="contact" aria-labelledby="contact-heading">
       <div className="contact-copy">
-        <p className="eyebrow">Contact preview · nothing is sent</p>
+        <p className="eyebrow">Contact demonstration · nothing is sent</p>
         <h2 id="contact-heading">Tell me about your business.</h2>
-        <p>Start a plain-language brief here. You can copy it into the contact method you choose once this site has real business details.</p>
-        <p className="contact-note">A public business name, email destination, and delivery setup are still intentionally unconfigured.</p>
+        <p>Start a plain-language brief here. The copy action demonstrates a useful handoff without pretending that message delivery is configured.</p>
+        <p className="contact-note">An approved public identity, service contact destination, commercial scope, support and pricing terms, and any backend remain intentionally unconfigured.</p>
       </div>
       <div className="brief-builder">
         <label htmlFor="brief">What should your website make easier?</label>
