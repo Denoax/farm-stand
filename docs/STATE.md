@@ -6,7 +6,11 @@ The user approved the sunlit farm-stand direction and the v2 local expansion. Pr
 
 ## Repository state
 
-This is the existing `Denoax/farm-stand` Git worktree. Local development is on `farm-stand-v2`, based on main commit `893a48cacaf9d44ff995053d4334e5be8804c774`. Main is not being merged or deployed by this pass.
+This is the existing public `Denoax/farm-stand` Git worktree and uses the existing GitHub Pages site at `https://denoax.github.io/farm-stand/`.
+
+Standing publication authorization is active for this project. Completed website work follows: implement → inspect → test → commit → integrate into the current `main` history → push `main` → verify the associated Pages deployment → verify the live HTTPS website. Failed checks block publication. Local-only delivery is appropriate only when the user explicitly requests it.
+
+The authorization covers coherent verified website changes and the existing Pages workflow. It does not enable real orders, payments, bookings, message delivery, analytics, purchases, credential changes, force-pushes, destructive history edits, or unrelated infrastructure changes. Deployment status remains separate from artistic approval.
 
 ## Current implementation
 
@@ -32,4 +36,4 @@ Below-fold media is intersection-deferred with reserved dimensions. The hero ren
 
 ## Next action
 
-Review `REVIEW-v2.md`, its machine summary, the selected stills, and the end-to-end recording. A later pass may incorporate approved identity/contact inputs or human visual corrections, but must not activate orders, payment, contact delivery, analytics, deployment, or commercial integrations without new authorization.
+Publish this verified v2 tree through the existing push-to-main Pages workflow, inspect the associated run, and verify the live v2 interactions. Future completed and verified website changes should follow the same publication loop. A later pass may incorporate approved identity/contact inputs or human visual corrections, but must not activate orders, payment, contact delivery, analytics, or commercial integrations without new authorization.

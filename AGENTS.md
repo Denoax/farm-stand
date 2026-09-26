@@ -43,15 +43,19 @@
 - Check compatible actual versions; commit one lockfile. Do not copy stale API snippets.
 - Do not add GSAP/Lenis/Framer Motion/R3F by default or run competing animation owners.
 - Project-local required dependencies and licensed free asset downloads are in scope.
-- No sudo, global config edits, paid services, purchases, deployment, remote writes, or credentials.
+- No sudo, global config edits, paid services, purchases, credential changes, or unrelated infrastructure changes.
+- Standing project authorization permits repository commits, safe integration into `main`, pushes to `Denoax/farm-stand`, and its existing GitHub Pages deployment after the complete integrated tree passes the required checks.
 - Verify actual rendered pixels; tests and captured files do not prove visual quality.
 - Report production transfer, viewport, renderer and acceleration separately from test results.
 - Never describe software-rendered recordings as hardware performance evidence.
 - Do not silently promote snapshots to accepted baselines.
 
 ## Delivery
-- Produce one integrated local experience, then inspect and correct it before review.
+- For completed website work, follow: implement → inspect → test → commit → integrate into current `main` → push `main` → verify the associated Pages run → verify the live HTTPS website.
+- Do not stop at a local preview or “ready for deployment” report unless the user explicitly requests local-only work. Publish coherent verified change sets, not temporary experiments or every file save.
+- Failed checks block publication. Do not bypass branch protection, force-push, discard newer work, weaken tests, or treat deployment as artistic approval.
+- Keep `.github/workflows/deploy-pages.yml`, the `/farm-stand/` base path, and GitHub Pages unless the user explicitly changes that infrastructure decision.
 - Keep state and the few important open defects current; do not create a sprawling register.
-- Deliver `REVIEW.md`, `review-summary.json`, selected captures, and honest motion evidence.
+- Preserve historical reports. Add or update the task-relevant review summary, selected captures, and honest motion evidence when the scope calls for them.
 - Identify exact source state and uncommitted changes; user retains artistic approval.
 - Report a precise blocker and continue independent work where useful; never invent completion.
