@@ -26,22 +26,22 @@
     "page_errors": 0,
     "failed_requests": 0,
     "initial_requests": 19,
-    "initial_encoded_bytes": 2798249,
+    "initial_encoded_bytes": 2798311,
     "initial_below_fold_media_requests": 0,
     "full_visit_requests": 29,
-    "full_visit_encoded_bytes": 3403251,
+    "full_visit_encoded_bytes": 3403313,
     "cumulative_layout_shift": 0.014299445760593492,
     "hero_paused_without_new_renders": true,
     "hero_resumed_with_current_scene": true,
     "renderer_classification": "software",
     "hero_frame_interval_ms": {
-      "run_medians": [50.0, 50.0, 49.9],
-      "run_p95": [99.9, 83.3, 116.6],
-      "run_max": [133.3, 133.4, 116.7]
+      "run_medians": [49.9, 33.4, 33.4],
+      "run_p95": [66.6, 66.7, 50.1],
+      "run_max": [83.3, 66.7, 66.7]
     },
     "detail_motion_ms": {
-      "open": 582.2,
-      "close": 419.6
+      "open": 593.9,
+      "close": 403.7
     }
   },
   "evidence": {
@@ -74,7 +74,7 @@
     "The handoff transfers from projected live-model geometry to a matched catalogue render rather than keeping one live mesh across the DOM endpoint.",
     "SwiftShader motion cadence is adverse and cannot establish hardware or physical-device smoothness.",
     "WebKit, physical-device, screen-reader, and full Firefox matrix behavior remain unverified.",
-    "The 616.16 kB raw lazy Three.js chunk retains Vite's generic warning.",
+    "The 616.25 kB raw lazy Three.js chunk retains Vite's generic warning.",
     "Business configuration and human artistic approval remain outstanding."
   ]
 }

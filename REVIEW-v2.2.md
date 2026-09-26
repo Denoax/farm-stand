@@ -22,9 +22,9 @@ Farm life has a non-pinned photographic-window entry and two-layer profile trans
 - Added coverage: handoff arrival/reversal/state preservation, direct hash bypass, detail opening interruption and resized close, runtime reduced-motion settlement, failed animal load retention, arrow-key tabs, and portrait touch.
 - Firefox 155 portrait shop/detail/farm-profile smoke: passed with no console or page errors.
 - WebKit 26.6: browser build downloaded project-locally, but launch is blocked by missing host libraries. No system packages or global configuration were changed.
-- Production transfer: 2,798,249 encoded bytes at arrival and 3,403,251 after a full visit, with no catalogue/farm-life media at arrival. This is +3,970 bytes versus the v2.1 figures for both paths. CLS remained 0.0143.
-- Motion timing in headless Chromium/SwiftShader: three warmed 48-sample hero traversals had 49.9–50.0 ms median frame intervals, 83.3–116.6 ms p95, and 116.7–133.3 ms maxima. This adverse software-renderer result is preserved and is not physical-device or GPU evidence.
-- Detail travel observed in-page: 582.2 ms open and 419.6 ms close.
+- Production transfer: 2,798,311 encoded bytes at arrival and 3,403,313 after a full visit, with no catalogue/farm-life media at arrival. This is +4,032 bytes versus the v2.1 figures for both paths. CLS remained 0.0143.
+- Motion timing in headless Chromium/SwiftShader: three warmed 48-sample hero traversals had 33.4–49.9 ms median frame intervals, 50.1–66.7 ms p95, and 66.7–83.3 ms maxima. This software-renderer result is preserved and is not physical-device or GPU evidence.
+- Detail travel observed in-page: 593.9 ms open and 403.7 ms close.
 - Capture runtime: zero console errors, page errors, or failed requests.
 
 ## Selected evidence
@@ -36,12 +36,12 @@ Farm life has a non-pinned photographic-window entry and two-layer profile trans
 - Independent camera capture: `evidence/iris-v2.2-desktop-shop.png`
 - Runtime records: `evidence/capture-runtime-v2.2.json`, `evidence/production-measurements-v2.json`, `evidence/motion-measurements-v2.2.json`
 
-Evidence is ignored local review material tied to the feature commit. It is not a visual baseline and does not imply human artistic approval.
+Evidence is ignored local review material tied to the validated integrated tree. It is not a visual baseline and does not imply human artistic approval.
 
 ## Highest-impact remaining defects or decisions
 
 1. The handoff uses projected live-model geometry followed by a matched catalogue-render takeover. It is visually continuous and reversible, but it is not literally one live WebGL mesh rendered across the DOM endpoint. A stricter object-identity interpretation needs another technical/art pass.
-2. Headless SwiftShader measured roughly 20 fps median during forced scroll sampling, with worse p95 outliers. Hardware-accelerated and physical-device review is still required before making smoothness claims.
+2. Headless SwiftShader measured roughly 20–30 fps median during forced scroll sampling. Hardware-accelerated and physical-device review is still required before making smoothness claims.
 3. WebKit is unverified because required host libraries are absent. Physical-device, screen-reader, and full Firefox matrix checks remain unperformed.
-4. The 616.16 kB raw lazy Three.js scene chunk still triggers Vite's generic chunk warning and remains the largest delivery optimization opportunity.
+4. The 616.25 kB raw lazy Three.js scene chunk still triggers Vite's generic chunk warning and remains the largest delivery optimization opportunity.
 5. Public identity/contact/commercial inputs remain intentionally unconfigured, and the photography/crops/motion pacing still require human approval. No real order, payment, message, booking, analytics, or persistence path was enabled.

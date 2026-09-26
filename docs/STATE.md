@@ -26,11 +26,11 @@ Below-fold media is intersection-deferred with reserved dimensions. The hero ren
 
 ## Evidence checked
 
-- Production build passes; current output is 26.01 kB CSS, 263.60 kB main JavaScript (81.58 kB gzip), and a lazy 616.16 kB Three.js scene chunk (155.52 kB gzip). Vite retains its generic raw chunk-size warning.
+- Production build passes; current output is 26.01 kB CSS, 263.66 kB main JavaScript (81.58 kB gzip), and a lazy 616.25 kB Three.js scene chunk (155.59 kB gzip). Vite retains its generic raw chunk-size warning.
 - Playwright Chromium matrix passes 50 applicable checks across desktop and portrait with two intentional cross-project skips. It adds projected handoff arrival/reversal, direct-entry bypass, detail interruption/resize/focus return, runtime reduced-motion settlement, animal load failure/latest-request behavior, arrow-key tabs, and portrait touch to the previous responsive, state, media-failure, and accessibility coverage.
 - Firefox passes a portrait shop/detail/farm-profile smoke journey with no console or page errors. The project-matched WebKit build is present but blocked by missing host libraries; no system dependencies or global configuration were installed. Physical-device, hardware-accelerated, screen-reader, and human usability checks remain unperformed.
-- Production-served measurement at v2.2: arrival 2,798,249 encoded-body bytes with zero catalogue/farm-life requests; full visited page 3,403,251 encoded-body bytes; observed CLS remains 0.0143. Relative to v2.1, both transfer totals increase by 3,970 bytes (about 0.14% arrival).
-- Headless Chromium/SwiftShader handoff measurement after a warm-up produced 50.0/50.0/49.9 ms median frame intervals across three 48-sample runs; p95 was 99.9/83.3/116.6 ms. These are adverse software-renderer frame intervals, not GPU timings or physical-device evidence. Observed detail travel was 582.2 ms open and 419.6 ms close.
+- Production-served measurement at v2.2: arrival 2,798,311 encoded-body bytes with zero catalogue/farm-life requests; full visited page 3,403,313 encoded-body bytes; observed CLS remains 0.0143. Relative to v2.1, both transfer totals increase by 4,032 bytes (about 0.14% arrival).
+- Headless Chromium/SwiftShader handoff measurement after a warm-up produced 49.9/33.4/33.4 ms median frame intervals across three 48-sample runs; p95 was 66.6/66.7/50.1 ms. These software-renderer frame intervals are not GPU timings or physical-device evidence. Observed detail travel was 593.9 ms open and 403.7 ms close.
 - Normal-speed local recordings and selected desktop/portrait captures report zero console errors, page errors, or failed requests. They remain review evidence, not approved visual baselines.
 - Selected matched shop captures, details, farm-life views, a seven-product contact sheet, and an end-to-end recording are under ignored `evidence/`; they are local review evidence, not a human-approved baseline.
 
@@ -43,7 +43,7 @@ The site is published through the existing push-to-main GitHub Pages workflow. D
 - Public business/brand name, contact destination, commercial scope, pricing, support terms, backend, and integrations are not supplied; configuration keeps them inactive.
 - The selected Pexels photography is licensed demonstration material, not verified client/property imagery.
 - The projected handoff deliberately transfers visual ownership from the live mesh to its catalogue render; it does not keep one live WebGL mesh moving through DOM top-layer space. Human motion review remains authoritative for whether that matched transfer is sufficiently seamless.
-- The lazy Three.js scene chunk is 616.16 kB raw (155.52 kB gzip), above Vite's generic chunk-warning threshold.
+- The lazy Three.js scene chunk is 616.25 kB raw (155.59 kB gzip), above Vite's generic chunk-warning threshold.
 - Physical portrait-device, hardware GPU, WebKit, and screen-reader behavior remain unverified; Firefox coverage is a focused local smoke journey rather than the full matrix. SwiftShader frame pacing is not evidence of hardware performance.
 - Composition, photography, type, and copy still require human visual/editorial approval; local captures are not self-approved baselines.
 
