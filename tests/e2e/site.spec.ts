@@ -9,7 +9,10 @@ async function openShop(page: import('@playwright/test').Page) {
 }
 
 async function addProduct(page: import('@playwright/test').Page, productId: string) {
+  const basketCount = page.locator('.basket-button span')
+  const previousCount = Number.parseInt(await basketCount.textContent() ?? '0', 10)
   await page.locator(`#product-${productId}`).getByRole('button', { name: 'Add to basket' }).click()
+  await expect(basketCount).toHaveText(String(previousCount + 1))
 }
 
 test('project-path build loads the preserved hero and defers new photography', async ({ page }) => {
@@ -315,13 +318,21 @@ test('stand-to-shop image bridge reaches the real apple card and reverses withou
   await page.getByRole('button', { name: 'Produce', exact: true }).click()
   await addProduct(page, 'apple')
   await page.evaluate(() => {
+    window.history.replaceState(null, '', window.location.pathname)
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
     document.documentElement.style.scrollBehavior = 'auto'
+    document.documentElement.style.overflowAnchor = 'none'
     window.scrollTo(0, 0)
   })
 
   const stageTravel = await page.locator('.hero-stage').evaluate((node) => node.offsetHeight - innerHeight)
-  await page.evaluate((y) => window.scrollTo(0, y), stageTravel * 0.72)
-  await expect.poll(() => page.evaluate(() => Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stage-progress')))).toBeGreaterThan(0.7)
+  await expect.poll(() => page.evaluate(async ({ travel, y }) => {
+    window.scrollTo(0, y)
+    await new Promise(requestAnimationFrame)
+    await new Promise(requestAnimationFrame)
+    const renderedProgress = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stage-progress'))
+    return Math.min(window.scrollY / travel, renderedProgress)
+  }, { travel: stageTravel, y: stageTravel * 0.72 })).toBeGreaterThan(0.7)
   await expect(page.getByTestId('scene-host')).toHaveAttribute('data-rendering', 'active')
   const bridge = page.locator('.stand-shop-bridge')
   await expect(bridge).toBeVisible()

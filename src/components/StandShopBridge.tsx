@@ -32,7 +32,6 @@ export function StandShopBridge({ enabled, progressRef }: StandShopBridgeProps) 
     let targetDocumentFrame: ScreenFrame | null = null
     let frame = 0
     let hiddenTarget: HTMLImageElement | null = null
-    let bridgeImageFailed = false
 
     const restoreTarget = () => {
       if (hiddenTarget) hiddenTarget.style.visibility = ''
@@ -49,7 +48,13 @@ export function StandShopBridge({ enabled, progressRef }: StandShopBridgeProps) 
       const progress = progressRef.current ?? 0
       const targetPicture = document.querySelector<HTMLElement>('#product-apple .product-picture')
       const targetImage = targetPicture?.querySelector<HTMLImageElement>('img') ?? null
-      if (!enabled || reducedMotion.matches || bridgeImageFailed || !appleFrame || !targetPicture || progress <= 0.58 || progress >= 0.985) {
+      if (!enabled || reducedMotion.matches || !appleFrame || !targetPicture || progress >= 0.985) {
+        hide()
+        return
+      }
+
+      if (progress > 0.42 && !image.hasAttribute('src') && appleImage) image.src = appleImage
+      if (progress <= 0.58) {
         hide()
         return
       }
@@ -74,7 +79,6 @@ export function StandShopBridge({ enabled, progressRef }: StandShopBridgeProps) 
         return
       }
 
-      if (!image.hasAttribute('src') && appleImage) image.src = appleImage
       if (!image.complete || image.naturalWidth === 0) {
         hide()
         return
@@ -113,9 +117,11 @@ export function StandShopBridge({ enabled, progressRef }: StandShopBridgeProps) 
       scheduleUpdate()
     }
     const onMotionChange = () => scheduleUpdate()
-    const onImageLoad = () => scheduleUpdate()
+    const onImageLoad = () => {
+      window.dispatchEvent(new Event('farmstageprogress'))
+      scheduleUpdate()
+    }
     const onImageError = () => {
-      bridgeImageFailed = true
       hide()
     }
 

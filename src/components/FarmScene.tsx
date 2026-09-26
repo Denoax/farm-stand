@@ -243,7 +243,9 @@ export function FarmScene({ progressRef, selectedProduct, onStateChange }: FarmS
         const target = selected === 'apple' ? 1.05 : 0.94
         const scale = THREE.MathUtils.lerp(appleStartScale, target, easedSelection)
         apple.scale.setScalar(selectionProgress === 1 ? target : scale)
-        const handoff = document.getElementById('product-apple')
+        const bridgeImage = document.querySelector<HTMLImageElement>('.stand-shop-bridge img')
+        const bridgeReady = Boolean(bridgeImage?.complete && bridgeImage.naturalWidth > 0)
+        const handoff = document.getElementById('product-apple') && bridgeReady
           ? THREE.MathUtils.smoothstep(progress, 0.58, 0.68)
           : 0
         modelMaterials.apple?.forEach((material) => {
