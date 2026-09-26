@@ -78,8 +78,8 @@ for (const id of ['apple', 'onion', 'carrots', 'potatoes', 'squash', 'eggs', 'ha
   await page.waitForTimeout(80)
 }
 await page.locator('#farm-life').scrollIntoViewIfNeeded()
-for (const label of ['Hens', 'Cattle', 'Sheep']) {
-  await page.getByRole('tab', { name: label }).click()
+for (const id of ['hens', 'cattle', 'sheep']) {
+  await page.locator(`#${id}`).scrollIntoViewIfNeeded()
   await page.waitForTimeout(180)
 }
 await page.locator('#contact').scrollIntoViewIfNeeded()
@@ -131,7 +131,7 @@ const result = {
 }
 
 await fs.mkdir(path.resolve('evidence'), { recursive: true })
-await fs.writeFile(path.resolve('evidence/production-measurements-v2.json'), `${JSON.stringify(result, null, 2)}\n`)
+await fs.writeFile(path.resolve('evidence/production-measurements-v2.3.json'), `${JSON.stringify(result, null, 2)}\n`)
 await browser.close()
 console.log(JSON.stringify({
   initial: { ...result.initial, media: { ...result.initial.media, assets: undefined } },

@@ -1,12 +1,11 @@
 import { lazy, Suspense, useCallback, useEffect, useReducer, useRef, useState } from 'react'
-import { business, type HeroProductId } from './content/config'
+import { business } from './content/config'
 import { ContactPreview } from './components/ContactPreview'
-import { ShopDemo } from './components/ShopDemo'
 import { ShopSection } from './components/ShopSection'
 import { FarmLife } from './components/FarmLife'
+import { WeatherTransition } from './components/WeatherTransition'
 import { VisitSection } from './components/VisitSection'
 import { TryUpdate } from './components/TryUpdate'
-import { StandShopBridge } from './components/StandShopBridge'
 import { basketReducer } from './state/basket'
 import type { ProductId } from './content/catalogue'
 
@@ -18,9 +17,8 @@ type SceneState = 'loading' | 'ready' | 'fallback'
 export function App() {
   const stageRef = useRef<HTMLElement>(null)
   const progressRef = useRef(0)
-  const [selectedProduct, setSelectedProduct] = useState<HeroProductId>('apple')
   const [sceneState, setSceneState] = useState<SceneState>('loading')
-  const [demoActive, setDemoActive] = useState(false)
+  const [motionPaused, setMotionPaused] = useState(false)
   const [basket, dispatchBasket] = useReducer(basketReducer, {})
   const [shopFocusRequest, setShopFocusRequest] = useState<{ productId: ProductId; sequence: number }>()
   const onSceneState = useCallback((state: SceneState) => setSceneState(state), [])
@@ -49,7 +47,6 @@ export function App() {
     if (!stage) return
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
     let raf = 0
-    let previousDemoActive: boolean | null = null
     let previousHeroActive: boolean | null = null
 
     const setInteractive = (selector: string, active: boolean) => {
@@ -66,24 +63,17 @@ export function App() {
         progressRef.current = 1
         stage.style.setProperty('--stage-progress', '1')
         document.documentElement.style.setProperty('--stage-progress', '1')
-        stage.dataset.demoActive = 'true'
         setInteractive('.hero-copy', true)
-        setDemoActive(true)
-        previousDemoActive = true
         previousHeroActive = true
       } else {
         const bounds = stage.getBoundingClientRect()
         const scrollable = Math.max(stage.offsetHeight - window.innerHeight, 1)
         const progress = Math.min(1, Math.max(0, -bounds.top / scrollable))
-        const demoActive = progress > 0.66 && progress < 0.9 && -bounds.top <= scrollable + 2
-        const heroActive = progress < 0.46
+        const heroActive = progress < 0.34
         progressRef.current = progress
         stage.style.setProperty('--stage-progress', progress.toFixed(4))
         document.documentElement.style.setProperty('--stage-progress', progress.toFixed(4))
-        stage.dataset.demoActive = demoActive ? 'true' : 'false'
-        if (demoActive !== previousDemoActive) setDemoActive(demoActive)
         if (heroActive !== previousHeroActive) setInteractive('.hero-copy', heroActive)
-        previousDemoActive = demoActive
         previousHeroActive = heroActive
       }
       window.dispatchEvent(new Event('farmstageprogress'))
@@ -104,7 +94,7 @@ export function App() {
   }, [])
 
   return (
-    <>
+    <div data-motion-paused={motionPaused ? 'true' : 'false'}>
       <a className="skip-link" href="#main">Skip to the main content</a>
       <header className="site-header">
         <a className="wordmark" href="#top" aria-label="Farm stand demonstration, home">
@@ -127,19 +117,23 @@ export function App() {
           aria-labelledby="hero-heading"
         >
           <div className="hero-sticky">
-            <div className="scene-visual" aria-label="Sunlit farm stand with an apple and a yellow onion on a shallow wooden crate">
+            <div className="harvest-backdrop harvest-backdrop--orchard" aria-hidden="true" />
+            <div className="harvest-backdrop harvest-backdrop--stand" aria-hidden="true" />
+            <div className="harvest-basket harvest-basket--back" aria-hidden="true" />
+            <div className="scene-visual" aria-label="An apple falls from an orchard branch into a harvest basket before the scene resolves into a sunlit farm stand">
               <picture className="fallback-poster" aria-hidden="true">
                 <source media="(max-width: 760px)" srcSet={publicAsset('media/farm-stand-poster-portrait.avif')} />
                 <img src={publicAsset('media/farm-stand-poster-desktop.avif')} alt="" />
               </picture>
               <Suspense fallback={null}>
-                <FarmScene progressRef={progressRef} selectedProduct={selectedProduct} onStateChange={onSceneState} />
+                <FarmScene progressRef={progressRef} motionPaused={motionPaused} onStateChange={onSceneState} />
               </Suspense>
               <div className="scene-vignette" aria-hidden="true" />
               <p className="scene-status" aria-live="polite">
                 {sceneState === 'loading' ? 'Preparing the farm stand…' : sceneState === 'fallback' ? 'Static farm stand view' : ''}
               </p>
             </div>
+            <div className="harvest-basket harvest-basket--front" aria-hidden="true" />
 
             <div className="hero-copy">
               <p className="eyebrow eyebrow--hero">{business.service_descriptor}</p>
@@ -152,14 +146,14 @@ export function App() {
               <p className="hero-disclosure">A fictional farm-shop experience demonstrating a real website service. No produce is sold here.</p>
             </div>
 
-            <ShopDemo selectedProduct={selectedProduct} onSelect={setSelectedProduct} active={demoActive} />
-            <div className="scroll-cue" aria-hidden="true"><span /> Scroll to open the stand</div>
+            <div className="harvest-caption" aria-hidden="true"><span>01</span> Picked this morning <i /> <span>02</span> At the stand</div>
+            <div className="scroll-cue" aria-hidden="true"><span /> Scroll to follow the harvest</div>
           </div>
-          <StandShopBridge enabled={sceneState === 'ready'} progressRef={progressRef} />
           <span className="demo-anchor" id="demo" aria-hidden="true" />
         </section>
 
         <ShopSection basket={basket} dispatch={dispatchBasket} focusRequest={shopFocusRequest} />
+        <WeatherTransition motionPaused={motionPaused} onToggleMotion={() => setMotionPaused((paused) => !paused)} />
         <FarmLife onViewProduct={viewShopProduct} />
         <VisitSection />
 
@@ -193,6 +187,6 @@ export function App() {
         <p>Working project label · public demonstration · no orders, payments, bookings, or submissions</p>
         <p>Produce models: Poly Haven, CC0 · photography: credited Pexels contributors · background: project-generated original</p>
       </footer>
-    </>
+    </div>
   )
 }

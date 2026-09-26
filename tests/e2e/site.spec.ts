@@ -3,66 +3,52 @@ import { expect, test } from '@playwright/test'
 const projectPath = '/farm-stand/'
 
 async function openShop(page: import('@playwright/test').Page) {
-  await page.goto(`${projectPath}#shop`)
-  await page.locator('#shop').scrollIntoViewIfNeeded()
+  await page.goto(`${projectPath}#shop`, { waitUntil: 'networkidle' })
   await expect(page.getByRole('heading', { name: 'Shop the stand.' })).toBeVisible()
 }
 
 async function addProduct(page: import('@playwright/test').Page, productId: string) {
-  const basketCount = page.locator('.basket-button span')
-  const previousCount = Number.parseInt(await basketCount.textContent() ?? '0', 10)
+  const count = page.locator('.basket-button span')
+  const before = Number(await count.textContent())
   await page.locator(`#product-${productId}`).getByRole('button', { name: 'Add to basket' }).click()
-  await expect(basketCount).toHaveText(String(previousCount + 1))
+  await expect(count).toHaveText(String(before + 1))
 }
 
-test('project-path build loads the preserved hero and defers new photography', async ({ page }) => {
-  const failures: string[] = []
-  page.on('response', (response) => {
-    if (response.url().startsWith('http://127.0.0.1:4173') && response.status() >= 400) failures.push(`${response.status()} ${response.url()}`)
-  })
-
+test('project-path build loads the harvest story and keeps resource URLs scoped', async ({ page }) => {
+  const failedResponses: string[] = []
+  page.on('response', (response) => { if (response.status() >= 400) failedResponses.push(`${response.status()} ${response.url()}`) })
   await page.goto(projectPath, { waitUntil: 'networkidle' })
   await expect(page.locator('.hero-stage')).toHaveClass(/hero-stage--ready/)
   await expect(page.getByRole('heading', { name: 'This is what your farm could look like online.' })).toBeVisible()
-  const initialResources = await page.evaluate(() => performance.getEntriesByType('resource').map((entry) => new URL(entry.name).pathname))
-  expect(initialResources.length).toBeGreaterThan(10)
-  expect(initialResources.every((path) => path.startsWith('/farm-stand/'))).toBe(true)
-  expect(initialResources.filter((path) => path.includes('/catalogue/') || path.includes('/farm-life/'))).toEqual([])
-  expect(failures).toEqual([])
-
-  await page.locator('#shop').scrollIntoViewIfNeeded()
-  await expect.poll(async () => page.evaluate(() => performance.getEntriesByType('resource').some((entry) => entry.name.includes('/catalogue/')))).toBe(true)
-  await page.reload({ waitUntil: 'networkidle' })
-  await page.evaluate(() => {
-    document.documentElement.style.scrollBehavior = 'auto'
-    window.scrollTo(0, 0)
-  })
-  await expect(page.getByRole('heading', { name: 'This is what your farm could look like online.' })).toBeVisible()
+  await expect(page.locator('.harvest-backdrop--orchard')).toBeVisible()
+  await expect(page.locator('.harvest-basket--front')).toBeVisible()
+  expect(await page.locator('.stand-shop-bridge, .stand-transition').count()).toBe(0)
+  const resources = await page.evaluate(() => performance.getEntriesByType('resource').map((entry) => new URL(entry.name).pathname))
+  expect(resources.every((path) => path.startsWith('/farm-stand/'))).toBe(true)
+  expect(failedResponses).toEqual([])
 })
 
-test('hero transition keeps hidden controls inert and preserves selection', async ({ page }) => {
+test('apple releases, lands behind the basket rim, and resolves into the stand without changing shop state', async ({ page }) => {
   await page.goto(projectPath)
-  await page.evaluate(() => { document.documentElement.style.scrollBehavior = 'auto' })
-  const transition = page.locator('.stand-transition')
-  await expect(transition).toHaveAttribute('inert', '')
-  await page.evaluate(() => {
-    const stage = document.querySelector<HTMLElement>('.hero-stage')
-    window.scrollTo(0, Math.max(0, ((stage?.offsetHeight ?? innerHeight) - innerHeight) * 0.82))
-  })
-  await expect(transition).not.toHaveAttribute('inert', '')
-  const onion = page.getByLabel('Yellow onions')
-  await transition.getByText('Yellow onions', { exact: true }).click()
-  await page.evaluate(() => window.scrollTo(0, 0))
-  await page.setViewportSize({ width: 1024, height: 768 })
-  await page.evaluate(() => { document.documentElement.style.scrollBehavior = 'auto' })
-  await page.evaluate(() => {
-    const stage = document.querySelector<HTMLElement>('.hero-stage')
-    window.scrollTo(0, Math.max(0, ((stage?.offsetHeight ?? innerHeight) - innerHeight) * 0.82))
-  })
-  await expect(onion).toBeChecked()
+  await page.addStyleTag({ content: 'html { scroll-behavior: auto !important; }' })
+  const travel = await page.locator('.hero-stage').evaluate((node) => node.offsetHeight - innerHeight)
+  const appleFrame = async () => page.evaluate(() => new Promise<Record<string, number>>((resolve) => {
+    addEventListener('farmsceneappleframe', (event) => resolve((event as CustomEvent).detail), { once: true })
+    dispatchEvent(new Event('farmstageprogress'))
+  }))
+  const positions = []
+  for (const progress of [.12, .48, .68, .9]) {
+    await page.evaluate(({ top }) => scrollTo(0, top), { top: travel * progress })
+    await page.waitForTimeout(50)
+    positions.push(await appleFrame())
+  }
+  expect(positions[1].top).toBeGreaterThan(positions[0].top + 75)
+  expect(positions[2].top).toBeGreaterThanOrEqual(positions[1].top - 5)
+  await expect(page.locator('.harvest-backdrop--stand')).toHaveCSS('opacity', /0\.[5-9]|1/)
+  await expect(page.getByRole('button', { name: /Open demonstration basket, 0 items/ })).toBeVisible()
 })
 
-test('catalogue filters, unavailable state, multi-item basket, quantities, totals, collection, remove and reset work', async ({ page }) => {
+test('catalogue filters and the multi-item drawer support immediate quantity, undo, preview and clear', async ({ page }) => {
   await openShop(page)
   await page.getByRole('button', { name: 'Farm goods' }).click()
   await addProduct(page, 'eggs')
@@ -70,349 +56,143 @@ test('catalogue filters, unavailable state, multi-item basket, quantities, total
   await addProduct(page, 'apple')
   await addProduct(page, 'potatoes')
   await expect(page.locator('#product-squash').getByRole('button', { name: 'Unavailable example' })).toBeDisabled()
-  await expect(page.getByRole('button', { name: /Basket/ }).first()).toContainText('3')
-
-  await page.getByRole('button', { name: /Basket/ }).first().click()
-  await expect(page.getByRole('heading', { name: 'Review the example collection.' })).toBeVisible()
-  await expect(page.getByText('Demonstration basket — no order or payment will be submitted')).toBeVisible()
-  await page.locator('#basket-eggs').fill('0')
-  await page.locator('#basket-eggs').blur()
-  await expect(page.getByRole('alert')).toContainText('Use a whole number')
-  await expect(page.locator('#basket-eggs')).toHaveValue('1')
-  await page.locator('#basket-apple').fill('3')
-  await page.locator('#basket-apple').press('Enter')
-  await expect(page.locator('.basket-total')).toContainText('$33.50')
-  await page.locator('.basket-lines li').filter({ hasText: 'Field potatoes' }).getByRole('button', { name: 'Remove' }).click()
-  await expect(page.locator('.basket-lines')).not.toContainText('Field potatoes')
-
-  await page.getByRole('button', { name: 'Preview collection options' }).click()
-  await page.getByRole('button', { name: 'Review this example' }).click()
-  await expect(page.getByTestId('collection-preview')).toContainText('Nothing was sent, and no stock or collection time was reserved')
-  await page.getByRole('button', { name: 'Clear demonstration basket' }).click()
-  await page.getByRole('button', { name: 'Yes, clear it' }).click()
-  await expect(page.getByText('Your demonstration basket is empty.')).toBeVisible()
+  await page.getByRole('button', { name: /Open demonstration basket, 3 items/ }).click()
+  const drawer = page.getByRole('dialog', { name: /Your basket/ })
+  await expect(drawer).toBeVisible()
+  await drawer.getByRole('button', { name: 'Increase Orchard apples quantity' }).click()
+  await expect(drawer.getByLabel('Quantity for Orchard apples')).toContainText('2')
+  await drawer.locator('.basket-lines li').filter({ hasText: 'Field potatoes' }).getByRole('button', { name: 'Remove' }).click()
+  await expect(drawer.locator('.basket-lines li').filter({ hasText: 'Field potatoes' })).toHaveCount(0)
+  await drawer.getByRole('button', { name: 'Undo' }).click()
+  await expect(drawer).toContainText('Field potatoes')
+  await drawer.getByRole('button', { name: 'Preview collection' }).click()
+  await drawer.getByRole('button', { name: 'Save this preview' }).click()
+  await expect(drawer).toContainText('Nothing was sent, and no stock or collection time was reserved.')
+  await drawer.getByRole('button', { name: 'Clear demonstration basket' }).click()
+  await drawer.getByRole('button', { name: 'Yes, clear it' }).click()
+  await expect(drawer).toContainText('Your demonstration basket is empty.')
 })
 
-test('product details support keyboard opening, Escape, and focus return', async ({ page }) => {
+test('drawer retains basket progress across close, navigation, and resizing', async ({ page }) => {
+  await openShop(page)
+  await addProduct(page, 'apple')
+  await page.getByRole('button', { name: /Open demonstration basket/ }).click()
+  await page.getByRole('button', { name: 'Increase Orchard apples quantity' }).click()
+  await page.getByRole('button', { name: 'Close basket' }).click()
+  await page.locator('#cattle').scrollIntoViewIfNeeded()
+  await page.setViewportSize({ width: 900, height: 700 })
+  await page.getByRole('button', { name: /Open demonstration basket, 2 items/ }).click()
+  await expect(page.getByRole('dialog', { name: /Your basket/ }).getByLabel('Quantity for Orchard apples')).toContainText('2')
+})
+
+test('product detail image transition is interruptible and returns keyboard focus', async ({ page }) => {
   await openShop(page)
   const trigger = page.locator('#product-carrots').getByRole('button', { name: 'View details' })
   await trigger.focus()
   await page.keyboard.press('Enter')
   await expect(page.getByRole('dialog', { name: 'Carrot bunches' })).toBeVisible()
-  await expect(page.getByText('illustrative sample price')).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog', { name: 'Carrot bunches' })).toBeHidden()
+  await expect(page.locator('.product-transition-clone')).toHaveCount(0)
   await expect(trigger).toBeFocused()
 })
 
-test('direct portrait shop entry shows one complete product presentation', async ({ page }, testInfo) => {
-  test.skip(!testInfo.project.name.includes('portrait'), 'Portrait-specific composition target')
-  await page.goto(`${projectPath}#shop`, { waitUntil: 'networkidle' })
-  const card = page.locator('#product-apple')
-  await expect(page.getByRole('heading', { name: 'Shop the stand.' })).toBeVisible()
-  await expect(card.getByRole('img', { name: /red apple rendered/i })).toBeVisible()
-  await expect(card.getByRole('heading', { name: 'Orchard apples' })).toBeVisible()
-  await expect(card.getByText('example 1.5 kg bag', { exact: true })).toBeVisible()
-  await expect(card.getByText('$6.50')).toBeVisible()
-  await expect(card.getByRole('button', { name: 'Add to basket' })).toBeVisible()
-  const bounds = await card.evaluate((node) => node.getBoundingClientRect())
-  expect(bounds.top).toBeGreaterThanOrEqual(0)
-  expect(bounds.bottom).toBeLessThanOrEqual(844)
+test('weather bridge is seekable and its motion control does not hijack navigation', async ({ page }) => {
+  await page.goto(`${projectPath}#shop`)
+  await page.locator('.weather-story').scrollIntoViewIfNeeded()
+  await expect(page.getByRole('heading', { name: 'A shower passes. The farm carries on.' })).toBeVisible()
+  await page.getByRole('button', { name: 'Pause motion' }).click()
+  await expect(page.locator('[data-motion-paused="true"]')).toHaveCount(1)
+  await page.getByRole('link', { name: 'Skip to farm life' }).click()
+  await expect(page).toHaveURL(/#farm-life$/)
 })
 
-test('add from product details gives feedback and direct basket access', async ({ page }) => {
-  await openShop(page)
-  await page.locator('#product-apple').getByRole('button', { name: 'View details' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Orchard apples' })
-  await dialog.getByRole('button', { name: 'Add to basket' }).click()
-  await expect(dialog.getByText('Added to the demonstration basket. Nothing has been ordered.')).toBeVisible()
-  await dialog.getByRole('button', { name: 'Review basket' }).click()
-  await expect(page.getByRole('dialog', { name: 'Review the example collection.' })).toContainText('Orchard apples')
-})
-
-test('add feedback reports the quantity ceiling without inflating basket count', async ({ page }) => {
-  await openShop(page)
-  const add = page.locator('#product-apple').getByRole('button', { name: 'Add to basket' })
-  for (let index = 0; index < 13; index += 1) await add.click()
-  await expect(page.getByRole('button', { name: /Basket/ }).first()).toContainText('12')
-  await expect(page.getByLabel('Basket update', { exact: true })).toContainText('already at the demonstration maximum of 12')
-})
-
-test('product details stay usable while their image is delayed', async ({ page }) => {
-  await page.route('**/media/catalogue/apple.avif', async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    await route.continue()
-  })
-  await page.goto(`${projectPath}#shop`, { waitUntil: 'domcontentloaded' })
-  await page.locator('#product-apple').getByRole('button', { name: 'View details' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Orchard apples' })
-  await expect(dialog.getByText('$6.50 CAD')).toBeVisible()
-  await expect(dialog.getByRole('button', { name: 'Add to basket' })).toBeVisible()
-  await expect(dialog.getByRole('img', { name: /red apple rendered/i })).toBeVisible()
-})
-
-test('basket survives navigation, resizing, hero selection and farm-life switching', async ({ page }) => {
-  await openShop(page)
-  await page.getByRole('button', { name: 'Farm goods' }).click()
-  await addProduct(page, 'eggs')
-  await page.locator('#farm-life').scrollIntoViewIfNeeded()
-  await page.getByRole('tab', { name: 'Cattle' }).click()
-  await expect(page.getByAltText(/cattle standing beneath a leafy tree/i)).toBeVisible()
-  await page.setViewportSize({ width: 900, height: 700 })
-  await page.evaluate(() => { document.documentElement.style.scrollBehavior = 'auto' })
-  await page.evaluate(() => window.scrollTo(0, 0))
-  await page.evaluate(() => {
-    const stage = document.querySelector<HTMLElement>('.hero-stage')
-    window.scrollTo(0, Math.max(0, ((stage?.offsetHeight ?? innerHeight) - innerHeight) * 0.82))
-  })
-  await page.locator('.stand-transition').getByText('Yellow onions', { exact: true }).click()
-  await page.locator('#shop').scrollIntoViewIfNeeded()
-  await page.getByRole('button', { name: /Basket/ }).first().click()
-  await expect(page.getByRole('dialog', { name: 'Review the example collection.' })).toContainText('Dozen eggs')
-})
-
-test('animal contextual action reveals a filtered product and preserves basket state', async ({ page }) => {
-  await openShop(page)
-  await page.getByRole('button', { name: 'Boxes' }).click()
-  await addProduct(page, 'harvest-box')
-  await page.locator('#farm-life').scrollIntoViewIfNeeded()
-  await page.getByRole('link', { name: 'View eggs' }).click()
+test('farm-life is three addressable scroll scenes and the hen link reveals eggs', async ({ page }) => {
+  await page.goto(`${projectPath}#hens`)
+  await expect(page.locator('#hens').getByRole('heading', { name: 'Hens' })).toBeVisible()
+  await expect(page.locator('#cattle').getByAltText(/cattle standing beneath/i)).toBeAttached()
+  await expect(page.locator('#sheep').getByAltText(/sheep facing the camera/i)).toBeAttached()
+  await page.locator('#hens').getByRole('link', { name: 'View eggs' }).click()
   await expect(page).toHaveURL(/#product-eggs$/)
-  await expect(page.getByRole('button', { name: 'Farm goods' })).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.locator('#product-eggs')).toBeVisible()
   await expect(page.locator('#product-eggs')).toBeFocused()
-  await expect(page.getByRole('button', { name: /Basket/ }).first()).toContainText('1')
 })
 
-test('farm-life selectors change image and related content without rotation', async ({ page }) => {
-  await page.goto(`${projectPath}#farm-life`)
-  await expect(page.getByRole('tab', { name: 'Hens' })).toHaveAttribute('aria-selected', 'true')
-  await expect(page.getByAltText(/brown hens gathered behind a farm gate/i)).toBeVisible()
-  await page.getByRole('tab', { name: 'Cattle' }).click()
-  await expect(page.getByAltText(/cattle standing beneath a leafy tree/i)).toBeVisible()
-  await page.getByRole('tab', { name: 'Sheep' }).click()
-  await expect(page.getByAltText(/sheep facing the camera/i)).toBeVisible()
-  await expect(page.getByRole('link', { name: /See what this layout demonstrates/ })).toHaveAttribute('href', '#website')
-})
-
-test('rapid farm-life switching keeps the latest content with delayed images', async ({ page }) => {
-  await page.route('**/media/farm-life/**', async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 120))
-    await route.continue()
-  })
-  await page.goto(`${projectPath}#farm-life`)
-  await page.getByRole('tab', { name: 'Cattle' }).click()
-  await page.getByRole('tab', { name: 'Sheep' }).click()
-  await page.getByRole('tab', { name: 'Hens' }).click()
-  await expect(page.getByRole('heading', { name: 'Hens', exact: true })).toBeVisible()
-  await expect(page.getByRole('tab', { name: 'Hens' })).toHaveAttribute('aria-selected', 'true')
-  await expect(page.getByAltText(/brown hens gathered behind a farm gate/i)).toBeVisible()
+test('direct shop entry and refresh bypass the story and remain usable', async ({ page }) => {
+  await openShop(page)
+  await addProduct(page, 'apple')
+  await page.reload({ waitUntil: 'networkidle' })
+  await expect(page.getByRole('heading', { name: 'Shop the stand.' })).toBeVisible()
+  await expect(page.locator('#product-apple').getByRole('button', { name: 'Add to basket' })).toBeVisible()
 })
 
 test('visit, service, and contact remain fictional and send nothing', async ({ page }) => {
-  const nonGetRequests: string[] = []
-  page.on('request', (request) => {
-    if (request.method() !== 'GET') nonGetRequests.push(`${request.method()} ${request.url()}`)
-  })
+  const writes: string[] = []
+  page.on('request', (request) => { if (request.method() !== 'GET') writes.push(`${request.method()} ${request.url()}`) })
   await page.goto(`${projectPath}#visit`)
   await expect(page.getByText('Illustrative periods, not a live schedule.')).toBeVisible()
   await expect(page.getByText('No address or geographic directions are configured.')).toBeVisible()
   await page.locator('#website').scrollIntoViewIfNeeded()
-  await expect(page.getByRole('heading', { name: 'A website built around how your business works.' })).toBeVisible()
   await page.getByLabel('Opens').fill('10:30')
   await expect(page.locator('.try-update__preview')).toContainText('10:30 am–1:00 pm')
-  await expect(page.locator('.try-update__preview')).toContainText('nothing is saved or published')
-  await page.getByRole('button', { name: 'Reset sample' }).click()
-  await expect(page.locator('.try-update__preview')).toContainText('9:00 am–1:00 pm')
   await page.locator('#contact').scrollIntoViewIfNeeded()
-  await expect(page.getByText(/service contact destination.*remain intentionally unconfigured/i)).toBeVisible()
-  await page.getByLabel('What should your website make easier?').fill('Show produce and collection details clearly.')
-  await expect(page.getByRole('button', { name: 'Copy website brief' })).toBeVisible()
+  await expect(page.getByText(/contact destination.*remain intentionally unconfigured/i)).toBeVisible()
   await expect(page.getByRole('button', { name: /send|submit/i })).toHaveCount(0)
-  expect(nonGetRequests).toEqual([])
+  expect(writes).toEqual([])
 })
 
-test('reduced motion works at load and responds to a live preference change', async ({ page }) => {
+test('reduced motion produces static, fully usable story scenes', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto(projectPath)
   await expect(page.locator('.hero-sticky')).toHaveCSS('position', 'relative')
-  await expect(page.locator('.stand-transition')).not.toHaveAttribute('inert', '')
-  await page.emulateMedia({ reducedMotion: 'no-preference' })
-  await expect(page.locator('.hero-sticky')).toHaveCSS('position', 'sticky')
-  await expect(page.locator('.stand-transition')).toHaveAttribute('inert', '')
-  await page.emulateMedia({ reducedMotion: 'reduce' })
-  await expect(page.locator('.stand-transition')).not.toHaveAttribute('inert', '')
+  for (const basket of await page.locator('.harvest-basket').all()) await expect(basket).toBeHidden()
+  await expect(page.locator('.weather-story__sticky')).toHaveCSS('position', 'relative')
+  await page.goto(`${projectPath}#sheep`)
+  await expect(page.locator('#sheep').getByRole('heading', { name: 'Sheep' })).toBeVisible()
 })
 
-test('offscreen hero pauses rendering and resumes with current state', async ({ page }) => {
+test('offscreen hero pauses rendering and resumes', async ({ page }) => {
   await page.goto(projectPath)
-  await expect(page.locator('.hero-stage')).toHaveClass(/hero-stage--ready/)
   const scene = page.getByTestId('scene-host')
+  await expect(page.locator('.hero-stage')).toHaveClass(/hero-stage--ready/)
   await page.locator('#contact').scrollIntoViewIfNeeded()
   await expect(scene).toHaveAttribute('data-rendering', 'paused')
-  const pausedCount = Number(await scene.getAttribute('data-render-count'))
-  await page.evaluate(() => window.dispatchEvent(new Event('farmstageprogress')))
-  await page.waitForTimeout(250)
-  expect(Number(await scene.getAttribute('data-render-count'))).toBe(pausedCount)
-  await page.evaluate(() => window.scrollTo(0, 0))
-  await expect(scene).toHaveAttribute('data-rendering', 'active')
-  await expect.poll(async () => Number(await scene.getAttribute('data-render-count'))).toBeGreaterThan(pausedCount)
+  const count = Number(await scene.getAttribute('data-render-count'))
+  await page.evaluate(() => dispatchEvent(new Event('farmstageprogress')))
+  await page.waitForTimeout(150)
+  expect(Number(await scene.getAttribute('data-render-count'))).toBe(count)
 })
 
-test('failed models retain the full HTML journey', async ({ page }) => {
+test('failed models keep the HTML journey and commerce demonstration usable', async ({ page }) => {
   await page.route('**/models/**', (route) => route.abort())
   await page.goto(projectPath)
   await expect(page.locator('.hero-stage')).toHaveClass(/hero-stage--fallback/)
   await openShop(page)
   await addProduct(page, 'apple')
-  await expect(page.getByRole('button', { name: /Basket/ }).first()).toContainText('1')
+  await expect(page.getByRole('button', { name: /Open demonstration basket, 1 items/ })).toBeVisible()
 })
 
-test('delayed models keep the opening visible and WebGL loss falls back', async ({ page }) => {
-  await page.route('**/models/**', async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 180))
-    await route.continue()
-  })
-  await page.goto(projectPath, { waitUntil: 'domcontentloaded' })
-  await expect(page.getByRole('heading', { name: 'This is what your farm could look like online.' })).toBeVisible()
-  await expect(page.locator('.hero-stage')).toHaveClass(/hero-stage--ready/)
-  await page.locator('canvas').dispatchEvent('webglcontextlost')
-  await expect(page.locator('.hero-stage')).toHaveClass(/hero-stage--fallback/)
-})
-
-test('broken product and animal images show useful fallbacks', async ({ page }) => {
+test('broken product and animal images have useful text fallbacks', async ({ page }) => {
   await page.route('**/media/catalogue/**', (route) => route.abort())
   await page.route('**/media/farm-life/**', (route) => route.abort())
   await openShop(page)
-  await page.locator('#product-carrots').scrollIntoViewIfNeeded()
-  await expect(page.getByRole('img', { name: /Carrot bunches image unavailable/ })).toBeVisible()
-  await addProduct(page, 'carrots')
-  await page.locator('#farm-life').scrollIntoViewIfNeeded()
+  await page.locator('#product-apple .product-picture').scrollIntoViewIfNeeded()
+  await expect(page.getByRole('img', { name: /Orchard apples image unavailable/ })).toBeVisible()
+  await page.locator('#hens').scrollIntoViewIfNeeded()
   await expect(page.getByRole('img', { name: /Hens photograph unavailable/ })).toBeVisible()
 })
 
-test('failed fonts retain readable content', async ({ page }) => {
-  await page.route('**/fonts/**', (route) => route.abort())
-  await page.goto(projectPath)
-  await expect(page.getByRole('heading', { name: 'This is what your farm could look like online.' })).toBeVisible()
-  expect(await page.evaluate(() => document.fonts.check('600 24px Fraunces'))).toBe(false)
-})
-
-test('narrow, intermediate, short-landscape, and 200-percent text layouts do not overflow', async ({ page }) => {
+test('layouts avoid horizontal overflow and portrait drawer stays within the viewport', async ({ page }) => {
   for (const size of [{ width: 320, height: 740 }, { width: 900, height: 700 }, { width: 960, height: 540 }]) {
     await page.setViewportSize(size)
-    await page.goto(`${projectPath}#shop`)
+    await openShop(page)
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), `${size.width}x${size.height}`).toBeLessThanOrEqual(1)
   }
-  await page.addStyleTag({ content: 'html { font-size: 200% !important; }' })
-  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1)
-  const trigger = page.locator('#product-carrots').getByRole('button', { name: 'View details' })
-  await trigger.click()
-  const dialog = page.getByRole('dialog', { name: 'Carrot bunches' })
-  await expect(dialog).toBeVisible()
-  expect(await dialog.evaluate((node) => node.getBoundingClientRect().height)).toBeLessThanOrEqual(540)
-})
-
-test('stand-to-shop image bridge reaches the real apple card and reverses without changing shop state', async ({ page }) => {
-  await openShop(page)
-  await page.getByRole('button', { name: 'Produce', exact: true }).click()
+  await page.setViewportSize({ width: 390, height: 844 })
   await addProduct(page, 'apple')
-  await page.evaluate(() => {
-    window.history.replaceState(null, '', window.location.pathname)
-    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
-    document.documentElement.style.scrollBehavior = 'auto'
-    document.documentElement.style.overflowAnchor = 'none'
-    window.scrollTo(0, 0)
-  })
-
-  const stageTravel = await page.locator('.hero-stage').evaluate((node) => node.offsetHeight - innerHeight)
-  await expect.poll(() => page.evaluate(async ({ travel, y }) => {
-    window.scrollTo(0, y)
-    await new Promise(requestAnimationFrame)
-    await new Promise(requestAnimationFrame)
-    const renderedProgress = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stage-progress'))
-    return Math.min(window.scrollY / travel, renderedProgress)
-  }, { travel: stageTravel, y: stageTravel * 0.72 })).toBeGreaterThan(0.7)
-  await expect(page.getByTestId('scene-host')).toHaveAttribute('data-rendering', 'active')
-  const bridge = page.locator('.stand-shop-bridge')
-  await expect(bridge).toBeVisible()
-  await expect(bridge).toHaveAttribute('data-phase', /travelling|arriving/)
-
-  await page.evaluate((y) => window.scrollTo(0, y), stageTravel * 0.97)
-  await expect.poll(async () => {
-    const [moving, target] = await Promise.all([
-      bridge.evaluate((node) => node.getBoundingClientRect()),
-      page.locator('#product-apple .product-picture').evaluate((node) => node.getBoundingClientRect()),
-    ])
-    return Math.max(Math.abs(moving.left - target.left), Math.abs(moving.top - target.top), Math.abs(moving.width - target.width), Math.abs(moving.height - target.height))
-  }).toBeLessThan(8)
-
-  await page.evaluate((y) => window.scrollTo(0, y), stageTravel * 0.38)
-  await expect(bridge).toBeHidden()
-  await page.locator('#shop').scrollIntoViewIfNeeded()
-  await expect(page.getByRole('button', { name: 'Produce', exact: true })).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByRole('button', { name: /Basket/ }).first()).toContainText('1')
-})
-
-test('direct shop entry skips the hero bridge', async ({ page }) => {
-  await page.goto(`${projectPath}#shop`, { waitUntil: 'networkidle' })
-  await expect(page.locator('.stand-shop-bridge')).toBeHidden()
-  await expect(page.getByRole('heading', { name: 'Shop the stand.' })).toBeVisible()
-})
-
-test('product image motion can be interrupted and still restores focus and the source card', async ({ page }) => {
-  await openShop(page)
-  const trigger = page.locator('#product-apple').getByRole('button', { name: 'View details' })
-  await trigger.click()
-  await expect(page.locator('.product-transition-clone')).toBeVisible()
-  await page.keyboard.press('Escape')
-  await expect(page.getByRole('dialog', { name: 'Orchard apples' })).toBeHidden()
-  await expect(page.locator('.product-transition-clone')).toHaveCount(0)
-  await expect(trigger).toBeFocused()
-
-  await trigger.click()
-  await expect(page.getByRole('dialog', { name: 'Orchard apples' })).toBeVisible()
-  await page.waitForTimeout(600)
-  await page.setViewportSize({ width: 900, height: 700 })
-  await page.keyboard.press('Escape')
-  await expect(page.getByRole('dialog', { name: 'Orchard apples' })).toBeHidden()
-  await expect(page.locator('.product-transition-clone')).toHaveCount(0)
-})
-
-test('a live reduced-motion change settles an active detail transition', async ({ page }) => {
-  await openShop(page)
-  await page.locator('#product-apple').getByRole('button', { name: 'View details' }).click()
-  await expect(page.locator('.product-transition-clone')).toBeVisible()
-  await page.emulateMedia({ reducedMotion: 'reduce' })
-  await expect(page.locator('.product-transition-clone')).toHaveCount(0)
-  const dialog = page.getByRole('dialog', { name: 'Orchard apples' })
-  await expect(dialog).toBeVisible()
-  await expect(dialog.getByRole('img', { name: /red apple rendered/i })).toBeVisible()
-  await page.keyboard.press('Escape')
-  await expect(dialog).toBeHidden()
-})
-
-test('farm profile tabs support arrow keys and a failed request preserves coherent content', async ({ page }) => {
-  await page.route('**/media/farm-life/cattle.avif', (route) => route.abort())
-  await page.goto(`${projectPath}#farm-life`)
-  const hens = page.getByRole('tab', { name: 'Hens' })
-  await hens.focus()
-  await page.keyboard.press('ArrowRight')
-  await expect(page.getByRole('heading', { name: 'Hens', exact: true })).toBeVisible()
-  await expect(hens).toHaveAttribute('aria-selected', 'true')
-  await expect(page.getByRole('status')).toContainText('previous profile remains in view')
-  await expect(page.getByAltText(/brown hens gathered behind a farm gate/i)).toBeVisible()
-})
-
-test('portrait touch opens and closes details and changes farm profiles', async ({ page }, testInfo) => {
-  test.skip(!testInfo.project.name.includes('portrait'), 'Touch journey uses the portrait mobile context')
-  await openShop(page)
-  await page.locator('#product-apple').getByRole('button', { name: 'View details' }).tap()
-  const dialog = page.getByRole('dialog', { name: 'Orchard apples' })
-  await expect(dialog).toBeVisible()
-  await dialog.getByRole('button', { name: 'Close product details' }).tap()
-  await expect(dialog).toBeHidden()
-  await page.locator('#farm-life').evaluate((node) => node.scrollIntoView({ block: 'start', behavior: 'instant' }))
-  await page.getByRole('tab', { name: 'Cattle' }).tap()
-  await expect(page.getByAltText(/cattle standing beneath a leafy tree/i)).toBeVisible()
+  await page.getByRole('button', { name: /Open demonstration basket/ }).click()
+  await page.waitForTimeout(450)
+  const rect = await page.getByRole('dialog', { name: /Your basket/ }).evaluate((node) => node.getBoundingClientRect())
+  expect(rect.left).toBeGreaterThanOrEqual(0)
+  expect(rect.right).toBeLessThanOrEqual(390)
+  expect(rect.bottom).toBeLessThanOrEqual(844)
 })

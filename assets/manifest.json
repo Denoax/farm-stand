@@ -74,6 +74,20 @@
       "derivative_path": "public/media/catalogue/onion.avif",
       "derivative_sha256": "564cf654baeb64155cbed00f76534b126c45b67f109c3a51280aae06d3efab92",
       "transformation": "Rendered at 1200 by 800 with a neutral green backdrop, warm wooden ground, authored catalogue lighting and contact shadow; resized to 960 by 640 and AVIF-encoded with FFmpeg."
+    },
+    {
+      "id": "harvest_orchard_plate",
+      "source": "Project-original output from OpenAI's built-in image generation tool; prompt retained in assets/source/generated/PROMPT.md",
+      "derivative_path": "public/media/harvest-orchard.avif",
+      "derivative_sha256": "5c81c7ceafd7c9f0c42843d721406bd5fe55a737900156d212b2faf353156d1c",
+      "transformation": "Selected 1536 by 1024 source resized to 1920 px width and AVIF-encoded with FFmpeg."
+    },
+    {
+      "id": "harvest_basket_layer",
+      "source": "Project-original output from OpenAI's built-in image generation tool; prompt and retained-background deviation recorded in assets/source/generated/PROMPT.md",
+      "derivative_path": "public/media/harvest-basket.webp",
+      "derivative_sha256": "e8f566f9b9cfa54369cfbc716334fda4665b4571d4df681a67afd3bd372386fc",
+      "transformation": "Selected source resized to 1000 px width and WebP-encoded with FFmpeg; composited through a soft CSS alpha mask with a clipped duplicate front-rim layer."
     }
   ],
   "photography": [

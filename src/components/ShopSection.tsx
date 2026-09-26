@@ -10,40 +10,11 @@ interface ShopSectionProps {
 }
 
 function QuantityEditor({ product, quantity, dispatch }: { product: Product; quantity: number; dispatch: Dispatch<BasketAction> }) {
-  const [draft, setDraft] = useState(String(quantity))
-  const [error, setError] = useState('')
-
-  useEffect(() => setDraft(String(quantity)), [quantity])
-
-  const commit = () => {
-    const next = Number(draft)
-    if (!Number.isInteger(next) || next < basketQuantityBounds.min || next > basketQuantityBounds.max) {
-      setError(`Use a whole number from ${basketQuantityBounds.min} to ${basketQuantityBounds.max}.`)
-      setDraft(String(quantity))
-      return
-    }
-    dispatch({ type: 'set', productId: product.id, quantity: next })
-    setError('')
-  }
-
   return (
-    <div className="basket-quantity">
-      <label htmlFor={`basket-${product.id}`}>Quantity</label>
-      <input
-        id={`basket-${product.id}`}
-        inputMode="numeric"
-        value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={commit}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault()
-            commit()
-          }
-        }}
-        aria-describedby={error ? `basket-${product.id}-error` : undefined}
-      />
-      {error && <span className="field-error" id={`basket-${product.id}-error`} role="alert">{error}</span>}
+    <div className="basket-quantity" aria-label={`Quantity for ${product.name}`}>
+      <button type="button" disabled={quantity <= basketQuantityBounds.min} onClick={() => dispatch({ type: 'set', productId: product.id, quantity: quantity - 1 })} aria-label={`Decrease ${product.name} quantity`}>−</button>
+      <output aria-live="polite">{quantity}</output>
+      <button type="button" disabled={quantity >= basketQuantityBounds.max} onClick={() => dispatch({ type: 'set', productId: product.id, quantity: quantity + 1 })} aria-label={`Increase ${product.name} quantity`}>+</button>
     </div>
   )
 }
@@ -69,6 +40,7 @@ function BasketDialog({ basket, dispatch, open, onClose, returnFocus }: ShopSect
   const [collectionOpen, setCollectionOpen] = useState(false)
   const [collectionPreview, setCollectionPreview] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
+  const [removedLine, setRemovedLine] = useState<{ product: Product; quantity: number } | null>(null)
   const lines = Object.entries(basket)
     .map(([id, quantity]) => ({ product: productById.get(id as ProductId), quantity: quantity ?? 0 }))
     .filter((line): line is { product: Product; quantity: number } => Boolean(line.product && line.quantity))
@@ -84,7 +56,7 @@ function BasketDialog({ basket, dispatch, open, onClose, returnFocus }: ShopSect
 
   return (
     <dialog
-      className="basket-dialog"
+      className="basket-dialog basket-drawer"
       ref={dialogRef}
       aria-labelledby="basket-heading"
       onClose={() => {
@@ -95,15 +67,21 @@ function BasketDialog({ basket, dispatch, open, onClose, returnFocus }: ShopSect
         returnFocus.current?.focus()
       }}
     >
-      <div className="dialog-bar">
+      <div className="dialog-bar basket-drawer__header">
         <div>
           <p className="eyebrow">Demonstration basket</p>
-          <h2 id="basket-heading">Review the example collection.</h2>
+          <h2 id="basket-heading">Your basket <span>{basketCount(basket)}</span></h2>
         </div>
         <button className="icon-button" type="button" onClick={close} aria-label="Close basket">×</button>
       </div>
-      <p className="demo-boundary">Demonstration basket — no order or payment will be submitted.</p>
-
+      <div className="basket-drawer__scroll">
+        <p className="demo-boundary">Preview only — no order, payment, or reservation will be submitted.</p>
+        {removedLine && (
+          <div className="basket-undo" role="status">
+            <span>{removedLine.product.name} removed.</span>
+            <button className="text-button" type="button" onClick={() => { dispatch({ type: 'set', productId: removedLine.product.id, quantity: removedLine.quantity }); setRemovedLine(null) }}>Undo</button>
+          </div>
+        )}
       {lines.length === 0 ? (
         <div className="basket-empty">
           <p>Your demonstration basket is empty.</p>
@@ -122,17 +100,12 @@ function BasketDialog({ basket, dispatch, open, onClose, returnFocus }: ShopSect
                 </div>
                 <QuantityEditor product={product} quantity={quantity} dispatch={dispatch} />
                 <strong className="line-total">{formatSampleCad(product.samplePriceMinor * quantity)}</strong>
-                <button className="text-button text-button--danger" type="button" onClick={() => dispatch({ type: 'remove', productId: product.id })}>Remove</button>
+                <button className="text-button text-button--danger" type="button" onClick={() => { setRemovedLine({ product, quantity }); dispatch({ type: 'remove', productId: product.id }) }}>Remove</button>
               </li>
             ))}
           </ul>
-          <div className="basket-total">
-            <span>Illustrative subtotal · CAD</span>
-            <strong>{formatSampleCad(basketSubtotal(basket))}</strong>
-          </div>
-
           {!collectionOpen ? (
-            <button className="button button--sun" type="button" onClick={() => setCollectionOpen(true)}>Preview collection options</button>
+            <button className="text-button" type="button" onClick={() => setCollectionOpen(true)}>Choose an example collection time</button>
           ) : (
             <div className="collection-preview" data-testid="collection-preview">
               <p className="eyebrow">Example collection choices</p>
@@ -141,7 +114,7 @@ function BasketDialog({ basket, dispatch, open, onClose, returnFocus }: ShopSect
                 <label><input type="radio" name="collection" defaultChecked /> Weekday stand · example 3–6 pm</label>
                 <label><input type="radio" name="collection" /> Saturday pickup · example 9 am–1 pm</label>
               </fieldset>
-              <button className="button button--ink" type="button" onClick={() => setCollectionPreview(true)}>Review this example</button>
+              <button className="button button--ink" type="button" onClick={() => setCollectionPreview(true)}>Save this preview</button>
               {collectionPreview && <p className="collection-result" role="status"><strong>Preview only.</strong> Nothing was sent, and no stock or collection time was reserved.</p>}
             </div>
           )}
@@ -159,6 +132,15 @@ function BasketDialog({ basket, dispatch, open, onClose, returnFocus }: ShopSect
           </div>
         </>
       )}
+      </div>
+      <div className="basket-drawer__footer">
+        <div className="basket-total">
+          <span>Illustrative subtotal · CAD</span>
+          <strong>{formatSampleCad(basketSubtotal(basket))}</strong>
+        </div>
+        <button className="button button--sun" type="button" disabled={!lines.length} onClick={() => setCollectionOpen(true)}>Preview collection</button>
+        <small>Nothing leaves this demonstration.</small>
+      </div>
     </dialog>
   )
 }
@@ -176,13 +158,15 @@ export function ShopSection({ basket, dispatch, focusRequest }: ShopSectionProps
   const detailTransitionTokenRef = useRef(0)
   const afterDetailCloseRef = useRef<(() => void) | null>(null)
   const basketTriggerRef = useRef<HTMLButtonElement>(null)
-  const basketFlightRef = useRef<{ animation: Animation; element: HTMLDivElement } | null>(null)
-  const productGridRef = useRef<HTMLDivElement>(null)
-  const filterPositionsRef = useRef<Map<string, DOMRect>>(new Map())
-  const filterAnimationsRef = useRef<Animation[]>([])
   const handledFocusRequestRef = useRef(0)
   const visibleProducts = useMemo(() => filter === 'all' ? products : products.filter((product) => product.category === filter), [filter])
   const count = basketCount(basket)
+
+  useEffect(() => {
+    if (!basketFeedback || detailProduct) return
+    const timeout = window.setTimeout(() => setBasketFeedback(null), 6000)
+    return () => window.clearTimeout(timeout)
+  }, [basketFeedback, detailProduct])
 
   const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -248,9 +232,6 @@ export function ShopSection({ basket, dispatch, focusRequest }: ShopSectionProps
 
   useEffect(() => () => {
     clearDetailTransition()
-    basketFlightRef.current?.animation.cancel()
-    basketFlightRef.current?.element.remove()
-    filterAnimationsRef.current.forEach((animation) => animation.cancel())
   }, [])
 
   useEffect(() => {
@@ -259,45 +240,11 @@ export function ShopSection({ basket, dispatch, focusRequest }: ShopSectionProps
       if (!preference.matches) return
       const closing = detailDialogRef.current?.dataset.imageMotion === 'closing'
       clearDetailTransition()
-      basketFlightRef.current?.animation.cancel()
-      basketFlightRef.current?.element.remove()
-      basketFlightRef.current = null
-      filterAnimationsRef.current.forEach((animation) => animation.cancel())
-      filterAnimationsRef.current = []
       if (closing) finishDetailClose()
     }
     preference.addEventListener('change', stopActiveMotion)
     return () => preference.removeEventListener('change', stopActiveMotion)
   }, [])
-
-  useLayoutEffect(() => {
-    const grid = productGridRef.current
-    const previous = filterPositionsRef.current
-    filterPositionsRef.current = new Map()
-    filterAnimationsRef.current.forEach((animation) => animation.cancel())
-    filterAnimationsRef.current = []
-    if (!grid) return
-    const cards = [...grid.querySelectorAll<HTMLElement>('.product-card')]
-    cards.forEach((card) => filterPositionsRef.current.set(card.id, card.getBoundingClientRect()))
-    if (!previous.size || reducedMotion()) return
-    filterAnimationsRef.current = cards.map((card) => {
-      const before = previous.get(card.id)
-      const after = card.getBoundingClientRect()
-      const animation = before
-        ? card.animate([
-            { transform: `translate(${before.left - after.left}px, ${before.top - after.top}px)` },
-            { transform: 'translate(0, 0)' },
-          ], { duration: 270, easing: 'cubic-bezier(.2, .75, .25, 1)' })
-        : card.animate([
-            { opacity: 0.72, transform: 'scale(.985)' },
-            { opacity: 1, transform: 'scale(1)' },
-          ], { duration: 220, easing: 'ease-out' })
-      animation.finished.catch(() => undefined).then(() => {
-        if (animation === card.getAnimations().find((candidate) => candidate === animation)) animation.cancel()
-      })
-      return animation
-    })
-  }, [filter])
 
   useLayoutEffect(() => {
     if (!focusRequest || handledFocusRequestRef.current === focusRequest.sequence) return
@@ -316,50 +263,10 @@ export function ShopSection({ basket, dispatch, focusRequest }: ShopSectionProps
 
   const selectFilter = (nextFilter: 'all' | CategoryId) => {
     if (nextFilter === filter) return
-    const cards = productGridRef.current?.querySelectorAll<HTMLElement>('.product-card') ?? []
-    filterPositionsRef.current = new Map([...cards].map((card) => [card.id, card.getBoundingClientRect()]))
     setFilter(nextFilter)
   }
 
-  const flyToBasket = (product: Product, source: HTMLElement) => {
-    const basketTarget = basketTriggerRef.current
-    if (reducedMotion() || !basketTarget) return false
-    const target = basketTarget.getBoundingClientRect()
-    if (target.bottom <= 0 || target.top >= innerHeight || target.right <= 0 || target.left >= innerWidth) return false
-
-    basketFlightRef.current?.animation.cancel()
-    basketFlightRef.current?.element.remove()
-    const start = source.getBoundingClientRect()
-    const flight = document.createElement('div')
-    flight.className = 'basket-flight'
-    flight.setAttribute('aria-hidden', 'true')
-    flight.setAttribute('inert', '')
-    const image = document.createElement('img')
-    image.src = product.image
-    image.alt = ''
-    image.style.objectPosition = product.imagePosition ?? '50% 50%'
-    flight.append(image)
-    document.body.append(flight)
-    flight.style.left = `${start.left}px`
-    flight.style.top = `${start.top}px`
-    flight.style.width = `${start.width}px`
-    flight.style.height = `${start.height}px`
-    const animation = flight.animate([
-      { transform: 'translate(0, 0) scale(1)', opacity: 1 },
-      {
-        transform: `translate(${target.left + target.width / 2 - start.left - start.width / 2}px, ${target.top + target.height / 2 - start.top - start.height / 2}px) scale(.08)`,
-        opacity: 0.36,
-      },
-    ], { duration: 400, easing: 'cubic-bezier(.25, .7, .3, 1)' })
-    basketFlightRef.current = { animation, element: flight }
-    animation.finished.catch(() => undefined).then(() => {
-      flight.remove()
-      if (basketFlightRef.current?.element === flight) basketFlightRef.current = null
-    })
-    return true
-  }
-
-  const add = (product: Product, sourcePicture?: HTMLElement | null) => {
+  const add = (product: Product) => {
     if ((basket[product.id] ?? 0) >= basketQuantityBounds.max) {
       const message = `is already at the demonstration maximum of ${basketQuantityBounds.max}.`
       setAnnouncement(`${product.name} ${message}`)
@@ -367,7 +274,6 @@ export function ShopSection({ basket, dispatch, focusRequest }: ShopSectionProps
       return
     }
     dispatch({ type: 'add', productId: product.id })
-    if (sourcePicture) flyToBasket(product, sourcePicture)
     setAnnouncement(`${product.name} added to the demonstration basket.`)
     setBasketFeedback({ product, message: 'added to the demonstration basket.', added: true })
   }
@@ -419,7 +325,7 @@ export function ShopSection({ basket, dispatch, focusRequest }: ShopSectionProps
         </div>
         <div className="catalogue-summary">
           <p>Browse seven example products and build a collection preview. Prices and availability are illustrative; nothing can be ordered here.</p>
-          <button ref={basketTriggerRef} className="basket-button" type="button" onClick={() => setBasketOpen(true)}>
+          <button ref={basketTriggerRef} className="basket-button" type="button" onClick={() => { setBasketFeedback(null); setBasketOpen(true) }}>
             Basket <span aria-label={`${count} items`}>{count}</span>
           </button>
         </div>
@@ -431,7 +337,7 @@ export function ShopSection({ basket, dispatch, focusRequest }: ShopSectionProps
         ))}
       </div>
 
-      <div className="product-grid" ref={productGridRef}>
+      <div className="product-grid">
         {visibleProducts.map((product) => (
           <article className="product-card" id={`product-${product.id}`} key={product.id} data-available={product.available} tabIndex={-1}>
             <ProductPicture product={product} />
@@ -454,7 +360,7 @@ export function ShopSection({ basket, dispatch, focusRequest }: ShopSectionProps
                     openDetails(product, event.currentTarget)
                   }}
                 >View details</button>
-                <button className="button button--ink" type="button" disabled={!product.available} onClick={(event) => add(product, event.currentTarget.closest<HTMLElement>('.product-card')?.querySelector<HTMLElement>('.product-picture'))}>
+                <button className="button button--ink" type="button" disabled={!product.available} onClick={() => add(product)}>
                   {product.available ? 'Add to basket' : 'Unavailable example'}
                 </button>
               </div>
@@ -523,6 +429,14 @@ export function ShopSection({ basket, dispatch, focusRequest }: ShopSectionProps
       </dialog>
 
       <BasketDialog basket={basket} dispatch={dispatch} open={basketOpen} onClose={() => setBasketOpen(false)} returnFocus={basketTriggerRef} />
+      <button
+        className="persistent-basket"
+        type="button"
+        aria-label={`Open demonstration basket, ${count} items`}
+        onClick={(event) => { basketTriggerRef.current = event.currentTarget; setBasketFeedback(null); setBasketOpen(true) }}
+      >
+        <span>Basket</span><strong>{count}</strong>
+      </button>
     </section>
   )
 }

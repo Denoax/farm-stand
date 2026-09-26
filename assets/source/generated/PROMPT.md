@@ -17,3 +17,11 @@ Constraints: no logos, no text, no signs, no people, no vehicles, no buildings i
 ```
 
 The generated output included a usable foreground table despite the exclusion. The implementation accepted that reversible deviation, used it as the scene surface, and did not add a duplicate live table.
+
+## v2.3 harvest layers
+
+Built-in OpenAI image generation tool, 25 September 2026.
+
+The orchard plate requested a wide, photorealistic late-summer orchard in warm morning light, with an apple branch across the upper third, one clear empty attachment point, open grass in the lower middle, and no apples, basket, people, buildings, marks, or text. The 1536×1024 source output was resized to 1920 px and AVIF-encoded for `public/media/harvest-orchard.avif`.
+
+The basket prompt requested one empty, low-handled, weathered wicker apple-harvest basket in front three-quarter view, lit from the upper left, with no fruit, people, marks, or text. A follow-up edit requested transparent alpha; the generator retained a dark graduated background. Rather than misrepresenting that output as transparent, the implementation uses the selected source inside a soft CSS alpha mask. The selected output was resized to 1000 px and WebP-encoded for `public/media/harvest-basket.webp`.

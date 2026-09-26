@@ -89,7 +89,7 @@ const result = {
 }
 
 await fs.mkdir(path.resolve('evidence'), { recursive: true })
-await fs.writeFile(path.resolve('evidence/motion-measurements-v2.2.json'), `${JSON.stringify(result, null, 2)}\n`)
+await fs.writeFile(path.resolve('evidence/motion-measurements-v2.3.json'), `${JSON.stringify(result, null, 2)}\n`)
 await context.close()
 await browser.close()
 console.log(JSON.stringify(result, null, 2))

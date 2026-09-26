@@ -2,51 +2,41 @@
 
 ## Approved direction
 
-The user approved the sunlit farm-stand direction, the v2 expansion, the v2.1 editorial/shop refinement, and the v2.2 motion direction. Preserve the current hero, rural setting, Fraunces/Source Sans 3 typography, wood/green/yellow palette, useful first frame, reversible stand-to-shop handoff, static fallback, and explicit demonstration boundaries. The cancelled anatomy project is out of scope.
+The user approved the sunlit farm-stand direction and the v2 through v2.3 expansions. The current implementation preserves the rural setting, Fraunces/Source Sans 3 typography, wood/green/yellow palette, seven-product catalogue, product detail transition, useful first frame, accessibility fallbacks, and explicit demonstration-only boundaries. v2.3 supersedes the v2.2 travelling stand-to-card rectangle and tabbed animal profile. The cancelled anatomy project remains out of scope.
 
-## Repository state
+## Repository and publication policy
 
-This is the existing public `Denoax/farm-stand` Git worktree and uses the existing GitHub Pages site at `https://denoax.github.io/farm-stand/`.
+This is the existing public `Denoax/farm-stand` worktree and deploys through its existing GitHub Pages workflow to `https://denoax.github.io/farm-stand/`.
 
-Standing publication authorization is active for this project. Completed website work follows: implement → inspect → test → commit → integrate into the current `main` history → push `main` → verify the associated Pages deployment → verify the live HTTPS website. Failed checks block publication. Local-only delivery is appropriate only when the user explicitly requests it.
-
-The authorization covers coherent verified website changes and the existing Pages workflow. It does not enable real orders, payments, bookings, message delivery, analytics, purchases, credential changes, force-pushes, destructive history edits, or unrelated infrastructure changes. Deployment status remains separate from artistic approval.
+Standing publication authorization remains active: implement → inspect → test → commit → safely integrate into current `main` → push `main` → verify the associated Pages deployment → verify the live HTTPS website. Failed checks block publication. This does not enable real orders, payments, bookings, message delivery, analytics, purchases, credential changes, force-pushes, destructive history changes, or unrelated infrastructure.
 
 ## Current implementation
 
-The v2.2 build retains the complete v2.1 shop and adds three coordinated motion systems. The live Three.js apple publishes its projected browser-space bounds to a reversible DOM bridge that travels into the real apple-card image while the overlapping catalogue enters normal document flow. Direct shop entry, reduced motion, missing target media, WebGL fallback, and preserved filter/basket state bypass or unwind the handoff safely.
+The opening is a reversible scroll story. A live CC0 Three.js apple starts at a project-original orchard branch, detaches along authored progress-derived keyframes, falls behind a masked wicker basket front rim, settles, and resolves with the existing live produce into the established stand. The decorative basket never touches commerce state. Direct Shop entry bypasses the sequence; model/WebGL failure retains a static poster and full HTML journey; reduced motion presents the established stand in ordinary document flow.
 
-Product details remain native dialogs and use an inert, aria-hidden image clone inside the top layer for measured card-to-dialog and dialog-to-card travel. Opening/closing interruption, Escape, focus return, resize, offscreen source, live reduced-motion changes, and immediate basket commits are handled independently of decorative motion. Remaining product cards use bounded FLIP position changes; successful adds may travel only when the basket target is visible, while feedback remains explicit.
+The catalogue retains seven products, filters, source-card-to-detail image motion, immediate add feedback, keyboard/Escape focus return, and the no-commerce boundary. The basket is now a native-dialog right drawer on desktop and near-full-height bottom drawer on portrait. It has one scroll region, a sticky summary/action area, labeled steppers, remove plus one-step undo, clear confirmation, same-surface collection preview, and a persistent basket action. Basket state survives close/reopen, navigation, scene motion, and viewport changes for the current page session.
 
-Farm-life entry uses a non-pinned photographic-window reveal. Profile changes preload and decode before committing coherent copy/image/link state, keep at most two image layers, use latest-request-wins semantics, retain the prior profile on failure, and implement arrow/Home/End tab behavior with roving focus. The sample-hours preview uses a restrained masked value change.
+A short fixed-seed rain-to-sun bridge connects the shop to farm life. Hens, cattle, and sheep are three addressable scroll scenes using the retained credited Pexels photographs; only crop, camera, foreground, and copy layers move, never the depicted animals. Direct hashes reach the scenes. A visible Pause motion control complements the system reduced-motion preference.
 
-Deterministic multi-item basket operations, quantity/removal/reset handling, integer-money totals, and the no-submission collection preview remain intact. Fictional visit information, the concrete website-service process, and the copy-only contact brief remain separate from farm-customer actions; the contact destination is unconfigured.
+Fictional visit information, the concrete website-service process, sample-hours editor, and copy-only contact preview remain unchanged and unconfigured. No order, payment, reservation, booking, message, or analytics path exists.
 
-Below-fold media is intersection-deferred with reserved dimensions. The hero renderer pauses offscreen, resumes with current state, and retains model/WebGL and media-failure fallbacks. Inactive scroll-transition controls become inert; reduced motion uses ordinary document flow. Metadata, favicon, social image, asset provenance, and the `/farm-stand/` production path are present.
+## Validation and evidence
 
-## Evidence checked
+- Production build output: 34.47 kB CSS (8.30 kB gzip), 258.90 kB main JavaScript (79.86 kB gzip), and a lazy 615.63 kB Three.js scene chunk (155.35 kB gzip). Vite retains its generic raw chunk-size warning.
+- The revised Playwright suite covers the harvest stages, direct entry/refresh, two responsive layouts, drawer operations and preservation, detail interruption/focus, weather pause/skip, addressable animal scenes, fictional boundaries, reduced motion, renderer pausing, model/media failures, and overflow.
+- Normal-speed desktop and portrait journey recordings plus decisive still frames are generated by `scripts/capture-v23-evidence.mjs` under ignored `evidence/v2.3/`. The latest local capture reported zero console errors, page errors, or failed requests. These are review evidence, not self-approved visual baselines.
+- The two added delivery images total about 382 kB. Existing locally delivered models, catalogue images, photography, and fonts remain reused.
+- Production-served measurement recorded 3,187,639 encoded bytes at arrival and 3,792,641 after the complete page visit, zero initial catalogue/farm-life requests, and 0.01496 observed CLS. The hero renderer stopped producing frames while offscreen and resumed on return.
+- Three warm-headless SwiftShader hero traversals produced 33.3 ms median frame intervals and 83.3–100 ms p95 intervals; observed product-detail travel was about 615 ms open and 383 ms close. These are end-to-end software-renderer intervals, not GPU timings or physical-device evidence.
 
-- Production build passes; current output is 26.01 kB CSS, 263.63 kB main JavaScript (81.60 kB gzip), and a lazy 616.25 kB Three.js scene chunk (155.59 kB gzip). Vite retains its generic raw chunk-size warning.
-- Playwright Chromium matrix passes 50 applicable checks across desktop and portrait with two intentional cross-project skips. It adds projected handoff arrival/reversal, direct-entry bypass, detail interruption/resize/focus return, runtime reduced-motion settlement, animal load failure/latest-request behavior, arrow-key tabs, and portrait touch to the previous responsive, state, media-failure, and accessibility coverage.
-- Firefox passes a portrait shop/detail/farm-profile smoke journey with no console or page errors. The project-matched WebKit build is present but blocked by missing host libraries; no system dependencies or global configuration were installed. Physical-device, hardware-accelerated, screen-reader, and human usability checks remain unperformed.
-- Production-served measurement at v2.2: arrival 2,798,326 encoded-body bytes with zero catalogue/farm-life requests; full visited page 3,403,328 encoded-body bytes; observed CLS remains 0.0143. Relative to v2.1, both transfer totals increase by 4,047 bytes (about 0.14% arrival).
-- Headless Chromium/SwiftShader handoff measurement after a warm-up produced 49.9/33.4/33.4 ms median frame intervals across three 48-sample runs; p95 was 66.6/66.7/50.1 ms. These software-renderer frame intervals are not GPU timings or physical-device evidence. Observed detail travel was 593.9 ms open and 403.7 ms close.
-- Normal-speed local recordings and selected desktop/portrait captures report zero console errors, page errors, or failed requests. They remain review evidence, not approved visual baselines.
-- Selected matched shop captures, details, farm-life views, a seven-product contact sheet, and an end-to-end recording are under ignored `evidence/`; they are local review evidence, not a human-approved baseline.
+## Highest-impact limitations
 
-## Publication status
-
-The site is published through the existing push-to-main GitHub Pages workflow. Deployment remains gated by the production build and browser suite. Each completed change must be verified at the live HTTPS origin for desktop and portrait rendering, refresh, catalogue/details, basket/collection, farm-life, visit/service/contact content, asset delivery, keyboard interaction, and console/network health.
-
-## Open inputs and highest-impact limitations
-
-- Public business/brand name, contact destination, commercial scope, pricing, support terms, backend, and integrations are not supplied; configuration keeps them inactive.
-- The selected Pexels photography is licensed demonstration material, not verified client/property imagery.
-- The projected handoff deliberately transfers visual ownership from the live mesh to its catalogue render; it does not keep one live WebGL mesh moving through DOM top-layer space. Human motion review remains authoritative for whether that matched transfer is sufficiently seamless.
-- The lazy Three.js scene chunk is 616.25 kB raw (155.59 kB gzip), above Vite's generic chunk-warning threshold.
-- Physical portrait-device, hardware GPU, WebKit, and screen-reader behavior remain unverified; Firefox coverage is a focused local smoke journey rather than the full matrix. SwiftShader frame pacing is not evidence of hardware performance.
-- Composition, photography, type, and copy still require human visual/editorial approval; local captures are not self-approved baselines.
+- Public identity, contact destination, commercial scope, pricing, support terms, backend, and integrations are not supplied and remain inactive/configurable.
+- Pexels photographs and project-generated harvest layers are illustrative and do not depict a client or verified property.
+- The basket image generator retained a graduated backdrop instead of true alpha; the implementation uses a soft CSS alpha mask. It is credible at the inspected sizes but a professionally cut transparent basket would improve edge fidelity.
+- The hero’s lazy Three.js chunk remains above Vite’s generic 500 kB raw advisory. It is off the main bundle and pauses when offscreen, but a later measured optimization pass could consider deeper module splitting.
+- Physical-device, hardware-GPU, screen-reader, and human art-direction reviews remain outstanding. Browser captures and publication do not constitute artistic approval.
 
 ## Next action
 
-Future completed and verified website changes should follow the standing publication loop. A later pass may incorporate approved identity/contact inputs or human visual corrections, but must not activate orders, payment, contact delivery, analytics, or commercial integrations without new authorization.
+For completed coherent work, follow the standing publication loop and verify the exact deployed commit on the live HTTPS origin. Do not stop at local readiness unless the user explicitly requests local-only work.
