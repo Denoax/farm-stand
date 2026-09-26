@@ -23,5 +23,5 @@ The v2 expansion uses locally delivered derivatives of Pexels photographs under 
 
 - Catalogue: carrots by Joao Teles; potatoes by Ellie Burgin; squash by MART PRODUCTION; eggs by Sophia Martin; produce crate by Snappr.
 - Farm life: hens by Eline Spee; cattle by Alina Vilchenko; sheep by cottonbro studio.
-- Apple and onion catalogue images are 960×640 crops of the existing WebGL hero scene with interface overlays removed. They reuse the retained CC0 models and project-generated background rather than introducing replacement photography; exact derivative hashes are in the manifest.
+- Apple and onion catalogue images are dedicated 960×640 renders of the retained CC0 models, made with a neutral green backdrop, warm wooden ground, catalogue lighting, and contact shadows. They are independent of the hero composition; exact derivative hashes are in the manifest.
 - `public/media/farm-stand-social.jpg` is a 1200 px JPEG derivative of the existing desktop fallback poster for Open Graph clients that do not support AVIF.

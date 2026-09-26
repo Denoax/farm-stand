@@ -1,6 +1,6 @@
 # Farm stand website demonstration
 
-A local, single-page website-services showcase for growers and local businesses. Its fictional farm includes a seven-product catalogue, multi-item demonstration basket, collection preview, farm-life stories, practical visit content, service explanation, and copy-only website brief. It cannot accept orders, payments, bookings, or contact submissions.
+A local, single-page website-services showcase for growers and local businesses. Its fictional farm includes a seven-product catalogue, multi-item demonstration basket, collection preview, farm-life stories, practical visit content, a client-side sample-hours update, service explanation, and copy-only website brief. It cannot accept orders, payments, bookings, saved content updates, or contact submissions.
 
 ## Run locally
 

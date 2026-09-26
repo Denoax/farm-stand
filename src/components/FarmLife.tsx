@@ -2,7 +2,11 @@ import { useState } from 'react'
 import { farmLifeProfiles, type FarmLifeId } from '../content/farmLife'
 import { DeferredImage } from './DeferredImage'
 
-export function FarmLife() {
+interface FarmLifeProps {
+  onViewProduct: (productId: 'eggs') => void
+}
+
+export function FarmLife({ onViewProduct }: FarmLifeProps) {
   const [selectedId, setSelectedId] = useState<FarmLifeId>('hens')
   const selected = farmLifeProfiles.find((profile) => profile.id === selectedId) ?? farmLifeProfiles[0]
 
@@ -26,12 +30,19 @@ export function FarmLife() {
           ))}
         </div>
         <div id="farm-life-panel" role="tabpanel" aria-labelledby={`farm-life-tab-${selected.id}`}>
-          <a className="text-link" href={selected.link}>{selected.linkLabel} <span aria-hidden="true">↗</span></a>
+          <a
+            className="text-link"
+            href={selected.link}
+            onClick={selected.id === 'hens' ? (event) => {
+              event.preventDefault()
+              onViewProduct('eggs')
+            } : undefined}
+          >{selected.linkLabel} <span aria-hidden="true">{selected.id === 'hens' ? '↓' : '↗'}</span></a>
         </div>
         <p className="farm-life__disclosure">These licensed photographs illustrate possible farm content; they do not show a client, this fictional property, or an endorsement.</p>
       </div>
       <figure className="farm-life__figure">
-        <DeferredImage key={selected.id} src={selected.image} alt={selected.alt} width={1200} height={1800} fallbackLabel={`${selected.label} photograph unavailable`} />
+        <DeferredImage key={selected.id} src={selected.image} alt={selected.alt} width={1200} height={1800} style={{ objectPosition: selected.imagePosition }} fallbackLabel={`${selected.label} photograph unavailable`} />
         <figcaption>{selected.credit}</figcaption>
       </figure>
     </section>

@@ -6,6 +6,7 @@ import { DeferredImage } from './DeferredImage'
 interface ShopSectionProps {
   basket: BasketState
   dispatch: Dispatch<BasketAction>
+  focusRequest?: { productId: ProductId; sequence: number }
 }
 
 function QuantityEditor({ product, quantity, dispatch }: { product: Product; quantity: number; dispatch: Dispatch<BasketAction> }) {
@@ -162,11 +163,12 @@ function BasketDialog({ basket, dispatch, open, onClose, returnFocus }: ShopSect
   )
 }
 
-export function ShopSection({ basket, dispatch }: ShopSectionProps) {
+export function ShopSection({ basket, dispatch, focusRequest }: ShopSectionProps) {
   const [filter, setFilter] = useState<'all' | CategoryId>('all')
   const [detailProduct, setDetailProduct] = useState<Product | null>(null)
   const [basketOpen, setBasketOpen] = useState(false)
   const [announcement, setAnnouncement] = useState('')
+  const [basketFeedback, setBasketFeedback] = useState<{ product: Product; message: string; added: boolean } | null>(null)
   const detailDialogRef = useRef<HTMLDialogElement>(null)
   const detailTriggerRef = useRef<HTMLButtonElement | null>(null)
   const basketTriggerRef = useRef<HTMLButtonElement>(null)
@@ -179,20 +181,46 @@ export function ShopSection({ basket, dispatch }: ShopSectionProps) {
     dialog.showModal()
   }, [detailProduct])
 
+  useEffect(() => {
+    if (!focusRequest) return
+    const product = productById.get(focusRequest.productId)
+    if (!product) return
+    setFilter(product.category)
+    let secondFrame = 0
+    const firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() => {
+        const card = document.getElementById(`product-${product.id}`)
+        card?.scrollIntoView({ block: 'start' })
+        card?.focus({ preventScroll: true })
+      })
+    })
+    return () => {
+      cancelAnimationFrame(firstFrame)
+      cancelAnimationFrame(secondFrame)
+    }
+  }, [focusRequest])
+
   const add = (product: Product) => {
+    if ((basket[product.id] ?? 0) >= basketQuantityBounds.max) {
+      const message = `is already at the demonstration maximum of ${basketQuantityBounds.max}.`
+      setAnnouncement(`${product.name} ${message}`)
+      setBasketFeedback({ product, message, added: false })
+      return
+    }
     dispatch({ type: 'add', productId: product.id })
     setAnnouncement(`${product.name} added to the demonstration basket.`)
+    setBasketFeedback({ product, message: 'added to the demonstration basket.', added: true })
   }
 
   return (
     <section className="catalogue" id="shop" aria-labelledby="shop-heading">
       <div className="section-intro catalogue-intro">
         <div>
-          <p className="eyebrow">Shop the stand · demonstration only</p>
-          <h2 id="shop-heading">A small shop with the details already worked out.</h2>
+          <p className="eyebrow">Demonstration shop</p>
+          <h2 id="shop-heading">Shop the stand.</h2>
         </div>
         <div className="catalogue-summary">
-          <p>Browse examples, inspect the selling unit, and build a multi-item basket. Every price and collection period is illustrative.</p>
+          <p>Browse seven example products and build a collection preview. Prices and availability are illustrative; nothing can be ordered here.</p>
           <button ref={basketTriggerRef} className="basket-button" type="button" onClick={() => setBasketOpen(true)}>
             Basket <span aria-label={`${count} items`}>{count}</span>
           </button>
@@ -207,7 +235,7 @@ export function ShopSection({ basket, dispatch }: ShopSectionProps) {
 
       <div className="product-grid">
         {visibleProducts.map((product) => (
-          <article className="product-card" id={`product-${product.id}`} key={product.id} data-available={product.available}>
+          <article className="product-card" id={`product-${product.id}`} key={product.id} data-available={product.available} tabIndex={-1}>
             <ProductPicture product={product} />
             <div className="product-card__body">
               <div className="product-card__heading">
@@ -240,6 +268,16 @@ export function ShopSection({ basket, dispatch }: ShopSectionProps) {
 
       <p className="visually-hidden" aria-live="polite">{announcement}</p>
 
+      {basketFeedback && !basketOpen && (
+        <div className="basket-feedback" aria-label="Basket update">
+          <p><strong>{basketFeedback.product.name}</strong> {basketFeedback.message}</p>
+          <div>
+            <button className="text-button" type="button" onClick={() => { setBasketOpen(true); setBasketFeedback(null) }}>View basket</button>
+            <button className="icon-button" type="button" aria-label="Dismiss basket update" onClick={() => setBasketFeedback(null)}>×</button>
+          </div>
+        </div>
+      )}
+
       <dialog
         className="product-dialog"
         ref={detailDialogRef}
@@ -259,11 +297,21 @@ export function ShopSection({ basket, dispatch }: ShopSectionProps) {
               <p>{detailProduct.detail}</p>
               <p><strong>{detailProduct.availability}</strong></p>
               {detailProduct.boxContents && <p><strong>Shown in this box:</strong> {detailProduct.boxContents.join(', ')}.</p>}
+              {basketFeedback?.product.id === detailProduct.id && (
+                <p className="product-add-note" role="status">
+                  {basketFeedback.added ? 'Added to the demonstration basket. Nothing has been ordered.' : `Already at the demonstration maximum of ${basketQuantityBounds.max}.`}
+                </p>
+              )}
               <div className="product-dialog__footer">
                 <span>{formatSampleCad(detailProduct.samplePriceMinor)} CAD · illustrative sample price</span>
-                <button className="button button--sun" type="button" disabled={!detailProduct.available} onClick={() => add(detailProduct)}>
-                  {detailProduct.available ? 'Add to basket' : 'Unavailable in this demonstration'}
-                </button>
+                <div className="product-dialog__actions">
+                  {basketFeedback?.product.id === detailProduct.id && (
+                    <button className="text-button" type="button" onClick={() => { detailDialogRef.current?.close(); setBasketOpen(true); setBasketFeedback(null) }}>Review basket</button>
+                  )}
+                  <button className="button button--sun" type="button" disabled={!detailProduct.available} onClick={() => add(detailProduct)}>
+                    {detailProduct.available ? 'Add to basket' : 'Unavailable in this demonstration'}
+                  </button>
+                </div>
               </div>
             </div>
           </>

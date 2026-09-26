@@ -5,7 +5,9 @@ import { ShopDemo } from './components/ShopDemo'
 import { ShopSection } from './components/ShopSection'
 import { FarmLife } from './components/FarmLife'
 import { VisitSection } from './components/VisitSection'
+import { TryUpdate } from './components/TryUpdate'
 import { basketReducer } from './state/basket'
+import type { ProductId } from './content/catalogue'
 
 const FarmScene = lazy(() => import('./components/FarmScene').then((module) => ({ default: module.FarmScene })))
 const publicAsset = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`
@@ -18,7 +20,27 @@ export function App() {
   const [selectedProduct, setSelectedProduct] = useState<HeroProductId>('apple')
   const [sceneState, setSceneState] = useState<SceneState>('loading')
   const [basket, dispatchBasket] = useReducer(basketReducer, {})
+  const [shopFocusRequest, setShopFocusRequest] = useState<{ productId: ProductId; sequence: number }>()
   const onSceneState = useCallback((state: SceneState) => setSceneState(state), [])
+  const viewShopProduct = useCallback((productId: ProductId) => {
+    window.history.replaceState(null, '', `#product-${productId}`)
+    setShopFocusRequest((current) => ({ productId, sequence: (current?.sequence ?? 0) + 1 }))
+  }, [])
+
+  useEffect(() => {
+    const targetId = decodeURIComponent(window.location.hash.slice(1))
+    if (!targetId) return
+    const frame = requestAnimationFrame(() => {
+      const target = document.getElementById(targetId)
+      if (!target) return
+      const root = document.documentElement
+      const previousScrollBehavior = root.style.scrollBehavior
+      root.style.scrollBehavior = 'auto'
+      target.scrollIntoView({ block: 'start' })
+      root.style.scrollBehavior = previousScrollBehavior
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [])
 
   useEffect(() => {
     const stage = stageRef.current
@@ -132,8 +154,8 @@ export function App() {
           <span className="demo-anchor" id="demo" aria-hidden="true" />
         </section>
 
-        <ShopSection basket={basket} dispatch={dispatchBasket} />
-        <FarmLife />
+        <ShopSection basket={basket} dispatch={dispatchBasket} focusRequest={shopFocusRequest} />
+        <FarmLife onViewProduct={viewShopProduct} />
         <VisitSection />
 
         <section className="service" id="website" aria-labelledby="service-heading">
@@ -155,6 +177,7 @@ export function App() {
             <p><strong>Demonstrated here:</strong> responsive frontend design, product presentation, basket interactions, useful information architecture, fallbacks, and an enquiry-preview interface.</p>
             <p><strong>Configured separately if approved:</strong> inventory, payments, booking, a CMS, message delivery, analytics, or ongoing support.</p>
           </div>
+          <TryUpdate />
         </section>
 
         <ContactPreview />

@@ -5,7 +5,7 @@ const projectPath = '/farm-stand/'
 async function openShop(page: import('@playwright/test').Page) {
   await page.goto(`${projectPath}#shop`)
   await page.locator('#shop').scrollIntoViewIfNeeded()
-  await expect(page.getByRole('heading', { name: 'A small shop with the details already worked out.' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Shop the stand.' })).toBeVisible()
 }
 
 async function addProduct(page: import('@playwright/test').Page, productId: string) {
@@ -61,7 +61,7 @@ test('hero transition keeps hidden controls inert and preserves selection', asyn
 
 test('catalogue filters, unavailable state, multi-item basket, quantities, totals, collection, remove and reset work', async ({ page }) => {
   await openShop(page)
-  await page.getByRole('button', { name: 'Eggs & farm goods' }).click()
+  await page.getByRole('button', { name: 'Farm goods' }).click()
   await addProduct(page, 'eggs')
   await page.getByRole('button', { name: 'Produce', exact: true }).click()
   await addProduct(page, 'apple')
@@ -102,9 +102,55 @@ test('product details support keyboard opening, Escape, and focus return', async
   await expect(trigger).toBeFocused()
 })
 
+test('direct portrait shop entry shows one complete product presentation', async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.includes('portrait'), 'Portrait-specific composition target')
+  await page.goto(`${projectPath}#shop`, { waitUntil: 'networkidle' })
+  const card = page.locator('#product-apple')
+  await expect(page.getByRole('heading', { name: 'Shop the stand.' })).toBeVisible()
+  await expect(card.getByRole('img', { name: /red apple rendered/i })).toBeVisible()
+  await expect(card.getByRole('heading', { name: 'Orchard apples' })).toBeVisible()
+  await expect(card.getByText('example 1.5 kg bag', { exact: true })).toBeVisible()
+  await expect(card.getByText('$6.50')).toBeVisible()
+  await expect(card.getByRole('button', { name: 'Add to basket' })).toBeVisible()
+  const bounds = await card.evaluate((node) => node.getBoundingClientRect())
+  expect(bounds.top).toBeGreaterThanOrEqual(0)
+  expect(bounds.bottom).toBeLessThanOrEqual(844)
+})
+
+test('add from product details gives feedback and direct basket access', async ({ page }) => {
+  await openShop(page)
+  await page.locator('#product-apple').getByRole('button', { name: 'View details' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Orchard apples' })
+  await dialog.getByRole('button', { name: 'Add to basket' }).click()
+  await expect(dialog.getByText('Added to the demonstration basket. Nothing has been ordered.')).toBeVisible()
+  await dialog.getByRole('button', { name: 'Review basket' }).click()
+  await expect(page.getByRole('dialog', { name: 'Review the example collection.' })).toContainText('Orchard apples')
+})
+
+test('add feedback reports the quantity ceiling without inflating basket count', async ({ page }) => {
+  await openShop(page)
+  const add = page.locator('#product-apple').getByRole('button', { name: 'Add to basket' })
+  for (let index = 0; index < 13; index += 1) await add.click()
+  await expect(page.getByRole('button', { name: /Basket/ }).first()).toContainText('12')
+  await expect(page.getByLabel('Basket update', { exact: true })).toContainText('already at the demonstration maximum of 12')
+})
+
+test('product details stay usable while their image is delayed', async ({ page }) => {
+  await page.route('**/media/catalogue/apple.avif', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    await route.continue()
+  })
+  await page.goto(`${projectPath}#shop`, { waitUntil: 'domcontentloaded' })
+  await page.locator('#product-apple').getByRole('button', { name: 'View details' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Orchard apples' })
+  await expect(dialog.getByText('$6.50 CAD')).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Add to basket' })).toBeVisible()
+  await expect(dialog.getByRole('img', { name: /red apple rendered/i })).toBeVisible()
+})
+
 test('basket survives navigation, resizing, hero selection and farm-life switching', async ({ page }) => {
   await openShop(page)
-  await page.getByRole('button', { name: 'Eggs & farm goods' }).click()
+  await page.getByRole('button', { name: 'Farm goods' }).click()
   await addProduct(page, 'eggs')
   await page.locator('#farm-life').scrollIntoViewIfNeeded()
   await page.getByRole('tab', { name: 'Cattle' }).click()
@@ -119,7 +165,20 @@ test('basket survives navigation, resizing, hero selection and farm-life switchi
   await page.locator('.stand-transition').getByText('Yellow onions', { exact: true }).click()
   await page.locator('#shop').scrollIntoViewIfNeeded()
   await page.getByRole('button', { name: /Basket/ }).first().click()
-  await expect(page.getByRole('dialog', { name: 'Review the example collection.' })).toContainText('Egg basket')
+  await expect(page.getByRole('dialog', { name: 'Review the example collection.' })).toContainText('Dozen eggs')
+})
+
+test('animal contextual action reveals a filtered product and preserves basket state', async ({ page }) => {
+  await openShop(page)
+  await page.getByRole('button', { name: 'Boxes' }).click()
+  await addProduct(page, 'harvest-box')
+  await page.locator('#farm-life').scrollIntoViewIfNeeded()
+  await page.getByRole('link', { name: 'View eggs' }).click()
+  await expect(page).toHaveURL(/#product-eggs$/)
+  await expect(page.getByRole('button', { name: 'Farm goods' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('#product-eggs')).toBeVisible()
+  await expect(page.locator('#product-eggs')).toBeFocused()
+  await expect(page.getByRole('button', { name: /Basket/ }).first()).toContainText('1')
 })
 
 test('farm-life selectors change image and related content without rotation', async ({ page }) => {
@@ -133,6 +192,20 @@ test('farm-life selectors change image and related content without rotation', as
   await expect(page.getByRole('link', { name: /See what this layout demonstrates/ })).toHaveAttribute('href', '#website')
 })
 
+test('rapid farm-life switching keeps the latest content with delayed images', async ({ page }) => {
+  await page.route('**/media/farm-life/**', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 120))
+    await route.continue()
+  })
+  await page.goto(`${projectPath}#farm-life`)
+  await page.getByRole('tab', { name: 'Cattle' }).click()
+  await page.getByRole('tab', { name: 'Sheep' }).click()
+  await page.getByRole('tab', { name: 'Hens' }).click()
+  await expect(page.getByRole('heading', { name: 'Hens', exact: true })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Hens' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByAltText(/brown hens gathered behind a farm gate/i)).toBeVisible()
+})
+
 test('visit, service, and contact remain fictional and send nothing', async ({ page }) => {
   const nonGetRequests: string[] = []
   page.on('request', (request) => {
@@ -143,6 +216,11 @@ test('visit, service, and contact remain fictional and send nothing', async ({ p
   await expect(page.getByText('No address or geographic directions are configured.')).toBeVisible()
   await page.locator('#website').scrollIntoViewIfNeeded()
   await expect(page.getByRole('heading', { name: 'A website built around how your business works.' })).toBeVisible()
+  await page.getByLabel('Opens').fill('10:30')
+  await expect(page.locator('.try-update__preview')).toContainText('10:30 am–1:00 pm')
+  await expect(page.locator('.try-update__preview')).toContainText('nothing is saved or published')
+  await page.getByRole('button', { name: 'Reset sample' }).click()
+  await expect(page.locator('.try-update__preview')).toContainText('9:00 am–1:00 pm')
   await page.locator('#contact').scrollIntoViewIfNeeded()
   await expect(page.getByText(/service contact destination.*remain intentionally unconfigured/i)).toBeVisible()
   await page.getByLabel('What should your website make easier?').fill('Show produce and collection details clearly.')
@@ -203,6 +281,7 @@ test('broken product and animal images show useful fallbacks', async ({ page }) 
   await page.route('**/media/catalogue/**', (route) => route.abort())
   await page.route('**/media/farm-life/**', (route) => route.abort())
   await openShop(page)
+  await page.locator('#product-carrots').scrollIntoViewIfNeeded()
   await expect(page.getByRole('img', { name: /Carrot bunches image unavailable/ })).toBeVisible()
   await addProduct(page, 'carrots')
   await page.locator('#farm-life').scrollIntoViewIfNeeded()

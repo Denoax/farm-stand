@@ -63,17 +63,17 @@
   "project_derivatives": [
     {
       "id": "catalogue_apple_render",
-      "source": "Existing project WebGL hero scene using the retained CC0 Poly Haven apple model and project-generated background",
+      "source": "Retained CC0 Poly Haven apple model rendered specifically for the catalogue",
       "derivative_path": "public/media/catalogue/apple.avif",
-      "derivative_sha256": "05b07d1abb15f440634c02b7ff6eeaa5c68b116e673413555158acc9bb5cbf24",
-      "transformation": "Captured without interface overlays, cropped to the apple-and-crate composition, resized to 960 by 640, and AVIF-encoded with FFmpeg."
+      "derivative_sha256": "8685c3846c79cf2a6ed8d08a8e8a2e4f910d6a56d0ef734b55ea7fbfc9abf4c2",
+      "transformation": "Rendered at 1200 by 800 with a neutral green backdrop, warm wooden ground, authored catalogue lighting and contact shadow; resized to 960 by 640 and AVIF-encoded with FFmpeg."
     },
     {
       "id": "catalogue_onion_render",
-      "source": "Existing project WebGL hero scene using the retained CC0 Poly Haven onion model and project-generated background",
+      "source": "Retained CC0 Poly Haven onion model rendered specifically for the catalogue",
       "derivative_path": "public/media/catalogue/onion.avif",
-      "derivative_sha256": "41b27e23477c6f5547109b71b3999d6ba8e54877454a02b9d6ca359d38ff4bef",
-      "transformation": "Captured without interface overlays, cropped to the onion-and-crate composition, resized to 960 by 640, and AVIF-encoded with FFmpeg."
+      "derivative_sha256": "564cf654baeb64155cbed00f76534b126c45b67f109c3a51280aae06d3efab92",
+      "transformation": "Rendered at 1200 by 800 with a neutral green backdrop, warm wooden ground, authored catalogue lighting and contact shadow; resized to 960 by 640 and AVIF-encoded with FFmpeg."
     }
   ],
   "photography": [
