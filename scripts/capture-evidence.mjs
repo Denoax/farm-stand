@@ -55,7 +55,10 @@ async function reveal(page, selector) {
   await reveal(page, '#shop')
   await shot(page, 'v2-desktop-shop.png')
   await page.locator('#product-eggs').getByRole('button', { name: 'View details' }).click()
-  await page.locator('.product-dialog img').evaluate((image) => image.complete || new Promise((resolve) => image.addEventListener('load', resolve, { once: true })))
+  await page.locator('.product-dialog img').evaluate(async (image) => {
+    if (!image.complete) await new Promise((resolve) => image.addEventListener('load', resolve, { once: true }))
+    await image.decode()
+  })
   await shot(page, 'v2-desktop-product-detail.png')
   await page.getByRole('button', { name: 'Close product details' }).click()
   await page.locator('#product-eggs').getByRole('button', { name: 'Add to basket' }).click()

@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "reviewed_at": "2026-09-25",
+  "branch": "farm-stand-v2",
+  "integrated_website_commit": "5e339ceecb7a6e11c44afc827e70da4b5d7df0d6",
+  "base_main_commit": "893a48cacaf9d44ff995053d4334e5be8804c774",
+  "preview": {
+    "command": "npm run preview -- --host 127.0.0.1",
+    "url": "http://127.0.0.1:4173/farm-stand/"
+  },
+  "scope_status": "integrated_local_build_complete",
+  "remote_changes": false,
+  "tests": {
+    "build": "passed_with_vite_chunk_size_warning",
+    "playwright_chromium": {
+      "passed": 28,
+      "failed": 0,
+      "projects": ["desktop-chromium", "portrait-chromium"]
+    },
+    "unavailable_or_unperformed": ["Firefox", "WebKit", "physical devices", "hardware GPU", "screen reader", "human usability study"]
+  },
+  "runtime": {
+    "console_errors": 0,
+    "page_errors": 0,
+    "failed_requests": 0,
+    "initial_requests": 19,
+    "initial_encoded_bytes": 2793186,
+    "initial_below_fold_media_requests": 0,
+    "full_visit_requests": 29,
+    "full_visit_encoded_bytes": 3415399,
+    "cumulative_layout_shift": 0.014299445760593492,
+    "hero_paused_without_new_renders": true,
+    "hero_resumed_with_current_scene": true,
+    "renderer_classification": "software"
+  },
+  "evidence": {
+    "desktop": [
+      "evidence/v2-desktop-hero.png",
+      "evidence/v2-desktop-transition.png",
+      "evidence/v2-desktop-shop.png",
+      "evidence/v2-desktop-product-detail.png",
+      "evidence/v2-desktop-basket.png",
+      "evidence/v2-desktop-collection.png",
+      "evidence/v2-desktop-farm-life.png",
+      "evidence/v2-desktop-visit.png",
+      "evidence/v2-desktop-service.png",
+      "evidence/v2-desktop-contact.png"
+    ],
+    "portrait": [
+      "evidence/v2-portrait-hero.png",
+      "evidence/v2-portrait-shop.png",
+      "evidence/v2-portrait-basket.png",
+      "evidence/v2-portrait-farm-life.png"
+    ],
+    "before": ["evidence/v2-hero-before-desktop.png", "evidence/v2-hero-before-portrait.png"],
+    "reduced_motion": "evidence/v2-reduced-motion-flow.png",
+    "recording": "evidence/v2-end-to-end.webm",
+    "runtime": ["evidence/capture-runtime-v2.json", "evidence/production-measurements-v2.json"]
+  },
+  "remaining_high_impact": [
+    "Business identity, destination, commercial scope, pricing, support, backend, and real integrations are unconfigured.",
+    "Demonstration photographs are not authenticated client or property imagery.",
+    "Firefox, WebKit, physical-device, screen-reader, and hardware-GPU behavior is unverified.",
+    "The 615.02 kB raw lazy Three.js chunk retains Vite's generic chunk warning.",
+    "Visual and editorial choices require human approval; captures are not an approved baseline."
+  ]
+}
