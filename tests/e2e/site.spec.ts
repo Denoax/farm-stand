@@ -186,6 +186,7 @@ test('shutter is monotonic, the apple roll is distance-coupled, and the frame st
   const stage = page.locator('.hero-stage')
   const scene = page.getByTestId('scene-host')
   await expect(stage).toHaveClass(/hero-stage--ready/)
+  const initialTravel = Number(await scene.getAttribute('data-apple-travel'))
   await dispatchWheel(page, 24)
   await expect(stage).toHaveAttribute('data-opening-state', 'playing')
   const counterY = await scene.getAttribute('data-counter-y')
@@ -198,15 +199,14 @@ test('shutter is monotonic, the apple roll is distance-coupled, and the frame st
   }
   expect(Number(await scene.getAttribute('data-apple-roll'))).toBeGreaterThanOrEqual(.1)
   expect(shutterSamples.every((value, index) => index === 0 || value >= shutterSamples[index - 1] - .001)).toBe(true)
-  const firstTravel = Number(await scene.getAttribute('data-apple-travel'))
   await expect.poll(async () => Number(await scene.getAttribute('data-apple-roll')), { timeout: 3500 }).toBeGreaterThan(.9)
   const roll = await scene.evaluate((element) => ({
     travel: Number(element.getAttribute('data-apple-travel')),
     rotation: Number(element.getAttribute('data-apple-rotation')),
     radius: Number(element.getAttribute('data-apple-effective-radius')),
   }))
-  expect(firstTravel).toBeGreaterThan(0)
-  expect(roll.travel).toBeGreaterThan(firstTravel)
+  expect(initialTravel).toBe(0)
+  expect(roll.travel).toBeGreaterThan(initialTravel)
   expect(roll.rotation * roll.radius).toBeCloseTo(roll.travel, 3)
   expect(Number(await scene.getAttribute('data-shutter-lift'))).toBeGreaterThan(.99)
   await page.keyboard.press('Escape')
