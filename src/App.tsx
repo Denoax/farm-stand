@@ -278,7 +278,7 @@ export function App() {
   }, [openingState, settleOpening])
 
   return (
-    <div data-opening-state={openingState} data-opening-content={openingContentState} data-scroll-hold={introHoldActive ? 'active' : 'released'} data-motion-paused={openingState === 'paused' ? 'true' : 'false'}>
+    <div data-opening-state={openingState} data-opening-content={openingContentState} data-scroll-hold={introHoldActive ? 'active' : 'released'} data-scroll-hold-deadline-ms={introHoldDuration} data-motion-paused={openingState === 'paused' ? 'true' : 'false'}>
       <a className="skip-link" href="#main">Skip to the main content</a>
       <header className="site-header">
         <a className="wordmark" href="#top" aria-label="Farm stand website demonstration, home">
@@ -301,6 +301,7 @@ export function App() {
           data-opening-state={openingState}
           data-opening-content={openingContentState}
           data-scroll-hold={introHoldActive ? 'active' : 'released'}
+          data-scroll-hold-deadline-ms={introHoldDuration}
         >
           <div className="hero-sticky">
             <picture className="market-opening__plate" aria-hidden="true">

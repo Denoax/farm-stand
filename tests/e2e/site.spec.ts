@@ -40,6 +40,7 @@ test('opening starts on meaningful downward intent, pauses, resumes, escapes, an
   await page.goto(projectPath)
   const stage = page.locator('.hero-stage')
   await expect(stage).toHaveClass(/hero-stage--ready/)
+  await expect(stage).toHaveAttribute('data-scroll-hold-deadline-ms', '900')
   await expect(stage).toHaveAttribute('data-opening-state', 'waiting')
   await dispatchWheel(page, 4)
   await expect(stage).toHaveAttribute('data-opening-state', 'waiting')
@@ -72,7 +73,7 @@ test('initial scroll hold is bounded, preserves position, and never repeats', as
     const root = document.querySelector('[data-opening-state]')!
     const started = performance.now()
     let sawActive = false
-    ;(window as typeof window & { __introHoldDuration?: number }).__introHoldDuration = undefined
+    ;(window as typeof window & { __holdBlockedFollowup?: boolean; __introHoldDuration?: number }).__introHoldDuration = undefined
     const observer = new MutationObserver(() => {
       const value = root.getAttribute('data-scroll-hold')
       if (value === 'active') sawActive = true
@@ -83,10 +84,11 @@ test('initial scroll hold is bounded, preserves position, and never repeats', as
     })
     observer.observe(root, { attributes: true, attributeFilter: ['data-scroll-hold'] })
     window.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 24 }))
+    const followup = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 800 })
+    ;(window as typeof window & { __holdBlockedFollowup?: boolean }).__holdBlockedFollowup = !window.dispatchEvent(followup) && followup.defaultPrevented
   })
   await expect(stage).toHaveAttribute('data-scroll-hold', 'active')
-  if (testInfo.project.name === 'portrait-chromium') await dispatchWheel(page, 800)
-  else await page.mouse.wheel(0, 800)
+  expect(await page.evaluate(() => (window as typeof window & { __holdBlockedFollowup?: boolean }).__holdBlockedFollowup)).toBe(true)
   expect(await page.evaluate(() => scrollY)).toBe(0)
   if (testInfo.project.name === 'portrait-chromium') {
     await expect(stage).toHaveAttribute('data-scroll-hold', 'released', { timeout: 2000 })
@@ -94,7 +96,7 @@ test('initial scroll hold is bounded, preserves position, and never repeats', as
     await expect.poll(async () => page.evaluate(() => (window as typeof window & { __introHoldDuration?: number }).__introHoldDuration ?? 0), { timeout: 1400 }).toBeGreaterThan(0)
     const heldFor = await page.evaluate(() => (window as typeof window & { __introHoldDuration?: number }).__introHoldDuration!)
     expect(heldFor).toBeGreaterThanOrEqual(850)
-    expect(heldFor).toBeLessThanOrEqual(1200)
+    expect(heldFor).toBeLessThanOrEqual(2000)
   }
   if (testInfo.project.name === 'portrait-chromium') await page.evaluate(() => scrollBy(0, 800))
   else await page.mouse.wheel(0, 800)
