@@ -13,7 +13,7 @@ const FarmScene = lazy(() => import('./components/FarmScene').then((module) => (
 const publicAsset = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`
 
 type SceneState = 'loading' | 'ready' | 'fallback'
-type OpeningState = 'waiting' | 'playing' | 'paused' | 'open' | 'fallback'
+type OpeningState = 'waiting' | 'playing' | 'open' | 'fallback'
 type OpeningContentState = 'initial' | 'opening' | 'settled' | 'reintroduced' | 'complete'
 
 const openingStorageKey = 'farm-stand-market-opening-v2'
@@ -96,7 +96,7 @@ export function App() {
     stage.dataset.presentedProgress = value
     stage.dataset.shot = shot
     document.documentElement.style.setProperty('--stage-progress', value)
-    if (openingStateRef.current === 'playing' || openingStateRef.current === 'paused') {
+    if (openingStateRef.current === 'playing') {
       setOpeningContentState((current) => {
         const next = contentStateAtProgress(progress)
         return current === next ? current : next
@@ -190,7 +190,7 @@ export function App() {
       }
     }
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && (openingStateRef.current === 'playing' || openingStateRef.current === 'paused')) {
+      if (event.key === 'Escape' && openingStateRef.current === 'playing') {
         settleOpening()
         return
       }
@@ -214,7 +214,7 @@ export function App() {
       const target = event.target instanceof Element ? event.target.closest('a[href^="#"], button') : null
       if (!target) return
       releaseIntroHold()
-      if (target.matches('a[href^="#"]') && (openingStateRef.current === 'playing' || openingStateRef.current === 'paused')) settleOpening()
+      if (target.matches('a[href^="#"]') && openingStateRef.current === 'playing') settleOpening()
     }
 
     if (openingStateRef.current === 'open') present()
@@ -227,7 +227,7 @@ export function App() {
     document.addEventListener('visibilitychange', onVisibility)
     reducedMotion.addEventListener('change', onPreference)
     const observer = new IntersectionObserver(([entry]) => {
-      if (entry.intersectionRatio < .02 && (openingStateRef.current === 'playing' || openingStateRef.current === 'paused')) settleOpening()
+      if (entry.intersectionRatio < .02 && openingStateRef.current === 'playing') settleOpening()
     }, { threshold: .02 })
     observer.observe(stage)
     return () => {
@@ -278,7 +278,7 @@ export function App() {
   }, [openingState, settleOpening])
 
   return (
-    <div data-opening-state={openingState} data-opening-content={openingContentState} data-scroll-hold={introHoldActive ? 'active' : 'released'} data-scroll-hold-deadline-ms={introHoldDuration} data-motion-paused={openingState === 'paused' ? 'true' : 'false'}>
+    <div data-opening-state={openingState} data-opening-content={openingContentState} data-scroll-hold={introHoldActive ? 'active' : 'released'} data-scroll-hold-deadline-ms={introHoldDuration}>
       <a className="skip-link" href="#main">Skip to the main content</a>
       <header className="site-header">
         <a className="wordmark" href="#top" aria-label="Farm stand website demonstration, home">
@@ -313,12 +313,16 @@ export function App() {
                 <source media="(max-width: 760px)" srcSet={publicAsset('media/market-opening-poster-portrait.avif')} />
                 <img src={publicAsset('media/market-opening-poster-desktop.avif')} alt="" />
               </picture>
+              <picture className="settled-poster" aria-hidden="true">
+                <source media="(max-width: 760px)" srcSet={publicAsset('media/market-opening-settled-portrait.avif')} />
+                <img src={publicAsset('media/market-opening-settled-desktop.avif')} alt="" />
+              </picture>
               <Suspense fallback={null}>
-                <FarmScene progressRef={progressRef} motionPaused={openingState === 'paused'} onStateChange={onSceneState} onPresented={onPresented} />
+                <FarmScene progressRef={progressRef} onStateChange={onSceneState} onPresented={onPresented} />
               </Suspense>
               <div className="scene-vignette" aria-hidden="true" />
               <p className="scene-status" aria-live="polite">
-                {sceneState === 'loading' ? 'Preparing the farm stand…' : sceneState === 'fallback' ? 'Static farm stand view' : openingState === 'playing' ? 'The market is opening…' : openingState === 'paused' ? 'Opening paused' : ''}
+                {sceneState === 'loading' ? 'Preparing the farm stand…' : sceneState === 'fallback' ? 'Static farm stand view' : openingState === 'playing' ? 'The market is opening…' : ''}
               </p>
             </div>
             <div className="hero-copy" aria-hidden={openingContentState === 'opening' || openingContentState === 'settled'} inert={openingContentState === 'opening' || openingContentState === 'settled' ? true : undefined}>
@@ -339,9 +343,6 @@ export function App() {
             </nav>
             <div className="market-opening__progress" aria-hidden="true">
               <span>Morning light</span><i /><span>Open stand</span>
-            </div>
-            <div className="market-opening__controls">
-              {(openingState === 'playing' || openingState === 'paused') && <button className="market-opening__motion" type="button" aria-pressed={openingState === 'paused'} onClick={() => { releaseIntroHold(); setOpeningState((state) => state === 'playing' ? 'paused' : 'playing') }}>{openingState === 'paused' ? 'Resume opening' : 'Pause opening'}</button>}
             </div>
             {openingState === 'waiting' && <div className="scroll-cue" aria-hidden="true"><span /> Scroll to open the stand</div>}
           </div>

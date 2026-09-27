@@ -29,6 +29,7 @@ test('project-path build loads the opening and keeps entrance links usable', asy
   await expect(page.locator('.wordmark .logo-mark')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Open the stand' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Skip opening' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /Pause opening|Resume opening/ })).toHaveCount(0)
   await expect(page.getByRole('navigation', { name: /straight to/i }).getByRole('link')).toHaveCount(4)
   await expect(page.getByRole('link', { name: 'Shop' }).last()).toHaveAttribute('href', '#shop')
   const resources = await page.evaluate(() => performance.getEntriesByType('resource').map((entry) => new URL(entry.name).pathname))
@@ -36,7 +37,7 @@ test('project-path build loads the opening and keeps entrance links usable', asy
   expect(failedResponses).toEqual([])
 })
 
-test('opening starts on meaningful downward intent, pauses, resumes, escapes, and stays complete', async ({ page }) => {
+test('opening starts on meaningful downward intent, fades during the hold, escapes, and stays complete', async ({ page }) => {
   await page.goto(projectPath)
   const stage = page.locator('.hero-stage')
   await expect(stage).toHaveClass(/hero-stage--ready/)
@@ -44,18 +45,28 @@ test('opening starts on meaningful downward intent, pauses, resumes, escapes, an
   await expect(stage).toHaveAttribute('data-opening-state', 'waiting')
   await dispatchWheel(page, 4)
   await expect(stage).toHaveAttribute('data-opening-state', 'waiting')
-  await dispatchWheel(page, 20)
+  const fadeSamples = await page.evaluate(async () => {
+    window.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 20 }))
+    const stage = document.querySelector('.hero-stage')
+    const copy = document.querySelector('.hero-copy')
+    while (stage?.getAttribute('data-opening-state') !== 'playing') await new Promise(requestAnimationFrame)
+    const samples: Array<{ opacity: number, hold: string | null }> = []
+    for (let index = 0; index < 6; index += 1) {
+      samples.push({
+        opacity: Number(copy ? getComputedStyle(copy).opacity : 0),
+        hold: stage?.getAttribute('data-scroll-hold') ?? null,
+      })
+      await new Promise((resolve) => setTimeout(resolve, 120))
+    }
+    return samples
+  })
   await expect(stage).toHaveAttribute('data-opening-state', 'playing')
+  expect(fadeSamples[0].hold).toBe('active')
+  expect(fadeSamples[0].opacity).toBeGreaterThan(.9)
+  expect(fadeSamples.some(({ opacity }) => opacity > .05 && opacity < .95)).toBe(true)
+  expect(fadeSamples.at(-1)?.opacity).toBeLessThan(fadeSamples[1].opacity)
   await expect.poll(async () => Number(await stage.getAttribute('data-requested-progress'))).toBeGreaterThan(.01)
-  await page.getByRole('button', { name: 'Pause opening' }).click()
-  await expect(stage).toHaveAttribute('data-opening-state', 'paused')
-  await expect(stage).toHaveAttribute('data-scroll-hold', 'released')
-  const paused = Number(await stage.getAttribute('data-requested-progress'))
-  await page.mouse.wheel(0, -200)
-  await page.waitForTimeout(250)
-  expect(Number(await stage.getAttribute('data-requested-progress'))).toBeCloseTo(paused, 2)
-  await page.getByRole('button', { name: 'Resume opening' }).click()
-  await expect(stage).toHaveAttribute('data-opening-state', 'playing')
+  await expect(page.getByRole('button', { name: /Pause opening|Resume opening/ })).toHaveCount(0)
   await page.keyboard.press('Escape')
   await expect(stage).toHaveAttribute('data-opening-state', 'open')
   await expect(stage).toHaveAttribute('data-requested-progress', '1.0000')
@@ -154,7 +165,7 @@ test('hidden-tab lifecycle releases the hold and excludes hidden time from the c
   expect(after - before).toBeLessThan(.12)
 })
 
-test('opening pieces are monotonic and exit in the assigned order', async ({ page }) => {
+test('shutter is monotonic, the apple roll is distance-coupled, and the frame stays permanent', async ({ page }) => {
   test.slow()
   await page.goto(projectPath)
   const stage = page.locator('.hero-stage')
@@ -162,20 +173,31 @@ test('opening pieces are monotonic and exit in the assigned order', async ({ pag
   await expect(stage).toHaveClass(/hero-stage--ready/)
   await dispatchWheel(page, 24)
   await expect(stage).toHaveAttribute('data-opening-state', 'playing')
+  const counterY = await scene.getAttribute('data-counter-y')
+  await expect(scene).toHaveAttribute('data-frame', 'permanent')
+  await expect(scene).not.toHaveAttribute('data-table-exit', /.+/)
   const shutterSamples: number[] = []
-  for (let index = 0; index < 40 && Number(await scene.getAttribute('data-apple-exit')) < .1; index += 1) {
+  for (let index = 0; index < 40 && Number(await scene.getAttribute('data-apple-roll')) < .1; index += 1) {
     shutterSamples.push(Number(await scene.getAttribute('data-shutter-lift')))
     await page.waitForTimeout(120)
   }
-  expect(Number(await scene.getAttribute('data-apple-exit'))).toBeGreaterThanOrEqual(.1)
+  expect(Number(await scene.getAttribute('data-apple-roll'))).toBeGreaterThanOrEqual(.1)
   expect(shutterSamples.every((value, index) => index === 0 || value >= shutterSamples[index - 1] - .001)).toBe(true)
-  await expect.poll(async () => Number(await scene.getAttribute('data-apple-exit')), { timeout: 3000 }).toBeGreaterThan(.9)
-  await expect.poll(async () => Number(await scene.getAttribute('data-table-exit')), { timeout: 2500 }).toBeGreaterThan(.1)
-  expect(Number(await scene.getAttribute('data-apple-exit'))).toBeGreaterThan(.98)
+  const firstTravel = Number(await scene.getAttribute('data-apple-travel'))
+  await expect.poll(async () => Number(await scene.getAttribute('data-apple-roll')), { timeout: 3500 }).toBeGreaterThan(.9)
+  const roll = await scene.evaluate((element) => ({
+    travel: Number(element.getAttribute('data-apple-travel')),
+    rotation: Number(element.getAttribute('data-apple-rotation')),
+    radius: Number(element.getAttribute('data-apple-effective-radius')),
+  }))
+  expect(firstTravel).toBeGreaterThan(0)
+  expect(roll.travel).toBeGreaterThan(firstTravel)
+  expect(roll.rotation * roll.radius).toBeCloseTo(roll.travel, 3)
   expect(Number(await scene.getAttribute('data-shutter-lift'))).toBeGreaterThan(.99)
   await expect(stage).toHaveAttribute('data-opening-state', 'open', { timeout: 4000 })
   await expect(stage).toHaveAttribute('data-opening-content', 'complete')
-  expect(Number(await scene.getAttribute('data-table-exit'))).toBeGreaterThan(.99)
+  await expect(scene).toHaveAttribute('data-counter-y', counterY ?? '')
+  await expect(scene).toHaveAttribute('data-frame', 'permanent')
 })
 
 test('direct destination bypasses the opening and reveals non-featured products', async ({ page }) => {

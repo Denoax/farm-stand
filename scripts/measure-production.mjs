@@ -133,9 +133,8 @@ const result = {
   ],
 }
 
-await fs.mkdir(path.resolve('evidence'), { recursive: true })
-await fs.mkdir(path.resolve('evidence/market-expansion/review'), { recursive: true })
-await fs.writeFile(path.resolve('evidence/market-expansion/review/production-measurements.json'), `${JSON.stringify(result, null, 2)}\n`)
+await fs.mkdir(path.resolve('evidence/permanent-frame/review'), { recursive: true })
+await fs.writeFile(path.resolve('evidence/permanent-frame/review/production-measurements.json'), `${JSON.stringify(result, null, 2)}\n`)
 await browser.close()
 console.log(JSON.stringify({
   initial: { ...result.initial, media: { ...result.initial.media, assets: undefined } },

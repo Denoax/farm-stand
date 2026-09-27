@@ -11,7 +11,8 @@
     "measure:motion": "node scripts/measure-motion.mjs",
     "measure:baseline": "node scripts/compare-baseline.mjs",
     "capture:motion": "node scripts/capture-opening-ui-finish.mjs",
-    "capture:finish": "node scripts/capture-opening-ui-finish.mjs",
+    "capture:finish": "node scripts/capture-permanent-frame.mjs",
+    "capture:frame-guides": "node scripts/capture-frame-guides.mjs",
     "capture:v24": "node scripts/capture-v24-evidence.mjs",
     "test:e2e": "playwright test",
     "test": "npm run build && npm run test:e2e"

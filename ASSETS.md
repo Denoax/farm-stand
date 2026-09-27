@@ -6,7 +6,12 @@
 - **Yellow Onion** — Kuutti Siitonen, Poly Haven, CC0. Listing: https://polyhaven.com/a/yellow_onion. Downloaded through Poly Haven's asset file endpoint as the 1K glTF set on 25 September 2026. Source files: `assets/source/polyhaven/yellow_onion/`; delivery derivative: `public/models/yellow_onion/`. Geometry is unchanged; 1K colour, OpenGL normal, and ARM JPG maps are retained. Source glTF SHA-256: `0d4aaa4046c5b471ea7f9197c453f3d48699bc85e06fd13606c8ea09a1dce699`.
 - Provider licence evidence: https://polyhaven.com/license. Asset downloads are CC0; provider example renders, logo, and site content were not copied.
 
-The models are normalized at runtime to a shared authored scale, receive/cast contact shadows, and use their supplied maps. The crate is original Three.js box geometry. Its small local colour texture (`public/media/crate-wood.webp`) is a crop/resize derivative of the project-generated foreground surface so its wood and light remain coherent with the plate; no external texture was introduced.
+The retained apple is normalized at runtime, casts and receives real shadows, and uses its supplied maps. Its support envelope is sampled from the actual mesh so its short translation and rotation remain coupled on the counter.
+
+## Permanent timber material
+
+- **Rough Wood** — Rob Tuytel, Poly Haven, CC0. Listing: https://polyhaven.com/a/rough_wood; provider licence: https://polyhaven.com/license. The 2K diffuse, OpenGL normal, and roughness JPG maps were acquired on 27 September 2026 and retained under `assets/source/polyhaven/rough_wood/`.
+- Three single-board crops were made from each source map, then delivered in horizontal 1024×128 and vertical 128×1024 orientations under `public/media/materials/`. The implementation maps one continuous grain direction along each structural member, uses non-colour handling for normal/roughness data, and combines the maps with authored rough end caps. The crops deliberately exclude the photographed gaps between original boards so no plank carries a false joint. Exact source and derivative hashes are in `assets/manifest.json`.
 
 ## Farm setting
 
@@ -16,9 +21,9 @@ The models are normalized at runtime to a shared authored scale, receive/cast co
 
 ## Treatment A market opening
 
-- **Open stand plates** — project-original edits made with OpenAI's built-in image editing tool on 26 September 2026, using the retained farm-setting plate as the camera, shelter, counter, landscape, and light reference. The desktop and deliberately recomposed portrait masters add one coherent right-side arrangement of onions, potatoes, carrots, squash, eggs, and linen while reserving the left counter for the live CC0 apple. Exact production requests are retained in `assets/source/generated/PROMPT.md`; source and derivative hashes are in `assets/manifest.json`. Delivery files are `public/media/market-opening-open-desktop.avif` and `market-opening-open-portrait.avif`.
-- **First-paint posters** — deterministic captures of the revised implemented starting state at 1536×1024 and 640×960 with interface copy and controls suppressed. They contain the actual timber shutter, fixed rails, removable display table, calculated apple cast/contact shadow, lighting, and retained CC0 apple used by the live scene. They were AVIF-encoded as `public/media/market-opening-poster-desktop.avif` and `market-opening-poster-portrait.avif`, preventing a different composition from appearing while Three.js and the apple model load.
-- **Runtime source reuse** — the apple remains Oliver Harries's CC0 Poly Haven model; the wood map remains the existing project-generated `crate-wood.webp` crop. The monotonic shutter, fixed rails, removable display table, lighting, camera, and shot evaluator are original project code and Three.js primitives. The former close-passage assembly and fake oval shadow are no longer rendered. No third-party treatment code or reference-site media was copied.
+- **Registered rear plates** — project-original edits made with OpenAI's built-in image generation capability on 27 September 2026. The accepted prior desktop/portrait set and actual captured production guides were supplied as references. The selected desktop result removes all foreground frame/counter duplication and leaves a blank attached wall for real HTML photos; the portrait result deliberately recomposes that same world and shifts its wall to the verified phone attachment region. Exact prompts, selected generation paths, retained master hashes, and derivative hashes are recorded in `assets/source/generated/PROMPT.md` and `assets/manifest.json`. Delivery files are `public/media/market-opening-open-desktop.avif` and `market-opening-open-portrait.avif`.
+- **First-paint and settled posters** — deterministic captures at 1536×1024 and 640×960 with interface layers suppressed. They contain the same permanent frame, shutter, counter, real mesh-supported apple, lighting, camera, material maps, and registered rear plate used at runtime. First-paint captures are `public/media/market-opening-poster-*.avif`; complete fallbacks are `public/media/market-opening-settled-*.avif`. They prevent unrelated, empty, or mismatched imagery during loading, failure, direct-link, and reduced-motion paths.
+- **Runtime source reuse** — the apple remains Oliver Harries's CC0 Poly Haven model. The timber now uses Rob Tuytel's CC0 Rough Wood maps instead of the old project crop. The permanent frame, shutter, fixed rails, coupled apple roll, lighting, camera, and shot evaluator are original project code and Three.js primitives. The former close-passage assembly, removable display table, and fake oval shadow are no longer rendered. No third-party treatment code or reference-site media was copied.
 
 ## Fonts
 
@@ -40,7 +45,7 @@ The v2 expansion uses locally delivered derivatives of Pexels photographs under 
 - Catalogue: carrots by Joao Teles; potatoes by Ellie Burgin; squash by MART PRODUCTION; eggs by Sophia Martin; produce crate by Snappr.
 - Farm life: hens by Eline Spee; cattle by Alina Vilchenko; sheep by cottonbro studio.
 - Apple and onion catalogue images are dedicated 960×640 renders of the retained CC0 models, made with a neutral green backdrop, warm wooden ground, catalogue lighting, and contact shadows. They are independent of the hero composition; exact derivative hashes are in the manifest.
-- `public/media/farm-stand-social.jpg` is a 1200×800 JPEG capture of the completed desktop composition for Open Graph clients. It includes the same master barn mark rendered by the shared Logo component; it is not separate identity artwork.
+- `public/media/farm-stand-social.jpg` is a 1200×630 JPEG capture of the completed permanent-frame composition for Open Graph clients. It includes the same master barn mark rendered by the shared Logo component; it is not separate identity artwork.
 
 ## v2.4 presentation media
 

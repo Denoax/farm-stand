@@ -1,12 +1,11 @@
-export type MarketOpeningShot = 'light' | 'lift' | 'apple-exit' | 'table-exit' | 'settled' | 'reintroduced'
+export type MarketOpeningShot = 'light' | 'lift' | 'apple-roll' | 'settled' | 'reintroduced'
 
 export interface MarketOpeningState {
   progress: number
   shot: MarketOpeningShot
   shutterLift: number
   cameraPullback: number
-  appleExit: number
-  tableExit: number
+  appleRoll: number
   contentReturn: number
 }
 
@@ -23,21 +22,18 @@ export function evaluateMarketOpening(progress: number): MarketOpeningState {
     ? 'light'
     : normalized < 0.5
       ? 'lift'
-      : normalized < 0.64
-        ? 'apple-exit'
-        : normalized < 0.75
-          ? 'table-exit'
-          : normalized < 0.895
-            ? 'settled'
-            : 'reintroduced'
+      : normalized < 0.68
+        ? 'apple-roll'
+        : normalized < 0.895
+          ? 'settled'
+          : 'reintroduced'
 
   return {
     progress: normalized,
     shot,
     shutterLift: interval(normalized, 0.06, 0.47),
     cameraPullback: interval(normalized, 0.08, 0.47),
-    appleExit: interval(normalized, 0.5, 0.63),
-    tableExit: interval(normalized, 0.64, 0.74),
+    appleRoll: interval(normalized, 0.5, 0.68),
     contentReturn: interval(normalized, 0.895, 1),
   }
 }

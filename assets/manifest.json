@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_on": "2026-09-26",
+  "checked_on": "2026-09-27",
   "project_label": "Farm Stand (working label)",
   "media_bundled": true,
   "notice": "Retained model, font, photography, and generated-background media have been downloaded, inspected, and recorded below. Captured evidence is review material, not a user-approved visual baseline.",
@@ -58,42 +58,136 @@
         "delivery sizes",
         "scene lighting and crop"
       ]
+    },
+    {
+      "id": "rough_wood",
+      "role": "permanent stand timber material",
+      "title": "Rough Wood",
+      "creator": "Rob Tuytel",
+      "page": "https://polyhaven.com/a/rough_wood",
+      "license_claim": "CC0 (provider asset listing)",
+      "license_evidence": "https://polyhaven.com/license",
+      "status": "inspected_retained",
+      "acquired_on": "2026-09-27",
+      "local_source_path": "assets/source/polyhaven/rough_wood/",
+      "source_files": [
+        "rough_wood_diff_2k.jpg",
+        "rough_wood_nor_gl_2k.jpg",
+        "rough_wood_rough_2k.jpg"
+      ],
+      "source_sha256": [
+        "0bd2b3195db9b54d55aa0f842801220ec5e1d389f5fc1e670b378bdaca3f8e7b",
+        "b75cb1e989407e442c3255f3e05ea8c40162c0e5dc2efc9ef2515fce61319194",
+        "38343cb062e7fadcda513ded0b17271c9d7f1da56765d03508dc84c8ff1bd475"
+      ],
+      "derivative_path": "public/media/materials/",
+      "inspection_result": "Diffuse, OpenGL normal, and roughness maps were inspected in the permanent frame. Three single-board regions were cropped to exclude photographed joints, oriented along each member, and rendered with non-colour normal/roughness handling."
     }
   ],
   "project_derivatives": [
     {
       "id": "market_opening_open_stand_plates",
-      "source": "Project-original edits made with OpenAI's built-in image editing tool from the retained farm-setting plate; production requests retained in assets/source/generated/PROMPT.md",
+      "source": "Project-original registered rear-world edits made with OpenAI's built-in image generation capability from accepted prior plates plus captured production frame guides; exact prompts retained in assets/source/generated/PROMPT.md",
       "source_sha256": [
-        "07a28fb96c0fc72a2d94a728b457ad57d119ab1577939bf9609d635eafbbab6c",
-        "385374554b73c0198a3e008cd8d06d46c8f0c51ae13ecad871d6f52459a7817c"
+        "5e82f8a8b71911cfdff2605c3cbbe816e55e61095f012ef7b4ac07af3909a9bc",
+        "2d39d01d9cfdd3230675e98fb5bf2f277c43c37df5d0a381d7296da4ed85b353"
       ],
       "derivative_path": [
         "public/media/market-opening-open-desktop.avif",
         "public/media/market-opening-open-portrait.avif"
       ],
       "derivative_sha256": [
-        "299e673d3a8c151610d86e98373bc1e2a63905934ecc9b6f12a9252c0aaa7787",
-        "15165886057bf2f6e9eb91015b9820dbd25264c25d9460d24e5023013bc72423"
+        "20fc53a5076ad96512b9391b1d62d54aa11c365c81c923f6dd7e9ff8e9f2fe9b",
+        "2473f1ac2332e4f9c1a1ea4171a0ab9f7d458e687f70fbbccbfd6057d169369a"
       ],
-      "transformation": "The desktop plate preserves the established farm-setting camera, shelter, counter, landscape, and morning light while adding one physically supported right-side produce arrangement. The portrait plate is a deliberate same-set recomposition, not an automatic crop. Selected PNG masters were inspected at target aspect ratios and still-image AVIF-encoded with FFmpeg at CRF 24."
+      "transformation": "The desktop plate reconstructs only the rear world visible through the captured live aperture, removes duplicate foreground structure, and leaves a blank attached wall for HTML photographs. The portrait plate is a deliberate same-world recomposition with the wall registered to the verified phone attachment region. Selected 1536 by 1024 and 1024 by 1536 PNG masters were inspected with the live frame and still-image AVIF-encoded with FFmpeg."
     },
     {
       "id": "market_opening_first_paint_posters",
       "source": "Deterministic first-frame captures of the implemented timber shutter, rails, counter, lighting, contact shadow, and retained CC0 apple",
       "source_sha256": [
-        "14b9b7a1cd681ca5781d82882d49e61bdee135d2fb16291b519e530a43f8b4f3",
-        "7b7050098d2e21b11d36d8e2e152f225e6494a4ed957d659854809f8c9d19c19"
+        "451fafb5eb552210c8c4094a200867cf3f8ec3ca7bb8392d0f5ad2cf6d2d35d2",
+        "25962aae21a6fec41f1261c02c35fb456f2812494551f205ed848ae0602a638b"
       ],
       "derivative_path": [
         "public/media/market-opening-poster-desktop.avif",
         "public/media/market-opening-poster-portrait.avif"
       ],
       "derivative_sha256": [
-        "fedb1d36a11537d06260cc3e666179ae78eedba45f1d5cb2982453a2f0c710bc",
-        "e2378e0620cc0c2382495becf0f797169e4ea1f11e02f432eb10344bb201e15e"
+        "6d2461c2dd56c70514dcd1834d84e6a4889ee42dc8a3af6d8222e76c54d47044",
+        "e279f2f1ce0dc3cb368dff3fcf62e6324875aca8af24bf97e4b50202cd1090d5"
       ],
-      "transformation": "Captured from the revised local WebGL start state at 1536 by 1024 and 640 by 960 CSS pixels with HTML copy, navigation, controls, status, and basket suppressed; still-image AVIF-encoded with FFmpeg at CRF 24. The revised receiver uses the apple's calculated cast/contact shadow rather than the retired oval graphic. These are loading posters, not independent artwork or review baselines."
+      "transformation": "Captured from the permanent-frame local WebGL start state at 1536 by 1024 and 640 by 960 CSS pixels with HTML interface layers suppressed; still-image AVIF-encoded with FFmpeg at CRF 28. The real apple mesh rests on the permanent receiving counter and casts its calculated shadow. These are loading posters, not independent artwork or review baselines."
+    },
+    {
+      "id": "market_opening_settled_posters",
+      "source": "Deterministic complete-state captures of the implemented permanent frame, registered rear plate, lighting, and camera",
+      "source_sha256": [
+        "08dc491f79cc69fcb72a36e70800edd0842b7c5211a75a6d244698b5d4df6c5c",
+        "20965fbbe47115fc68ef2f0913a69612bd2e350e9499fb5f876f605cd94e20ff"
+      ],
+      "derivative_path": [
+        "public/media/market-opening-settled-desktop.avif",
+        "public/media/market-opening-settled-portrait.avif"
+      ],
+      "derivative_sha256": [
+        "9a98fa0266035efa77ba81205231511eaa3c5c20384b7d52a1ecdd98e525d33a",
+        "f75469adcb9a34a3af66ae355b6b9876fff175f87e998dc2ef4eaff84db2e8a6"
+      ],
+      "transformation": "Captured at 1536 by 1024 and 640 by 960 CSS pixels with interface layers suppressed; still-image AVIF-encoded with FFmpeg at CRF 27. Used for reduced motion, scene failure, and complete-session loading so the aperture never becomes empty or structurally mismatched."
+    },
+    {
+      "id": "permanent_frame_rough_wood_maps",
+      "source": "Rob Tuytel's CC0 Rough Wood diffuse, OpenGL normal, and roughness maps from Poly Haven",
+      "derivative_path": [
+        "public/media/materials/rough-wood-a-diff.jpg",
+        "public/media/materials/rough-wood-a-nor.jpg",
+        "public/media/materials/rough-wood-a-rough.jpg",
+        "public/media/materials/rough-wood-a-vertical-diff.jpg",
+        "public/media/materials/rough-wood-a-vertical-nor.jpg",
+        "public/media/materials/rough-wood-a-vertical-rough.jpg",
+        "public/media/materials/rough-wood-b-diff.jpg",
+        "public/media/materials/rough-wood-b-nor.jpg",
+        "public/media/materials/rough-wood-b-rough.jpg",
+        "public/media/materials/rough-wood-b-vertical-diff.jpg",
+        "public/media/materials/rough-wood-b-vertical-nor.jpg",
+        "public/media/materials/rough-wood-b-vertical-rough.jpg",
+        "public/media/materials/rough-wood-c-diff.jpg",
+        "public/media/materials/rough-wood-c-nor.jpg",
+        "public/media/materials/rough-wood-c-rough.jpg",
+        "public/media/materials/rough-wood-c-vertical-diff.jpg",
+        "public/media/materials/rough-wood-c-vertical-nor.jpg",
+        "public/media/materials/rough-wood-c-vertical-rough.jpg"
+      ],
+      "derivative_sha256": [
+        "b15f33c911e6e97a6e861ec982e7dd5c280c03e2dee20ddefc1db84ec559f890",
+        "7e21f0366258ff3fc941a823c48dd77254364194809dbcbb9d12cfc0ab7f4b0f",
+        "06fce4b9b4973ffbd490c452bee4f1459ea5e48f433e3361c6d37c53d6f86381",
+        "19848f505981d6d37eb6cebb907520d2a00d9684c2de05a80b90fecd52bcf6bf",
+        "1e36f720755a7233d39ff97ec6ebe4d237e89d5d20d03b84c5e8233c35475478",
+        "66734a7420451992ace126a37e42f27b0d5eab5cc689f224e501bb5301425bf0",
+        "e36049247f3ebc02165099ca9d9d4fa8a4922cf16fc9e0d403d6b53b90328150",
+        "12276895b2c598d90cb9e31faa02d528416fed14b0107be12640c6ca88342be8",
+        "474180e9d5b9c54ca34449e50698053bc87cff326206d8766b7f3b3b6742b748",
+        "4e89622361f3f5af09f723a7ae86c9fd1d63d58ed432719bf1708437031ab997",
+        "1c6c3a345116f13185229f12cc3a332e94646dd9c3fb5c18117c7d61fa940030",
+        "25a8bc913d7a77ad58b7259d1679edba0bd5f8b3b482806e1d9062e4fce9c8ca",
+        "f751d93c1b4edeaa9d7704df8c0509c8e64e4ad9f27a73d4f1d07a91d8bac878",
+        "83ab88bd57b6ee8b54f2d62bb13c82a9571c304eb2a04591403eda3d6ca5d589",
+        "40259e7c4ee9b0165e9f64451351115219ec71faccba105921f4f04600613682",
+        "43bb0e997cef93e75439527825df0cec99eefd24a14243ba0e8696ebd8ccd03a",
+        "e3487e489aa43c78478a150e112013d3303ca0fceb592ea33796f7d189c9d90c",
+        "e4535e4e0fa007a4c7359b9858305e2b0ce533ae1b4471de831566472879df5f"
+      ],
+      "transformation": "Three source regions containing uninterrupted single-board grain were cropped from each map, scaled to 1024 by 128 for horizontal members, and transposed/scaled to 128 by 1024 for vertical members. Diffuse maps use sRGB; normal and roughness remain non-colour."
+    },
+    {
+      "id": "farm_stand_social_capture",
+      "source": "Deterministic 1200 by 630 complete-state capture of the implemented permanent-frame hero",
+      "source_sha256": "273b13fee9ea6607b98c58dbd3f048fff69233bb30b9c4a596847ecc054bb5a9",
+      "derivative_path": "public/media/farm-stand-social.jpg",
+      "derivative_sha256": "43d195a1216acfc63977b6e11f9441755b33612577ab53a51092655c489440fb",
+      "transformation": "Captured from the complete local composition and JPEG-encoded with FFmpeg at quality 3 for Open Graph clients."
     },
     {
       "id": "catalogue_apple_render",

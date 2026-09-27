@@ -13,6 +13,7 @@ function summarize(intervals) {
     p95FrameIntervalMs: ordered[Math.floor(ordered.length * .95)],
     maxFrameIntervalMs: ordered.at(-1),
     intervalsOver25Ms: intervals.filter((value) => value > 25).length,
+    intervalsOver50Ms: intervals.filter((value) => value > 50).length,
   }
 }
 
@@ -111,7 +112,7 @@ const result = {
   },
 }
 
-await fs.mkdir(path.resolve('evidence/opening-ui-finish/review'), { recursive: true })
-await fs.writeFile(path.resolve('evidence/opening-ui-finish/review/motion-measurements.json'), `${JSON.stringify(result, null, 2)}\n`)
+await fs.mkdir(path.resolve('evidence/permanent-frame/review'), { recursive: true })
+await fs.writeFile(path.resolve('evidence/permanent-frame/review/motion-measurements.json'), `${JSON.stringify(result, null, 2)}\n`)
 await browser.close()
 console.log(JSON.stringify(result, null, 2))

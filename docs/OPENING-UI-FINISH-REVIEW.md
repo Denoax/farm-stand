@@ -1,5 +1,7 @@
 # Opening and UI finish — review report
 
+> Historical review for source `3eed6a761191d88126cf97aff070de279900bc78`. The current permanent-frame behavior supersedes its foreground-table exit and visible Pause/Resume control; see `PERMANENT-FRAME-REVIEW.md`.
+
 ## Result
 
 The focused finishing pass retains Treatment A and the complete 48-product market. It removes the fake oval apple shadow and second-closing passage, then makes the assigned exit order explicit: the shutter finishes its monotonic lift; the apple exits left while supported by the removable live table; that table withdraws through the bottom; the permanent photographic counter remains; the copy and four photo links return from the left after about one second of open rest.
