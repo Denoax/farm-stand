@@ -929,10 +929,10 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
   .hero-support { font-size: 1rem; }
   .hero-actions { gap: .8rem; }
   .hero-actions .button { min-height: 2.7rem; padding: .55rem .85rem; }
-  .entrance-links { top: auto; right: .8rem; bottom: 2.7rem; left: .8rem; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .4rem; width: auto; padding: .6rem; border-width: .35rem; transform: rotate(.2deg); }
+  .entrance-links { top: auto; right: .8rem; bottom: 2.3rem; left: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; width: min(17rem, calc(100% - 1.6rem)); padding: .65rem; border-width: .35rem; transform: rotate(.2deg); }
   .entrance-links::before { font-size: .62rem; }
   .entrance-links a { padding: .25rem .25rem 1.35rem; }
-  .entrance-links span { font-size: .8rem; }
+  .entrance-links span { font-size: .9rem; }
   .market-opening__controls { top: 4.8rem; right: .7rem; }
   .market-opening__controls .market-opening__motion,
   .market-opening__controls .market-opening__skip { min-height: 2.2rem; padding: .35rem .55rem; font-size: .72rem; }
