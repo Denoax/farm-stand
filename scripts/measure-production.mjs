@@ -51,7 +51,7 @@ await page.goto(baseURL, { waitUntil: 'networkidle' })
 await page.waitForSelector('.hero-stage--ready, .hero-stage--fallback')
 await page.evaluate(() => document.fonts.ready)
 const initialEntries = await resources()
-const initialBelowFoldRequests = initialEntries.filter((entry) => /\/media\/(catalogue|farm-life)\//.test(entry.path))
+const initialMarketMediaRequests = initialEntries.filter((entry) => /\/media\/(catalogue-expanded|farm-life-motion)\//.test(entry.path))
 
 const renderer = await page.evaluate(() => {
   const canvas = document.querySelector('canvas')
@@ -74,8 +74,9 @@ const sceneBefore = await page.locator('.scene-host').evaluate((node) => ({
 }))
 
 await page.locator('#shop').scrollIntoViewIfNeeded()
-for (const id of ['apple', 'onion', 'carrots', 'potatoes', 'squash', 'eggs', 'harvest-box']) {
-  await page.locator(`#product-${id}`).scrollIntoViewIfNeeded()
+await page.getByRole('button', { name: /^All 48/ }).click()
+for (const card of await page.locator('.product-card').all()) {
+  await card.scrollIntoViewIfNeeded()
   await page.waitForTimeout(80)
 }
 await page.locator('#farm-life').scrollIntoViewIfNeeded()
@@ -105,7 +106,7 @@ const result = {
   initial: {
     ...summarize(initialEntries),
     media: mediaSummary(initialEntries),
-    belowFoldMediaRequests: initialBelowFoldRequests,
+    initialMarketMediaRequests,
   },
   afterFullPageVisit: {
     ...summarize(totalEntries),
@@ -127,12 +128,14 @@ const result = {
   limitations: [
     'Localhost transfer sizes do not predict rural-network latency.',
     'Headless Chromium does not establish physical-device performance or cross-browser parity.',
-    'The historical approximately 2.8 MB opening figure was not reused as a fresh measurement.',
+    'The entrance intentionally requests four small poster/photo assets immediately so its HTML links never wait for lazy media.',
+    'Animal video requests depend on viewport intersection and browser media buffering; transfer totals are not whole-file payload guarantees.',
   ],
 }
 
 await fs.mkdir(path.resolve('evidence'), { recursive: true })
-await fs.writeFile(path.resolve('evidence/v2.4/review/production-measurements-v2.4.json'), `${JSON.stringify(result, null, 2)}\n`)
+await fs.mkdir(path.resolve('evidence/market-expansion/review'), { recursive: true })
+await fs.writeFile(path.resolve('evidence/market-expansion/review/production-measurements.json'), `${JSON.stringify(result, null, 2)}\n`)
 await browser.close()
 console.log(JSON.stringify({
   initial: { ...result.initial, media: { ...result.initial.media, assets: undefined } },

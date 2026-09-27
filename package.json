@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "measure": "node scripts/measure-production.mjs",
     "measure:motion": "node scripts/measure-motion.mjs",
+    "measure:baseline": "node scripts/compare-baseline.mjs",
     "capture:motion": "node scripts/capture-motion-evidence.mjs",
     "capture:v24": "node scripts/capture-v24-evidence.mjs",
     "test:e2e": "playwright test",

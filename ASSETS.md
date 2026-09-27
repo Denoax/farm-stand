@@ -24,6 +24,15 @@ The models are normalized at runtime to a shared authored scale, receive/cast co
 
 - Fraunces 600 and Source Sans 3 are sourced from the official Google Fonts distribution under OFL 1.1. Only Latin WOFF2 delivery files are used. Notices are retained under `assets/licenses/`.
 
+## Open-once market expansion
+
+- **Expanded catalogue photography** — 43 additional Pexels photographs were selected and inspected for the exact product represented, including replacement photographs for the previous catalogue apple and onion renders. Together with five retained licensed catalogue photographs, they make the 48-item demonstration market. The complete per-photo creator, Pexels page, acquisition date, identifier, and alt description record is `assets/source/market-expansion/catalogue-sources.json`; the delivery derivatives are 960×640 AVIF files under `public/media/catalogue-expanded/`. Acquisition copies remain ignored and are not shipped. Delivery SHA-256 values are in `assets/market-expansion-delivery.sha256`.
+- **Hens video** — Anurag Gusain, Pexels: https://www.pexels.com/video/29229103/. A ten-second section was resized to 1280×720, H.264-encoded at CRF 24 with fast-start metadata, and delivered without audio as `public/media/farm-life-motion/hens.mp4`; its inspected poster is delivered beside it.
+- **Cattle video** — Taryn Elliott, Pexels: https://www.pexels.com/video/herd-of-cows-in-a-pastureland-3769204/. The inspected wide-pasture source was resized to 1280×720, H.264-encoded at CRF 24 with fast-start metadata, and delivered without audio as `public/media/farm-life-motion/cattle.mp4`; its inspected poster is delivered beside it.
+- **Sheep video** — Matthias Groeneveld, Pexels: https://www.pexels.com/video/12116085/. A ten-second section was resized to 1280×720, H.264-encoded at CRF 24 with fast-start metadata, and delivered without audio as `public/media/farm-life-motion/sheep.mp4`; its inspected poster is delivered beside it.
+
+All expansion photographs and videos are used under the [Pexels license](https://www.pexels.com/license/). The source record includes hashes for the three acquired videos and all six video/poster derivatives. The application permits only one large farm-life video to play, keeps every clip muted and non-looping, and falls back to its matching poster.
+
 ## v2 catalogue and farm-life photography
 
 The v2 expansion uses locally delivered derivatives of Pexels photographs under the [Pexels license](https://www.pexels.com/license/). Acquisition copies remain outside public delivery under the ignored `assets/source/photography/v2/` directory. Each retained image was inspected at the intended crop, resized to 960 px (catalogue) or 1200 px (farm life), and AVIF-encoded with FFmpeg. Exact source URLs, creators, hashes, and derivative paths are recorded in `assets/manifest.json`.

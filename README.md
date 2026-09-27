@@ -1,6 +1,8 @@
 # Farm stand website demonstration
 
-A local, single-page website-services showcase for growers and local businesses. Its fictional farm includes a seven-product catalogue, multi-item demonstration basket, collection preview, farm-life stories, practical visit content, a client-side sample-hours update, service explanation, and copy-only website brief. It cannot accept orders, payments, bookings, saved content updates, or contact submissions.
+A local, single-page website-services showcase for growers and local businesses. Its fictional farm includes a one-time cinematic market opening, a 48-product photographed catalogue, a variant-aware demonstration basket, collection preview, three licensed farm-life video scenes, practical visit content, a client-side sample-hours update, service explanation, and copy-only website brief. It cannot accept orders, payments, bookings, saved content updates, or contact submissions.
+
+The opening begins after the first meaningful downward wheel, touch, or keyboard intent and then runs on its own six-second timeline. It is marked complete for the browser session; direct hash destinations and reduced-motion users receive the settled open stand. The entrance links remain normal HTML links during scene loading and playback.
 
 ## Run locally
 
