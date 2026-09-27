@@ -62,6 +62,40 @@
   ],
   "project_derivatives": [
     {
+      "id": "market_opening_open_stand_plates",
+      "source": "Project-original edits made with OpenAI's built-in image editing tool from the retained farm-setting plate; production requests retained in assets/source/generated/PROMPT.md",
+      "source_sha256": [
+        "07a28fb96c0fc72a2d94a728b457ad57d119ab1577939bf9609d635eafbbab6c",
+        "385374554b73c0198a3e008cd8d06d46c8f0c51ae13ecad871d6f52459a7817c"
+      ],
+      "derivative_path": [
+        "public/media/market-opening-open-desktop.avif",
+        "public/media/market-opening-open-portrait.avif"
+      ],
+      "derivative_sha256": [
+        "299e673d3a8c151610d86e98373bc1e2a63905934ecc9b6f12a9252c0aaa7787",
+        "15165886057bf2f6e9eb91015b9820dbd25264c25d9460d24e5023013bc72423"
+      ],
+      "transformation": "The desktop plate preserves the established farm-setting camera, shelter, counter, landscape, and morning light while adding one physically supported right-side produce arrangement. The portrait plate is a deliberate same-set recomposition, not an automatic crop. Selected PNG masters were inspected at target aspect ratios and still-image AVIF-encoded with FFmpeg at CRF 24."
+    },
+    {
+      "id": "market_opening_first_paint_posters",
+      "source": "Deterministic first-frame captures of the implemented timber shutter, rails, counter, lighting, contact shadow, and retained CC0 apple",
+      "source_sha256": [
+        "caf87e5143915e91afe926a69699ec7cfa808398db7045c6de2df85a6b0978bb",
+        "376b8b1ca221293403e9e2e54a642cd588e6525d528933763aa2b5cf896c6482"
+      ],
+      "derivative_path": [
+        "public/media/market-opening-poster-desktop.avif",
+        "public/media/market-opening-poster-portrait.avif"
+      ],
+      "derivative_sha256": [
+        "d46fcc69380125f2498a22325c934f8c76492622fdb8fd12392fdcde018f0831",
+        "78593fb27b621810acc8b4416279142ea009ce25c216d56c95de09ce997a0106"
+      ],
+      "transformation": "Captured from the actual local WebGL start state at 1536 by 1024 and 640 by 960 CSS pixels with HTML copy, navigation, controls, status, and basket suppressed; still-image AVIF-encoded with FFmpeg at CRF 24. These are loading posters, not independent artwork or review baselines."
+    },
+    {
       "id": "catalogue_apple_render",
       "source": "Retained CC0 Poly Haven apple model rendered specifically for the catalogue",
       "derivative_path": "public/media/catalogue/apple.avif",

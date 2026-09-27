@@ -3,7 +3,6 @@ import { business } from './content/config'
 import { ContactPreview } from './components/ContactPreview'
 import { ShopSection } from './components/ShopSection'
 import { FarmLife } from './components/FarmLife'
-import { WeatherTransition } from './components/WeatherTransition'
 import { VisitSection } from './components/VisitSection'
 import { TryUpdate } from './components/TryUpdate'
 import { basketReducer, basketStorageKey, parseBasketSnapshot } from './state/basket'
@@ -27,7 +26,18 @@ export function App() {
     }
   })
   const [shopFocusRequest, setShopFocusRequest] = useState<{ productId: ProductId; sequence: number }>()
-  const onSceneState = useCallback((state: SceneState) => setSceneState(state), [])
+  const onSceneState = useCallback((state: SceneState) => {
+    setSceneState((current) => current === 'fallback' ? current : state)
+  }, [])
+  const onPresented = useCallback((progress: number, shot: string) => {
+    const stage = stageRef.current
+    if (!stage) return
+    const value = progress.toFixed(4)
+    stage.style.setProperty('--stage-progress', value)
+    stage.dataset.presentedProgress = value
+    stage.dataset.shot = shot
+    document.documentElement.style.setProperty('--stage-progress', value)
+  }, [])
   const viewShopProduct = useCallback((productId: ProductId) => {
     window.history.replaceState(null, '', `#product-${productId}`)
     setShopFocusRequest((current) => ({ productId, sequence: (current?.sequence ?? 0) + 1 }))
@@ -75,20 +85,16 @@ export function App() {
       raf = 0
       if (reducedMotion.matches) {
         progressRef.current = 1
-        stage.style.setProperty('--stage-progress', '1')
-        stage.style.setProperty('--cut-progress', '1')
-        document.documentElement.style.setProperty('--stage-progress', '1')
+        stage.dataset.requestedProgress = '1.0000'
         setInteractive('.hero-copy', true)
         previousHeroActive = true
       } else {
         const bounds = stage.getBoundingClientRect()
         const scrollable = Math.max(stage.offsetHeight - window.innerHeight, 1)
         const progress = Math.min(1, Math.max(0, -bounds.top / scrollable))
-        const heroActive = progress < 0.34
+        const heroActive = progress < 0.22
         progressRef.current = progress
-        stage.style.setProperty('--stage-progress', progress.toFixed(4))
-        stage.style.setProperty('--cut-progress', Math.min(1, Math.max(0, (progress - 0.64) / 0.16)).toFixed(4))
-        document.documentElement.style.setProperty('--stage-progress', progress.toFixed(4))
+        stage.dataset.requestedProgress = progress.toFixed(4)
         if (heroActive !== previousHeroActive) setInteractive('.hero-copy', heroActive)
         previousHeroActive = heroActive
       }
@@ -133,30 +139,23 @@ export function App() {
           aria-labelledby="hero-heading"
         >
           <div className="hero-sticky">
-            <div className="harvest-backdrop harvest-backdrop--orchard" aria-hidden="true" />
-            <div className="harvest-backdrop harvest-backdrop--stand" aria-hidden="true" />
-            <picture className="harvest-stand-complete" aria-hidden="true">
-              <source media="(max-width: 760px)" srcSet={publicAsset('media/harvest-stand-complete-portrait.avif')} />
-              <img src={publicAsset('media/harvest-stand-complete-desktop.avif')} alt="" width="1440" height="900" fetchPriority="high" />
+            <picture className="market-opening__plate" aria-hidden="true">
+              <source media="(max-width: 760px)" srcSet={publicAsset('media/market-opening-open-portrait.avif')} />
+              <img src={publicAsset('media/market-opening-open-desktop.avif')} alt="" width="1536" height="1024" fetchPriority="high" onError={() => setSceneState('fallback')} />
             </picture>
-            <div className="harvest-support" aria-hidden="true" />
-            <div className="harvest-basket harvest-basket--back" aria-hidden="true" />
-            <div className="scene-visual" aria-label="An apple falls from an orchard branch into a harvest basket before the scene resolves into a sunlit farm stand">
+            <div className="scene-visual" aria-label="Morning light reaches a supported apple as a timber market shutter lifts to reveal the open farm stand">
               <picture className="fallback-poster" aria-hidden="true">
-                <source media="(max-width: 760px)" srcSet={publicAsset('media/harvest-poster-portrait.avif')} />
-                <img src={publicAsset('media/harvest-poster-desktop.avif')} alt="" />
+                <source media="(max-width: 760px)" srcSet={publicAsset('media/market-opening-poster-portrait.avif')} />
+                <img src={publicAsset('media/market-opening-poster-desktop.avif')} alt="" />
               </picture>
               <Suspense fallback={null}>
-                <FarmScene progressRef={progressRef} motionPaused={motionPaused} onStateChange={onSceneState} />
+                <FarmScene progressRef={progressRef} motionPaused={motionPaused} onStateChange={onSceneState} onPresented={onPresented} />
               </Suspense>
               <div className="scene-vignette" aria-hidden="true" />
               <p className="scene-status" aria-live="polite">
                 {sceneState === 'loading' ? 'Preparing the farm stand…' : sceneState === 'fallback' ? 'Static farm stand view' : ''}
               </p>
             </div>
-            <div className="harvest-basket harvest-basket--front" aria-hidden="true" />
-            <div className="harvest-foreground" aria-hidden="true" />
-
             <div className="hero-copy">
               <p className="eyebrow eyebrow--hero">{business.service_descriptor}</p>
               <h1 id="hero-heading">This is what your farm could look like online.</h1>
@@ -167,16 +166,23 @@ export function App() {
               </div>
               <p className="hero-disclosure">A fictional farm-shop experience demonstrating a real website service. No produce is sold here.</p>
             </div>
-
-            <div className="harvest-caption" aria-hidden="true"><span>01</span> Picked this morning <i /> <span>02</span> At the stand</div>
-            <div className="scroll-cue" aria-hidden="true"><span /> Scroll to follow the harvest</div>
-            <div className="harvest-wipe" aria-hidden="true" />
+            <div className="market-opening__progress" aria-hidden="true">
+              <span>Morning light</span><i /><span>Open stand</span>
+            </div>
+            <button
+              className="market-opening__motion"
+              type="button"
+              aria-pressed={motionPaused}
+              onClick={() => setMotionPaused((paused) => !paused)}
+            >
+              {motionPaused ? 'Resume opening' : 'Pause opening'}
+            </button>
+            <div className="scroll-cue" aria-hidden="true"><span /> Scroll to open the stand</div>
           </div>
           <span className="demo-anchor" id="demo" aria-hidden="true" />
         </section>
 
         <ShopSection basket={basket} dispatch={dispatchBasket} focusRequest={shopFocusRequest} />
-        <WeatherTransition motionPaused={motionPaused} onToggleMotion={() => setMotionPaused((paused) => !paused)} />
         <FarmLife onViewProduct={viewShopProduct} />
         <VisitSection />
 

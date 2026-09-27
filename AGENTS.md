@@ -60,3 +60,24 @@
 - Keep v2.4 comparison captures, recordings, and `Farm-Stand-v2.4-Review.zip` ignored and outside Pages delivery; they are review evidence, not an approved visual baseline.
 - Identify exact source state and uncommitted changes; user retains artistic approval.
 - Report a precise blocker and continue independent work where useful; never invent completion.
+
+## Current assignment — cinematic opening
+
+- Continue the existing Farm Stand; no new app, repository, hosting, or concept experiment.
+- Active production lead: Treatment A, “The market opens,” from the supplied intro treatment book.
+- Follow the supplied `EXECUTE.md`, `SHOT_PLAN.md`, `REFERENCE_REUSE.md`, and `ACCEPTANCE.md` for this assignment.
+- Other treatment-book openings are alternatives, not cumulative implementation requirements.
+- The mandatory old falling-apple/weather chain is superseded; retain useful software and history.
+- Never revive the rejected Week-at-the-Stand or cancelled anatomy directions.
+- Prioritize physically convincing assets, lighting, framing, contact, and motion over superficial speed metrics.
+- Preserve responsive semantic controls, native scrolling, direct hashes, and reduced motion.
+- Use one coherent production set and one owner for requested/presented shot state.
+- Match posters, live/prepared frames, and responsive variants through shared shot data.
+- Reuse suitable licensed code exactly when useful; pin source revision and retain required notices.
+- Source imagery, films, fonts, and models have separate rights from tutorial software.
+- Prove the real 28–66% threshold internally, then complete and integrate the selected intro.
+- Do not ship blockouts, generic wipes, or a framed still/tab UI as a substitute for the treatment.
+- Do not stop after research, preflight, or tool setup. Continue until integrated review or a precise genuine blocker.
+- Apply standing publication authority to coherent inspected tested results, never knowingly failed experiments.
+- Automated tests establish behavior, not artistic approval. Report actual pixels and untested conditions.
+- Keep task state compact; no new agent framework, permanent role hierarchy, or wholesale library migration.

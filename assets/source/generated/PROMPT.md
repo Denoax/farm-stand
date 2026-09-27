@@ -36,3 +36,21 @@ Preserve the exact wicker harvest basket: its full geometry, handles, rim, weave
 ```
 
 The selected 1538×1023 RGBA output was inspected over split light/dark fields, resized to 1200 px width, and WebP-encoded with alpha as `public/media/harvest-basket-v24.webp`. Its source and derivative hashes are recorded in `assets/manifest.json`.
+
+## Treatment A open-stand plates
+
+Built-in OpenAI image editing tool, 26 September 2026. The retained project-original `farm-setting-v1.png` plate was supplied as the visual reference so the camera, shelter, counter, field, and morning-light direction stayed in one physical world.
+
+Desktop production request:
+
+```text
+Use the supplied farm-setting plate as a strict camera, architecture, counter, landscape, and light reference. Preserve the exact open timber shelter, field horizon, viewpoint, weathered counter, and warm morning light. Dress only the right side of the counter as a restrained, believable farm stand: one weathered crate of onions and potatoes, carrot bunches with tops, a few small squash, an egg basket, and a folded natural linen. Keep the left and front counter deliberately clear for a live red apple. Match contact shadows, scale, perspective, depth of field, and material response so every object belongs to the photographed set. Natural editorial photography, tactile produce and wood, no visual fantasy. No apples, people, text, signage, logos, vehicles, mismatched light, floating objects, extra structures, or watermark. Wide 3:2 landscape composition with quiet upper-left space for separate HTML copy.
+```
+
+Portrait production request, using the selected desktop result as the reference:
+
+```text
+Create a deliberate 2:3 portrait companion of this same farm-stand set at the same morning moment. Preserve the shelter construction, weathered counter, field, horizon, produce selection, right-side arrangement, light direction, colour, and photographic treatment. Recompose for portrait rather than mechanically cropping: retain a clear left/lower counter area for the live red apple and quiet upper-left space for separate HTML. The onion-and-potato crate, carrot bunches, squash, egg basket, and linen must remain physically supported with matching contact shadows and scale. No apples, people, text, signage, logos, floating objects, new structures, changed weather, or watermark.
+```
+
+Selected source masters are retained outside delivery at `assets/source/generated/market-opening/`. Their SHA-256 hashes and the public AVIF derivative hashes are recorded in `assets/manifest.json`. The first-paint posters are deterministic captures of the implemented shutter, supported live CC0 apple, counter, rails, and lighting—not separately generated art.

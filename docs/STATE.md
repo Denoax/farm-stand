@@ -2,41 +2,40 @@
 
 ## Approved direction
 
-The user approved the sunlit farm-stand direction, the v2 through v2.4 expansions, and the focused independent-review correction pass. The current implementation preserves the rural setting, Fraunces/Source Sans 3 typography, wood/green/yellow palette, seven-product catalogue, product detail transition, accessibility fallbacks, and explicit demonstration-only boundaries. The correction pass addresses the reviewed poster/live mismatch, exposed orchard edit, portrait stand alignment, animal crops, sheep cutout, repeated weather-to-hens introduction, header contrast, and implementation-oriented public copy. The cancelled anatomy project remains out of scope.
+The active production direction is Treatment A, “The market opens.” The opening uses light through timber slats, a rigid rising shutter, a physically covered threshold passage, and one prepared farm-stand destination before the existing usable shop. The rejected Week-at-the-Stand experiment is not part of this repository or design. Browser captures and deployment do not constitute permanent artistic approval.
 
 ## Repository and publication policy
 
 This is the existing public `Denoax/farm-stand` worktree and deploys through its existing GitHub Pages workflow to `https://denoax.github.io/farm-stand/`.
 
-Standing publication authorization remains active: implement → inspect → test → commit → safely integrate into current `main` → push `main` → verify the associated Pages deployment → verify the live HTTPS website. Failed checks block publication. This does not enable real orders, payments, bookings, message delivery, analytics, purchases, credential changes, force-pushes, destructive history changes, or unrelated infrastructure.
+Standing publication authorization covers coherent, inspected, tested integration through the existing main branch and Pages workflow. It does not enable real orders, payments, bookings, message delivery, analytics, purchases, credential changes, force-pushes, destructive history changes, or unrelated infrastructure.
 
 ## Current implementation
 
-The opening is a reversible scroll story. A live CC0 Three.js apple begins at the project-original orchard branch at a fixed within-shot scale, releases along authored progress-derived keyframes, falls behind a clean opaque wicker front rim, lands with contact support, and settles. A full-frame photographic orchard plate crosses the viewport and completely conceals the discrete location/scale edit; a captured complete-stand plate supplies the destination immediately even when rendering or scroll input is interrupted. The desktop and portrait first-paint posters are now generated from the matching live opening composition, and the portrait crate/produce plate is grounded on the table. The decorative basket never touches commerce state. Direct Shop entry bypasses the sequence; model/WebGL failure retains the static poster and full HTML journey; reduced motion presents the established stand in ordinary document flow.
+The opening is a reversible six-shot scroll sequence driven by one pure evaluator. A prepared desktop or deliberately recomposed portrait plate supplies one continuous farm world. Limited live Three.js adds the retained CC0 apple, a supported counter, shutter slats and braces, side rails, warm light, contact shadow, and the close timber underside/iron hardware used for full-coverage recomposition. Requested progress and presented progress are separate; the DOM follows only a rendered state.
 
-The catalogue retains seven products, filters, source-card-to-detail image motion, immediate add feedback, keyboard/Escape focus return, and the no-commerce boundary. Its colour roles, filter hierarchy, card treatment, and featured mixed box are tightened without changing product data or integer-money logic. The basket remains a native-dialog right drawer on desktop and is now a true full-viewport drawer on portrait. It has one scroll region, a fixed summary/action area, labeled steppers, remove plus one-step undo, clear confirmation, same-surface collection preview, and a persistent basket action. Validated basket state survives close/reopen, navigation, scene motion, viewport changes, and refresh in the current browser tab through bounded `sessionStorage`; invalid or unavailable storage safely falls back to an empty in-memory demo.
+The first-paint posters are deterministic captures of the actual initial live composition. The first canvas frame is rendered before the poster is removed. Model, WebGL, or new-plate failure keeps a complete static stand and HTML journey. Reduced motion presents the open stand in normal document flow. Direct hashes bypass the opening as before. Rendering stops offscreen and resumes at current intent.
 
-A short muted Pexels rain passage connects the shop directly to the hens setting. On portrait, its resolved 58/42 image-and-copy geometry matches the first hens frame instead of returning through a separate introduction. Hens and cattle keep the subjects clear of copy in bounded portrait image regions, while sheep now uses one continuous photographic layer without the mismatched circular duplicate. Only crop, camera, foreground, and copy layers move; the depicted animals are never distorted to fake anatomy. Direct hashes prepare the relevant image immediately, adjacent scenes remain lazy, and useful text fallbacks remain in place. A visible Pause motion control complements the system reduced-motion preference and responds to preference changes at runtime.
+The former orchard fall and weather chapter are retired from the default page. Their files and history remain available. Farm-life chapters continue directly after the shop.
 
-Fictional visit information, the concrete website-service process, sample-hours editor, and copy-only contact preview remain unconfigured. Public-facing copy describes the example and service without exposing implementation or review language. No order, payment, reservation, booking, message, or analytics path exists.
+The catalogue retains seven products, filters, details, image motion, immediate add feedback, keyboard/Escape focus return, and explicit demonstration-only boundaries. The basket remains a responsive native dialog with labeled steppers, undo, confirmation, collection preview, and bounded session persistence. Product data, integer money, persistence semantics, and fictional transaction boundaries are unchanged.
+
+Fictional visit information, website-service content, sample-hours editor, and contact preview remain unconfigured. No order, payment, reservation, booking, message, or analytics path exists.
 
 ## Validation and evidence
 
-- Production build output: 48.38 kB CSS (10.85 kB gzip), 260.48 kB main JavaScript (80.09 kB gzip), and a lazy 615.97 kB Three.js scene chunk (155.50 kB gzip). Vite retains its generic raw chunk-size warning.
-- All 38 Playwright checks pass across desktop and portrait. The suite covers stable apple scale and landing stages, fully covered forward/reverse/rapid orchard edits, direct entry/refresh, desktop/portrait/320 px/short-landscape layouts, full-width portrait drawer operations and preservation, detail interruption/focus, weather pause/skip/failure, addressable animal scenes, fictional boundaries, initial and runtime reduced motion, 200% text reflow, renderer pausing, model/media failures, and overflow.
-- Normal-speed portrait and edit-interruption recordings, supplied before frames, matched corrected frames, contact sheets, and capture logs live under ignored `evidence/v2.4-corrections/Farm-Stand-v2.4-Correction-Review/`. Iris CLI captures independently confirm the opening and portrait hens composition. These are review evidence, not self-approved visual baselines.
-- The v2.4 delivery adds a transparent basket, two replacement animal photographs, a seven-second rain clip/poster, and two complete hero fallback posters. Provenance, exact hashes, and transformations are in `assets/manifest.json`; raw sources remain ignored.
-- Production-served measurement recorded 3,360,669 encoded bytes at arrival and 3,883,995 after the complete page visit, zero initial catalogue/farm-life requests, and 0.01095 observed CLS. The hero renderer stopped producing frames while offscreen and resumed on return.
-- Three warm-headless SwiftShader hero traversals produced 16.7 ms median frame intervals and 33.4–50 ms p95 intervals; observed product-detail travel was about 585 ms open and 381 ms close. These are end-to-end software-renderer intervals, not GPU timings or physical-device evidence.
+The complete representation, source/reuse record, evidence inventory, measurements, and remaining defects are in `docs/MARKET-OPENING-REVIEW.md`. Review media is ignored from Pages delivery under `evidence/market-opening/`; the uploadable review archive is created separately in Downloads.
+
+Current automated evidence includes a passing production build and 38 Playwright checks across desktop and portrait. Headless SwiftShader frame cadence is uneven and is reported as a limitation rather than treated as hardware-GPU evidence.
 
 ## Highest-impact limitations
 
-- Public identity, contact destination, commercial scope, pricing, support terms, backend, and integrations are not supplied and remain inactive/configurable.
-- Pexels photographs and project-generated harvest layers are illustrative and do not depict a client or verified property.
-- The hero’s lazy Three.js chunk remains above Vite’s generic 500 kB raw advisory. It is off the main bundle and pauses when offscreen, but a later measured optimization pass could consider deeper module splitting.
-- The seven-second decorative weather clip uses a 146 kB observed range during the measured journey, but its full delivered file is about 1.2 MB; a real client could choose a longer or property-specific passage after content and network budgets are known.
-- Physical-device, hardware-GPU, screen-reader, background-tab, and independent human art-direction reviews remain outstanding. Browser captures and publication do not constitute artistic approval.
+- Physical-phone, hardware-GPU, Safari, screen-reader, and independent human art-direction reviews remain outstanding.
+- The project-generated stand plates are illustrative, not a verified property or real inventory.
+- The fully covering close-timber passage is deliberately brief and less detailed than the prepared destination plate.
+- The lazy Three.js chunk remains above Vite’s generic 500 kB raw advisory.
+- Public identity, contact destination, commercial scope, pricing, support terms, backend, and integrations remain unsupplied and inactive.
 
 ## Next action
 
-For completed coherent work, follow the standing publication loop and verify the exact deployed commit on the live HTTPS origin. Do not stop at local readiness unless the user explicitly requests local-only work.
+Future work should begin from the deployed Treatment A state, preserve the shop and source records, and use actual rendered evidence. Do not revive the rejected Week-at-the-Stand concept or treat publication as artistic approval.

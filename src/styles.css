@@ -804,3 +804,55 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
   .farm-profile__foreground,
   .farm-profile__copy { transform: none !important; }
 }
+
+/* Treatment A final cascade — overrides the retired harvest-stage rules above. */
+.hero-stage { --stage-progress: 0; height: 260vh; background: #1d2d24; }
+.hero-sticky { isolation: isolate; min-height: 42rem; background: #1d2d24; }
+.market-opening__plate { position: absolute; z-index: 0; inset: 0; display: block; overflow: hidden; background: #6f8262; }
+.market-opening__plate::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgb(18 37 28 / .24), transparent 48%, rgb(22 36 24 / .06)); pointer-events: none; }
+.market-opening__plate img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 54%; }
+.scene-visual { z-index: 2; background: transparent; }
+.scene-host { z-index: 2; opacity: 0; transition: none; }
+.hero-stage--ready .scene-host { display: block; opacity: 1; }
+.fallback-poster { z-index: 1; display: block; visibility: visible; opacity: 1; background: #293a2d; }
+.fallback-poster img { display: block; object-position: 50% 54%; }
+.hero-stage--ready .fallback-poster { visibility: hidden; opacity: 0; }
+.hero-stage--fallback .fallback-poster { display: block; visibility: visible; opacity: 1; }
+.scene-vignette { z-index: 3; background: linear-gradient(90deg, rgb(7 22 16 / .5), transparent 46%), linear-gradient(0deg, rgb(8 24 17 / .22), transparent 38%); box-shadow: inset 0 0 8rem rgb(7 19 14 / .2); opacity: clamp(.18, calc(.68 - var(--stage-progress) * .55), .68); }
+.hero-copy { z-index: 5; top: 48%; width: min(42rem, 49vw); transform: translateY(calc(-48% - var(--stage-progress) * 1.8rem)); opacity: clamp(0, calc(1 - var(--stage-progress) * 4.8), 1); }
+.hero-stage--loading .hero-copy, .hero-stage--fallback .hero-copy { transform: translateY(-48%); opacity: 1; }
+.market-opening__progress { position: absolute; z-index: 6; right: clamp(1rem, 3vw, 3rem); bottom: 1.3rem; display: flex; align-items: center; gap: .65rem; color: rgb(255 255 255 / .74); font-size: .68rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; opacity: clamp(0, calc(1 - var(--stage-progress) * 1.15), 1); }
+.market-opening__progress i { width: 3.75rem; height: 1px; overflow: hidden; background: linear-gradient(90deg, #e8b94c calc(var(--stage-progress) * 100%), rgb(255 255 255 / .34) 0); }
+.market-opening__motion { position: absolute; z-index: 7; right: clamp(1rem, 3vw, 3rem); top: 5.4rem; min-height: 2.45rem; padding: .45rem .72rem; border: 1px solid rgb(255 255 255 / .45); border-radius: .35rem; color: white; background: rgb(9 28 21 / .62); cursor: pointer; }
+.scroll-cue { left: clamp(1.25rem, 6vw, 6rem); transform: none; }
+.catalogue { margin-top: 0; }
+.hero-stage--loading .market-opening__plate { opacity: 0; }
+.hero-stage--loading .scene-visual { background: #201108 url('/media/crate-wood.webp') center / cover no-repeat; }
+.hero-stage--fallback .market-opening__plate { background: #60745a url('/media/farm-setting-1920.avif') center / cover no-repeat; }
+.hero-stage--fallback .scene-visual { background: transparent; }
+.hero-stage--fallback .market-opening__plate img, .hero-stage--fallback .fallback-poster { display: none; }
+.hero-stage--fallback .scene-vignette { opacity: .9; background: linear-gradient(90deg, rgb(6 23 16 / .76), rgb(6 23 16 / .28) 58%, transparent 82%), linear-gradient(0deg, rgb(8 24 17 / .22), transparent 42%); }
+.hero-stage--fallback .market-opening__motion { display: none; }
+
+@media (max-width: 760px) {
+  .hero-stage { height: 240vh; }
+  .hero-sticky { min-height: 39rem; }
+  .market-opening__plate img, .fallback-poster img { object-position: 50% 50%; }
+  .market-opening__plate::after { background: linear-gradient(180deg, rgb(9 26 19 / .48), transparent 52%, rgb(9 25 18 / .12)); }
+  .hero-copy { top: 27%; right: 1.2rem; left: 1.2rem; width: auto; transform: translateY(calc(var(--stage-progress) * -1.8rem)); }
+  .hero-stage--loading .hero-copy, .hero-stage--fallback .hero-copy { transform: none; }
+  .market-opening__progress { right: .85rem; bottom: 1rem; left: .85rem; justify-content: flex-end; }
+  .market-opening__progress i { width: min(22vw, 5rem); }
+  .market-opening__motion { top: 5.25rem; right: .75rem; font-size: .78rem; }
+  .catalogue { margin-top: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-stage { height: auto; }
+  .hero-sticky { position: relative; display: block; height: min(90vh, 52rem); min-height: 40rem; padding: 0; }
+  .scene-visual { height: 100%; }
+  .scene-host, .hero-stage--ready .scene-host, .fallback-poster, .market-opening__progress, .market-opening__motion { display: none; }
+  .market-opening__plate { display: block; }
+  .hero-copy { position: absolute; top: 50%; left: clamp(1.25rem, 6vw, 6rem); width: min(42rem, calc(100% - 2.5rem)); padding: 0; transform: translateY(-50%); opacity: 1; background: transparent; }
+  .scene-vignette { opacity: .76; background: linear-gradient(180deg, rgb(7 23 17 / .68), rgb(7 23 17 / .34) 55%, transparent 82%); }
+}

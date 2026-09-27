@@ -14,43 +14,36 @@ async function addProduct(page: import('@playwright/test').Page, productId: stri
   await expect(count).toHaveText(String(before + 1))
 }
 
-test('project-path build loads the harvest story and keeps resource URLs scoped', async ({ page }) => {
+test('project-path build loads the market opening and keeps resource URLs scoped', async ({ page }) => {
   const failedResponses: string[] = []
   page.on('response', (response) => { if (response.status() >= 400) failedResponses.push(`${response.status()} ${response.url()}`) })
   await page.goto(projectPath, { waitUntil: 'networkidle' })
   await expect(page.locator('.hero-stage')).toHaveClass(/hero-stage--ready/)
   await expect(page.getByRole('heading', { name: 'This is what your farm could look like online.' })).toBeVisible()
-  await expect(page.locator('.harvest-backdrop--orchard')).toBeVisible()
-  await expect(page.locator('.harvest-basket--front')).toBeVisible()
+  await expect(page.locator('.market-opening__plate')).toBeVisible()
+  await expect(page.getByTestId('scene-host')).toHaveAttribute('data-scene', 'light')
   expect(await page.locator('.stand-shop-bridge, .stand-transition').count()).toBe(0)
   const resources = await page.evaluate(() => performance.getEntriesByType('resource').map((entry) => new URL(entry.name).pathname))
   expect(resources.every((path) => path.startsWith('/farm-stand/'))).toBe(true)
   expect(failedResponses).toEqual([])
 })
 
-test('apple releases, lands behind the basket rim, and resolves into the stand without changing shop state', async ({ page }) => {
+test('one presented state follows the six market-opening segments without changing shop state', async ({ page }) => {
   await page.goto(projectPath)
   await page.addStyleTag({ content: 'html { scroll-behavior: auto !important; }' })
-  const travel = await page.locator('.hero-stage').evaluate((node) => node.offsetHeight - innerHeight)
-  const appleFrame = async () => page.evaluate(() => new Promise<Record<string, number>>((resolve) => {
-    addEventListener('farmsceneappleframe', (event) => resolve((event as CustomEvent).detail), { once: true })
-    dispatchEvent(new Event('farmstageprogress'))
-  }))
-  const positions = []
-  for (const progress of [.12, .48, .68, .9]) {
-    await page.evaluate(({ top }) => scrollTo(0, top), { top: travel * progress })
-    await page.waitForTimeout(50)
-    positions.push(await appleFrame())
+  const stage = page.locator('.hero-stage')
+  await expect(stage).toHaveClass(/hero-stage--ready/)
+  const travel = await stage.evaluate((node) => node.offsetHeight - innerHeight)
+  const expected = [[.06, 'light'], [.2, 'lift'], [.36, 'threshold'], [.55, 'passage'], [.74, 'open'], [.92, 'rest']] as const
+  for (const [progress, shot] of expected) {
+    await page.evaluate((top) => scrollTo(0, top), travel * progress)
+    await expect(page.getByTestId('scene-host')).toHaveAttribute('data-scene', shot)
+    await expect.poll(async () => stage.evaluate((node) => Math.abs(Number((node as HTMLElement).dataset.requestedProgress) - Number((node as HTMLElement).dataset.presentedProgress)))).toBeLessThan(.002)
   }
-  expect(positions[1].top).toBeGreaterThan(positions[0].top + 75)
-  expect(positions[2].top).toBeGreaterThanOrEqual(positions[1].top - 5)
-  const orchardScales = positions.slice(0, 3).map((position) => position.worldScale)
-  expect(Math.max(...orchardScales) - Math.min(...orchardScales)).toBeLessThan(.001)
-  await expect(page.locator('.harvest-backdrop--stand')).toHaveCSS('opacity', /0\.[5-9]|1/)
   await expect(page.getByRole('button', { name: /Open demonstration basket, 0 items/ })).toBeVisible()
 })
 
-test('the orchard edit remains covered while scrolling forward, reversing, and crossing rapidly', async ({ page }) => {
+test('the threshold remains coherent while scrolling forward, reversing, and crossing rapidly', async ({ page }) => {
   await page.goto(projectPath)
   await page.addStyleTag({ content: 'html { scroll-behavior: auto !important; }' })
   const stage = page.locator('.hero-stage')
@@ -60,20 +53,13 @@ test('the orchard edit remains covered while scrolling forward, reversing, and c
     await page.waitForTimeout(50)
   }
 
-  for (const progress of [.66, .72, .78, .72, .66, .79]) await visit(progress)
-  await visit(.72)
-  const wipe = await page.locator('.harvest-wipe').evaluate((node) => {
-    const bounds = node.getBoundingClientRect()
-    return { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom }
-  })
-  expect(wipe.left).toBeLessThanOrEqual(0)
-  expect(wipe.top).toBeLessThanOrEqual(0)
-  expect(wipe.right).toBeGreaterThanOrEqual(await page.evaluate(() => innerWidth))
-  expect(wipe.bottom).toBeGreaterThanOrEqual(await page.evaluate(() => innerHeight))
-
-  await visit(.79)
-  await expect(page.locator('.harvest-stand-complete')).toHaveCSS('opacity', '1')
-  await expect(page.getByTestId('scene-host')).toHaveCSS('opacity', '0')
+  for (const progress of [.48, .56, .66, .56, .48, .7, .52]) await visit(progress)
+  await expect(page.getByTestId('scene-host')).toHaveAttribute('data-scene', 'passage')
+  const state = await stage.evaluate((node) => ({ requested: (node as HTMLElement).dataset.requestedProgress, presented: (node as HTMLElement).dataset.presentedProgress }))
+  expect(state.presented).toBe(state.requested)
+  await visit(.86)
+  await expect(page.getByTestId('scene-host')).toHaveAttribute('data-scene', 'rest')
+  await expect(page.locator('.market-opening__plate')).toBeVisible()
   await expect(page.getByRole('button', { name: /Open demonstration basket, 0 items/ })).toBeVisible()
 })
 
@@ -126,15 +112,13 @@ test('product detail image transition is interruptible and returns keyboard focu
   await expect(trigger).toBeFocused()
 })
 
-test('weather bridge is seekable and its motion control does not hijack navigation', async ({ page }) => {
-  await page.goto(`${projectPath}#shop`)
-  await page.locator('.weather-story').scrollIntoViewIfNeeded()
-  await expect(page.locator('.weather-story__video')).toBeVisible()
-  await expect(page.locator('.weather-story__label')).toContainText('Rain over the field')
-  await page.getByRole('button', { name: 'Pause motion' }).click()
+test('opening motion can pause without hijacking navigation', async ({ page }) => {
+  await page.goto(projectPath)
+  await page.getByRole('button', { name: 'Pause opening' }).click()
   await expect(page.locator('[data-motion-paused="true"]')).toHaveCount(1)
-  await page.getByRole('link', { name: 'Meet the hens' }).click()
-  await expect(page).toHaveURL(/#farm-life$/)
+  await page.getByRole('link', { name: 'Explore the demo' }).click()
+  await expect(page).toHaveURL(/#shop$/)
+  await expect(page.getByRole('heading', { name: 'Shop the stand.' })).toBeVisible()
 })
 
 test('farm-life is three addressable scroll scenes and the hen link reveals eggs', async ({ page }) => {
@@ -182,8 +166,8 @@ test('reduced motion produces static, fully usable story scenes', async ({ page 
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto(projectPath)
   await expect(page.locator('.hero-sticky')).toHaveCSS('position', 'relative')
-  for (const basket of await page.locator('.harvest-basket').all()) await expect(basket).toBeHidden()
-  await expect(page.locator('.weather-story__sticky')).toHaveCSS('position', 'relative')
+  await expect(page.getByTestId('scene-host')).toBeHidden()
+  await expect(page.locator('.market-opening__plate')).toBeVisible()
   await page.goto(`${projectPath}#sheep`)
   await expect(page.locator('#sheep').getByRole('heading', { name: 'Sheep' })).toBeVisible()
 })
@@ -192,10 +176,10 @@ test('runtime reduced-motion changes stop and restore the cinematic layouts', as
   await page.goto(projectPath)
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await expect(page.locator('.hero-sticky')).toHaveCSS('position', 'relative')
-  await expect(page.locator('.weather-story__video')).toHaveCSS('display', 'none')
+  await expect(page.getByTestId('scene-host')).toHaveCSS('display', 'none')
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await expect(page.locator('.hero-sticky')).toHaveCSS('position', 'sticky')
-  await expect(page.locator('.weather-story__video')).not.toHaveCSS('display', 'none')
+  await expect(page.getByTestId('scene-host')).not.toHaveCSS('display', 'none')
 })
 
 test('offscreen hero pauses rendering and resumes', async ({ page }) => {
@@ -255,17 +239,11 @@ test('two-hundred-percent text sizing reflows the shop without horizontal scroll
   await expect(page.getByRole('button', { name: 'Boxes' })).toBeVisible()
 })
 
-test('weather media failure retains a scrollable visual bridge and farm-life access', async ({ page }) => {
-  await page.route('**/media/weather-rain.mp4', (route) => route.abort())
-  await page.goto(`${projectPath}#shop`)
-  const weather = page.locator('.weather-story')
-  await weather.scrollIntoViewIfNeeded()
-  await expect(weather).toHaveAttribute('data-media-state', 'fallback')
-  const before = Number(await weather.evaluate((node) => getComputedStyle(node).getPropertyValue('--weather-progress')))
-  await page.evaluate(() => scrollBy(0, innerHeight * .35))
-  await page.waitForTimeout(100)
-  const after = Number(await weather.evaluate((node) => getComputedStyle(node).getPropertyValue('--weather-progress')))
-  expect(after).toBeGreaterThan(before)
-  await page.getByRole('link', { name: 'Meet the hens' }).click()
+test('opening image failure keeps a complete static stage and farm-life access', async ({ page }) => {
+  await page.route('**/media/market-opening-open-*.avif', (route) => route.abort())
+  await page.goto(projectPath)
+  await expect(page.locator('.hero-stage')).toHaveClass(/hero-stage--fallback/)
+  await expect(page.locator('.market-opening__plate')).toHaveCSS('background-image', /farm-setting-1920/)
+  await page.goto(`${projectPath}#farm-life`)
   await expect(page).toHaveURL(/#farm-life$/)
 })
