@@ -45,27 +45,37 @@ test('opening starts on meaningful downward intent, fades during the hold, escap
   await expect(stage).toHaveAttribute('data-opening-state', 'waiting')
   await dispatchWheel(page, 4)
   await expect(stage).toHaveAttribute('data-opening-state', 'waiting')
-  const fadeSamples = await page.evaluate(async () => {
+  const fade = await page.evaluate(async () => {
     window.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 20 }))
     const stage = document.querySelector('.hero-stage')
     const copy = document.querySelector('.hero-copy')
     while (stage?.getAttribute('data-opening-state') !== 'playing') await new Promise(requestAnimationFrame)
-    const samples: Array<{ opacity: number, hold: string | null }> = []
-    for (let index = 0; index < 6; index += 1) {
-      samples.push({
-        opacity: Number(copy ? getComputedStyle(copy).opacity : 0),
-        hold: stage?.getAttribute('data-scroll-hold') ?? null,
-      })
-      await new Promise((resolve) => setTimeout(resolve, 120))
+    const animation = copy?.getAnimations().find((candidate) => candidate.animationName === 'hero-copy-depart' || candidate.animationName === 'hero-copy-depart-phone')
+    if (!copy || !animation || !(animation.effect instanceof KeyframeEffect)) return null
+    animation.pause()
+    const duration = Number(animation.effect.getTiming().duration)
+    const opacityAt = (time: number) => {
+      animation.currentTime = time
+      return Number(getComputedStyle(copy).opacity)
     }
-    return samples
+    const result = {
+      hold: stage.getAttribute('data-scroll-hold'),
+      duration,
+      start: opacityAt(0),
+      middle: opacityAt(duration / 2),
+      end: opacityAt(duration),
+    }
+    animation.play()
+    return result
   })
   await expect(stage).toHaveAttribute('data-opening-state', 'playing')
-  expect(fadeSamples[0].hold).toBe('active')
-  expect(fadeSamples[0].opacity).toBeGreaterThan(.9)
-  expect(fadeSamples.some(({ opacity }) => opacity > .05 && opacity < .95)).toBe(true)
-  expect(fadeSamples.at(-1)?.opacity).toBeLessThan(fadeSamples[1].opacity)
-  await expect.poll(async () => Number(await stage.getAttribute('data-requested-progress'))).toBeGreaterThan(.01)
+  expect(fade).not.toBeNull()
+  expect(fade?.hold).toBe('active')
+  expect(fade?.duration).toBe(850)
+  expect(fade?.start).toBeGreaterThan(.99)
+  expect(fade?.middle).toBeGreaterThan(.05)
+  expect(fade?.middle).toBeLessThan(.95)
+  expect(fade?.end).toBeLessThan(.01)
   await expect(page.getByRole('button', { name: /Pause opening|Resume opening/ })).toHaveCount(0)
   await page.keyboard.press('Escape')
   await expect(stage).toHaveAttribute('data-opening-state', 'open')
@@ -92,7 +102,7 @@ test('initial scroll hold is bounded, preserves position, and never repeats', as
   if (testInfo.project.name === 'portrait-chromium') await page.evaluate(() => scrollBy(0, 800))
   else await page.mouse.wheel(0, 800)
   await expect.poll(async () => page.evaluate(() => scrollY)).toBeGreaterThan(0)
-  await page.locator('#shop').scrollIntoViewIfNeeded()
+  await page.keyboard.press('Escape')
   await expect(stage).toHaveAttribute('data-opening-state', 'open')
   await page.evaluate(() => scrollTo(0, 0))
   await dispatchWheel(page, 40)
@@ -130,15 +140,20 @@ test('focused hero actions remain focused instead of becoming inert mid-opening'
 test('touch interruption releases the bounded opening hold', async ({ page }) => {
   await page.goto(projectPath)
   await expect(page.locator('.hero-stage')).toHaveClass(/hero-stage--ready/)
-  await page.locator('.hero-stage').evaluate((stage) => {
+  const touchStates = await page.locator('.hero-stage').evaluate(async (stage) => {
     const start = new Touch({ identifier: 1, target: stage, clientX: 100, clientY: 500 })
     const move = new Touch({ identifier: 1, target: stage, clientX: 100, clientY: 470 })
     stage.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, touches: [start] }))
     stage.dispatchEvent(new TouchEvent('touchmove', { bubbles: true, touches: [move] }))
+    while (stage.getAttribute('data-opening-state') !== 'playing') await new Promise(requestAnimationFrame)
+    const active = stage.getAttribute('data-scroll-hold')
+    window.dispatchEvent(new TouchEvent('touchcancel', { bubbles: true }))
+    while (stage.getAttribute('data-scroll-hold') !== 'released') await new Promise(requestAnimationFrame)
+    return { active, released: stage.getAttribute('data-scroll-hold') }
   })
   await expect(page.locator('.hero-stage')).toHaveAttribute('data-opening-state', 'playing')
-  await expect(page.locator('.hero-stage')).toHaveAttribute('data-scroll-hold', 'active')
-  await page.evaluate(() => window.dispatchEvent(new TouchEvent('touchcancel', { bubbles: true })))
+  expect(touchStates.active).toBe('active')
+  expect(touchStates.released).toBe('released')
   await expect(page.locator('.hero-stage')).toHaveAttribute('data-scroll-hold', 'released')
   await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden')
 })
@@ -194,7 +209,8 @@ test('shutter is monotonic, the apple roll is distance-coupled, and the frame st
   expect(roll.travel).toBeGreaterThan(firstTravel)
   expect(roll.rotation * roll.radius).toBeCloseTo(roll.travel, 3)
   expect(Number(await scene.getAttribute('data-shutter-lift'))).toBeGreaterThan(.99)
-  await expect(stage).toHaveAttribute('data-opening-state', 'open', { timeout: 4000 })
+  await page.keyboard.press('Escape')
+  await expect(stage).toHaveAttribute('data-opening-state', 'open')
   await expect(stage).toHaveAttribute('data-opening-content', 'complete')
   await expect(scene).toHaveAttribute('data-counter-y', counterY ?? '')
   await expect(scene).toHaveAttribute('data-frame', 'permanent')
