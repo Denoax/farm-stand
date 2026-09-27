@@ -1,41 +1,39 @@
 # Current state
 
-## Approved direction
+## Active direction
 
-The active production direction is Treatment A, “The market opens.” The opening uses light through timber slats, a rigid rising shutter, a physically covered threshold passage, and one prepared farm-stand destination before the existing usable shop. The rejected Week-at-the-Stand experiment is not part of this repository or design. Browser captures and deployment do not constitute permanent artistic approval.
+The production direction remains Treatment A, “The market opens.” This finishing pass keeps the accepted barn and prepared desktop/portrait destination plates, then corrects the opening choreography, wall-photo navigation, identity, header, action colour, and basket presentation. The rejected Week-at-the-Stand experiment is not part of this repository or design. Browser captures and deployment do not constitute permanent artistic approval.
 
 ## Repository and publication policy
 
 This is the existing public `Denoax/farm-stand` worktree and deploys through its existing GitHub Pages workflow to `https://denoax.github.io/farm-stand/`.
 
-Standing publication authorization covers coherent, inspected, tested integration through the existing main branch and Pages workflow. It does not enable real orders, payments, bookings, message delivery, analytics, purchases, credential changes, force-pushes, destructive history changes, or unrelated infrastructure.
+Standing publication authorization covers a coherent, inspected, tested integration through the existing main branch and Pages workflow. It does not enable real orders, payments, bookings, message delivery, analytics, purchases, credential changes, force-pushes, destructive history changes, or unrelated infrastructure.
 
 ## Current implementation
 
-The opening is a reversible six-shot scroll sequence driven by one pure evaluator. A prepared desktop or deliberately recomposed portrait plate supplies one continuous farm world. Limited live Three.js adds the retained CC0 apple, a supported counter, shutter slats and braces, side rails, warm light, contact shadow, and the close timber underside/iron hardware used for full-coverage recomposition. Requested progress and presented progress are separate; the DOM follows only a rendered state.
+The 6.5-second opening is time-controlled after one intentional downward wheel, touch, or appropriate page-navigation key. One owner provides a one-second initial scroll hold after scene readiness; it releases on its independent deadline and on Escape, navigation/control activation, touch cancellation, page hiding, reduced-motion change, failure, or unmount. Returning sessions and direct hashes bypass it.
 
-The first-paint posters are deterministic captures of the actual initial live composition. The first canvas frame is rendered before the poster is removed. Model, WebGL, or new-plate failure keeps a complete static stand and HTML journey. Reduced motion presents the open stand in normal document flow. Direct hashes bypass the opening as before. Rendering stops offscreen and resumes at current intent.
+The live threshold now has four independent pieces: fixed rails, one monotonic rising shutter, a removable foreground display table, and the retained CC0 apple. The old broad descending passage and unlit oval shadow are removed. The apple casts its calculated shadow onto the receiving table, exits left while still supported, and the table then withdraws continuously through the bottom. The photographic counter never disappears. After an uncluttered rest of about one second, the original service copy and four individual pinned photo links return from the left and remain.
 
-The former orchard fall and weather chapter are retired from the default page. Their files and history remain available. Farm-life chapters continue directly after the shop.
+The visible brand is one original open-barn SVG master reused through one Logo component in the header and footer and directly as the favicon. Header navigation remains HTML set in the locally delivered Source Sans 3 face. Warm olive action tokens are shared by principal commerce actions and enabled quantity controls.
 
-The catalogue retains seven products, filters, details, image motion, immediate add feedback, keyboard/Escape focus return, and explicit demonstration-only boundaries. The basket remains a responsive native dialog with labeled steppers, undo, confirmation, collection preview, and bounded session persistence. Product data, integer money, persistence semantics, and fictional transaction boundaries are unchanged.
+The 48-product catalogue, all department counts, real photographs, three licensed farm-life videos, variants, integer money, basket reducer, quantity bounds, persistence migration, collection-preview semantics, direct hashes, and fictional transaction boundaries remain intact. Basket persistence stores validated identifiers and bounded integer quantities; displayed prices come from the current catalogue.
 
-Fictional visit information, website-service content, sample-hours editor, and contact preview remain unconfigured. No order, payment, reservation, booking, message, or analytics path exists.
+The drawer uses one explicit row grid with adjacent thumbnail/copy, aligned totals, and a deliberate quantity/remove row. Quantity controls are fixed 44×44 circles. The superseded disclaimer and implementation-oriented saved-price sentence are absent from the customer-facing drawer.
+
+## Static and failure states
+
+The first-paint posters were regenerated from the revised live starting composition. Model/WebGL failure retains the open plate when available; opening-image failure falls back to the existing complete farm setting and live HTML. Reduced motion and direct destinations immediately present the complete composition. The scene stops rendering offscreen and settles permanently after the opening.
 
 ## Validation and evidence
 
-The complete representation, source/reuse record, evidence inventory, measurements, and remaining defects are in `docs/MARKET-OPENING-REVIEW.md`. Review media is ignored from Pages delivery under `evidence/market-opening/`; the uploadable review archive is created separately in Downloads.
+The concise finishing report is `docs/OPENING-UI-FINISH-REVIEW.md`. Bulky local captures are ignored under `evidence/opening-ui-finish/`; the uploadable review archive is produced separately and is not deployed.
 
-Current automated evidence includes a passing production build and 38 Playwright checks across desktop and portrait. Headless SwiftShader frame cadence is uneven and is reported as a limitation rather than treated as hardware-GPU evidence.
-
-## Highest-impact limitations
+## Known limitations
 
 - Physical-phone, hardware-GPU, Safari, screen-reader, and independent human art-direction reviews remain outstanding.
-- The project-generated stand plates are illustrative, not a verified property or real inventory.
-- The fully covering close-timber passage is deliberately brief and less detailed than the prepared destination plate.
+- The illustrative generated stand plates do not depict a verified property or live inventory.
+- On narrow portrait framing the photo prints are immediately adjoining the available stationary timber/table material because the approved crop contains no broad wall panel.
 - The lazy Three.js chunk remains above Vite’s generic 500 kB raw advisory.
-- Public identity, contact destination, commercial scope, pricing, support terms, backend, and integrations remain unsupplied and inactive.
-
-## Next action
-
-Future work should begin from the deployed Treatment A state, preserve the shop and source records, and use actual rendered evidence. Do not revive the rejected Week-at-the-Stand concept or treat publication as artistic approval.
+- Public identity details, real contact delivery, commerce backends, and analytics remain intentionally unconfigured.

@@ -17,8 +17,8 @@ The models are normalized at runtime to a shared authored scale, receive/cast co
 ## Treatment A market opening
 
 - **Open stand plates** — project-original edits made with OpenAI's built-in image editing tool on 26 September 2026, using the retained farm-setting plate as the camera, shelter, counter, landscape, and light reference. The desktop and deliberately recomposed portrait masters add one coherent right-side arrangement of onions, potatoes, carrots, squash, eggs, and linen while reserving the left counter for the live CC0 apple. Exact production requests are retained in `assets/source/generated/PROMPT.md`; source and derivative hashes are in `assets/manifest.json`. Delivery files are `public/media/market-opening-open-desktop.avif` and `market-opening-open-portrait.avif`.
-- **First-paint posters** — deterministic captures of the implemented starting state at 1536×1024 and 640×960 with interface copy and controls suppressed. They contain the actual timber shutter, rails, counter, light, contact shadow, and retained CC0 apple used by the live scene. They were AVIF-encoded as `public/media/market-opening-poster-desktop.avif` and `market-opening-poster-portrait.avif`, preventing a different composition from appearing while Three.js and the apple model load.
-- **Runtime source reuse** — the apple remains Oliver Harries's CC0 Poly Haven model; the wood map remains the existing project-generated `crate-wood.webp` crop. The shutter, rails, braces, counter, close-passage hardware, lighting, camera, and shot evaluator are original project code and Three.js primitives. No third-party treatment code or reference-site media was copied.
+- **First-paint posters** — deterministic captures of the revised implemented starting state at 1536×1024 and 640×960 with interface copy and controls suppressed. They contain the actual timber shutter, fixed rails, removable display table, calculated apple cast/contact shadow, lighting, and retained CC0 apple used by the live scene. They were AVIF-encoded as `public/media/market-opening-poster-desktop.avif` and `market-opening-poster-portrait.avif`, preventing a different composition from appearing while Three.js and the apple model load.
+- **Runtime source reuse** — the apple remains Oliver Harries's CC0 Poly Haven model; the wood map remains the existing project-generated `crate-wood.webp` crop. The monotonic shutter, fixed rails, removable display table, lighting, camera, and shot evaluator are original project code and Three.js primitives. The former close-passage assembly and fake oval shadow are no longer rendered. No third-party treatment code or reference-site media was copied.
 
 ## Fonts
 
@@ -40,7 +40,7 @@ The v2 expansion uses locally delivered derivatives of Pexels photographs under 
 - Catalogue: carrots by Joao Teles; potatoes by Ellie Burgin; squash by MART PRODUCTION; eggs by Sophia Martin; produce crate by Snappr.
 - Farm life: hens by Eline Spee; cattle by Alina Vilchenko; sheep by cottonbro studio.
 - Apple and onion catalogue images are dedicated 960×640 renders of the retained CC0 models, made with a neutral green backdrop, warm wooden ground, catalogue lighting, and contact shadows. They are independent of the hero composition; exact derivative hashes are in the manifest.
-- `public/media/farm-stand-social.jpg` is a 1200 px JPEG derivative of the existing desktop fallback poster for Open Graph clients that do not support AVIF.
+- `public/media/farm-stand-social.jpg` is a 1200×800 JPEG capture of the completed desktop composition for Open Graph clients. It includes the same master barn mark rendered by the shared Logo component; it is not separate identity artwork.
 
 ## v2.4 presentation media
 

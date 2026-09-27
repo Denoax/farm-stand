@@ -32,7 +32,7 @@ async function measureRun(index) {
     }
     requestAnimationFrame(sample)
     const started = performance.now()
-    document.querySelector('.market-opening__motion')?.click()
+    window.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 24 }))
     await new Promise((resolve) => {
       const check = () => {
         if (document.querySelector('.hero-stage')?.getAttribute('data-opening-state') === 'open') {
@@ -55,6 +55,43 @@ async function measureRun(index) {
 const runs = []
 for (let index = 1; index <= 3; index += 1) runs.push(await measureRun(index))
 
+async function measureHold(index) {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 })
+  const page = await context.newPage()
+  await page.goto(baseURL, { waitUntil: 'networkidle' })
+  await page.waitForSelector('.hero-stage--ready')
+  const result = await page.evaluate(async () => {
+    const root = document.querySelector('[data-opening-state]')
+    const started = performance.now()
+    let acquired = false
+    const durationMs = await new Promise((resolve) => {
+      const observer = new MutationObserver(() => {
+        const value = root?.getAttribute('data-scroll-hold')
+        if (value === 'active') acquired = true
+        if (acquired && value === 'released') {
+          observer.disconnect()
+          resolve(performance.now() - started)
+        }
+      })
+      observer.observe(root, { attributes: true, attributeFilter: ['data-scroll-hold'] })
+      window.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 24 }))
+    })
+    window.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 24 }))
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    return {
+      durationMs,
+      acquired,
+      repeated: root?.getAttribute('data-scroll-hold') === 'active',
+      scrollY,
+    }
+  })
+  await context.close()
+  return { run: index, ...result }
+}
+
+const holdRuns = []
+for (let index = 1; index <= 3; index += 1) holdRuns.push(await measureHold(index))
+
 const result = {
   measuredAt: new Date().toISOString(),
   source: {
@@ -66,11 +103,15 @@ const result = {
   },
   opening: {
     runs,
-    method: 'Three independent fresh browser contexts. Each run starts after network idle and scene readiness, uses the real Open the stand control, and records the complete unaccelerated 6.2 second timeline.',
+    method: 'Three independent fresh browser contexts. Each run starts after network idle and scene readiness, dispatches one downward wheel intent, and records the complete unaccelerated 6.5 second timeline.',
+  },
+  initialScrollHold: {
+    runs: holdRuns,
+    method: 'Three fresh contexts measure DOM acquisition-to-release on the independent real-time deadline, then send a second intent to verify the hold does not reacquire.',
   },
 }
 
-await fs.mkdir(path.resolve('evidence/market-expansion/review'), { recursive: true })
-await fs.writeFile(path.resolve('evidence/market-expansion/review/motion-measurements.json'), `${JSON.stringify(result, null, 2)}\n`)
+await fs.mkdir(path.resolve('evidence/opening-ui-finish/review'), { recursive: true })
+await fs.writeFile(path.resolve('evidence/opening-ui-finish/review/motion-measurements.json'), `${JSON.stringify(result, null, 2)}\n`)
 await browser.close()
 console.log(JSON.stringify(result, null, 2))

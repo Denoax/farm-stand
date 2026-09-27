@@ -5,6 +5,7 @@ import { ShopSection } from './components/ShopSection'
 import { FarmLife } from './components/FarmLife'
 import { VisitSection } from './components/VisitSection'
 import { TryUpdate } from './components/TryUpdate'
+import { Logo } from './components/Logo'
 import { basketReducer, basketStorageKey, legacyBasketStorageKey, parseBasketSnapshot, serializeBasket } from './state/basket'
 import type { ProductId } from './content/catalogue'
 
@@ -13,18 +14,22 @@ const publicAsset = (path: string) => `${import.meta.env.BASE_URL}${path.replace
 
 type SceneState = 'loading' | 'ready' | 'fallback'
 type OpeningState = 'waiting' | 'playing' | 'paused' | 'open' | 'fallback'
+type OpeningContentState = 'initial' | 'opening' | 'settled' | 'reintroduced' | 'complete'
 
 const openingStorageKey = 'farm-stand-market-opening-v2'
-const openingDuration = 6200
+const openingDuration = 6500
+const contentReturnStart = 0.895
+const openingSettleStart = 0.75
+const introHoldDuration = 900
 
 function progressAtTime(milliseconds: number) {
-  const seconds = Math.min(openingDuration, Math.max(0, milliseconds)) / 1000
-  const points: Array<[number, number]> = [[0, 0], [.4, .12], [2.9, .48], [4.5, .565], [4.85, .66], [6.2, 1]]
-  const nextIndex = points.findIndex(([time]) => time >= seconds)
-  if (nextIndex <= 0) return nextIndex === 0 ? points[0][1] : 1
-  const [fromTime, fromProgress] = points[nextIndex - 1]
-  const [toTime, toProgress] = points[nextIndex]
-  return fromProgress + (toProgress - fromProgress) * ((seconds - fromTime) / (toTime - fromTime))
+  return Math.min(openingDuration, Math.max(0, milliseconds)) / openingDuration
+}
+
+function contentStateAtProgress(progress: number): OpeningContentState {
+  if (progress >= contentReturnStart) return 'reintroduced'
+  if (progress >= openingSettleStart) return 'settled'
+  return 'opening'
 }
 
 function shouldBypassOpening() {
@@ -40,9 +45,15 @@ export function App() {
   const progressRef = useRef(0)
   const [sceneState, setSceneState] = useState<SceneState>('loading')
   const [openingState, setOpeningState] = useState<OpeningState>(() => shouldBypassOpening() ? 'open' : 'waiting')
+  const [openingContentState, setOpeningContentState] = useState<OpeningContentState>(() => shouldBypassOpening() ? 'complete' : 'initial')
+  const [introHoldActive, setIntroHoldActive] = useState(false)
   const openingStateRef = useRef(openingState)
+  const sceneStateRef = useRef(sceneState)
+  const introHoldRef = useRef(false)
+  const introHoldTimerRef = useRef<number | undefined>(undefined)
   const elapsedRef = useRef(openingState === 'open' ? openingDuration : 0)
   openingStateRef.current = openingState
+  sceneStateRef.current = sceneState
   progressRef.current = openingState === 'open' || openingState === 'fallback' ? 1 : progressRef.current
   const [basket, dispatchBasket] = useReducer(basketReducer, {}, () => {
     try {
@@ -52,16 +63,30 @@ export function App() {
     }
   })
   const [shopFocusRequest, setShopFocusRequest] = useState<{ productId: ProductId; sequence: number }>()
+  const releaseIntroHold = useCallback((updateState = true) => {
+    if (introHoldTimerRef.current !== undefined) window.clearTimeout(introHoldTimerRef.current)
+    introHoldTimerRef.current = undefined
+    introHoldRef.current = false
+    if (updateState) setIntroHoldActive(false)
+  }, [])
+  const beginIntroHold = useCallback(() => {
+    if (introHoldRef.current) return
+    introHoldRef.current = true
+    setIntroHoldActive(true)
+    introHoldTimerRef.current = window.setTimeout(() => releaseIntroHold(), introHoldDuration)
+  }, [releaseIntroHold])
   const settleOpening = useCallback((state: Extract<OpeningState, 'open' | 'fallback'> = 'open') => {
+    releaseIntroHold()
     elapsedRef.current = openingDuration
     progressRef.current = 1
     setOpeningState(state)
+    setOpeningContentState('complete')
     const stage = stageRef.current
     if (stage) stage.dataset.requestedProgress = '1.0000'
     document.documentElement.style.setProperty('--stage-progress', '1.0000')
     window.dispatchEvent(new Event('farmstageprogress'))
     try { sessionStorage.setItem(openingStorageKey, 'complete') } catch { /* The visual still settles open when storage is unavailable. */ }
-  }, [])
+  }, [releaseIntroHold])
   const onSceneState = useCallback((state: SceneState) => setSceneState((current) => current === 'fallback' ? current : state), [])
   const onPresented = useCallback((progress: number, shot: string) => {
     const stage = stageRef.current
@@ -71,6 +96,12 @@ export function App() {
     stage.dataset.presentedProgress = value
     stage.dataset.shot = shot
     document.documentElement.style.setProperty('--stage-progress', value)
+    if (openingStateRef.current === 'playing' || openingStateRef.current === 'paused') {
+      setOpeningContentState((current) => {
+        const next = contentStateAtProgress(progress)
+        return current === next ? current : next
+      })
+    }
   }, [])
   const viewShopProduct = useCallback((productId: ProductId) => {
     window.history.replaceState(null, '', `#product-${productId}`)
@@ -127,28 +158,73 @@ export function App() {
     }
     const play = () => {
       if (openingStateRef.current === 'open' || openingStateRef.current === 'fallback' || reducedMotion.matches) return settleOpening()
+      if (sceneStateRef.current !== 'ready') return
+      const focused = document.activeElement
+      if (focused instanceof Element && focused.closest('.hero-copy, .entrance-links')) return settleOpening()
+      beginIntroHold()
+      setOpeningContentState('opening')
       setOpeningState('playing')
     }
     const onWheel = (event: WheelEvent) => {
+      if (introHoldRef.current) {
+        event.preventDefault()
+        return
+      }
       if (openingStateRef.current !== 'waiting' || event.deltaY <= 0) return
       wheelDistance += event.deltaY
-      if (wheelDistance >= 18) play()
+      if (wheelDistance >= 18 && sceneStateRef.current === 'ready') {
+        event.preventDefault()
+        play()
+      }
     }
     const onTouchStart = (event: TouchEvent) => { touchY = event.touches[0]?.clientY ?? null }
     const onTouchMove = (event: TouchEvent) => {
       const nextY = event.touches[0]?.clientY
-      if (openingStateRef.current === 'waiting' && touchY !== null && nextY !== undefined && touchY - nextY >= 18) play()
+      if (introHoldRef.current) {
+        event.preventDefault()
+        return
+      }
+      if (openingStateRef.current === 'waiting' && sceneStateRef.current === 'ready' && touchY !== null && nextY !== undefined && touchY - nextY >= 18) {
+        event.preventDefault()
+        play()
+      }
     }
     const onKeyDown = (event: KeyboardEvent) => {
-      if (openingStateRef.current === 'waiting' && ['ArrowDown', 'PageDown', ' ', 'End'].includes(event.key)) play()
+      if (event.key === 'Escape' && (openingStateRef.current === 'playing' || openingStateRef.current === 'paused')) {
+        settleOpening()
+        return
+      }
+      const navigationKey = ['ArrowDown', 'PageDown', ' ', 'End'].includes(event.key)
+      if (!navigationKey || event.altKey || event.ctrlKey || event.metaKey) return
+      const target = event.target instanceof Element ? event.target : null
+      if (target?.closest('a, button, input, textarea, select, [contenteditable="true"], [role="button"]')) return
+      if (introHoldRef.current) {
+        event.preventDefault()
+        return
+      }
+      if (openingStateRef.current === 'waiting' && sceneStateRef.current === 'ready') {
+        event.preventDefault()
+        play()
+      }
     }
     const onPreference = () => { if (reducedMotion.matches) settleOpening() }
+    const onVisibility = () => { if (document.hidden) releaseIntroHold() }
+    const onTouchCancel = () => releaseIntroHold()
+    const onActivation = (event: MouseEvent) => {
+      const target = event.target instanceof Element ? event.target.closest('a[href^="#"], button') : null
+      if (!target) return
+      releaseIntroHold()
+      if (target.matches('a[href^="#"]') && (openingStateRef.current === 'playing' || openingStateRef.current === 'paused')) settleOpening()
+    }
 
     if (openingStateRef.current === 'open') present()
-    window.addEventListener('wheel', onWheel, { passive: true })
+    window.addEventListener('wheel', onWheel, { passive: false })
     window.addEventListener('touchstart', onTouchStart, { passive: true })
-    window.addEventListener('touchmove', onTouchMove, { passive: true })
+    window.addEventListener('touchmove', onTouchMove, { passive: false })
+    window.addEventListener('touchcancel', onTouchCancel)
     window.addEventListener('keydown', onKeyDown)
+    document.addEventListener('click', onActivation, true)
+    document.addEventListener('visibilitychange', onVisibility)
     reducedMotion.addEventListener('change', onPreference)
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.intersectionRatio < .02 && (openingStateRef.current === 'playing' || openingStateRef.current === 'paused')) settleOpening()
@@ -159,10 +235,14 @@ export function App() {
       window.removeEventListener('wheel', onWheel)
       window.removeEventListener('touchstart', onTouchStart)
       window.removeEventListener('touchmove', onTouchMove)
+      window.removeEventListener('touchcancel', onTouchCancel)
       window.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('click', onActivation, true)
+      document.removeEventListener('visibilitychange', onVisibility)
       reducedMotion.removeEventListener('change', onPreference)
+      releaseIntroHold(false)
     }
-  }, [settleOpening])
+  }, [beginIntroHold, releaseIntroHold, settleOpening])
 
   useEffect(() => {
     if (openingState !== 'playing') return
@@ -198,12 +278,11 @@ export function App() {
   }, [openingState, settleOpening])
 
   return (
-    <div data-opening-state={openingState} data-motion-paused={openingState === 'paused' ? 'true' : 'false'}>
+    <div data-opening-state={openingState} data-opening-content={openingContentState} data-scroll-hold={introHoldActive ? 'active' : 'released'} data-motion-paused={openingState === 'paused' ? 'true' : 'false'}>
       <a className="skip-link" href="#main">Skip to the main content</a>
       <header className="site-header">
-        <a className="wordmark" href="#top" aria-label="Farm stand demonstration, home">
-          <span className="wordmark-mark" aria-hidden="true">FS</span>
-          <span>Farm stand <small>website demonstration</small></span>
+        <a className="wordmark" href="#top" aria-label="Farm stand website demonstration, home">
+          <Logo />
         </a>
         <nav aria-label="Main navigation">
           <a href="#shop">Shop</a>
@@ -220,6 +299,8 @@ export function App() {
           ref={stageRef}
           aria-labelledby="hero-heading"
           data-opening-state={openingState}
+          data-opening-content={openingContentState}
+          data-scroll-hold={introHoldActive ? 'active' : 'released'}
         >
           <div className="hero-sticky">
             <picture className="market-opening__plate" aria-hidden="true">
@@ -239,7 +320,7 @@ export function App() {
                 {sceneState === 'loading' ? 'Preparing the farm stand…' : sceneState === 'fallback' ? 'Static farm stand view' : openingState === 'playing' ? 'The market is opening…' : openingState === 'paused' ? 'Opening paused' : ''}
               </p>
             </div>
-            <div className="hero-copy">
+            <div className="hero-copy" aria-hidden={openingContentState === 'opening' || openingContentState === 'settled'} inert={openingContentState === 'opening' || openingContentState === 'settled' ? true : undefined}>
               <p className="eyebrow eyebrow--hero">{business.service_descriptor}</p>
               <h1 id="hero-heading">This is what your farm could look like online.</h1>
               <p className="hero-support">Show what’s available. Help customers find you. Make enquiries straightforward.</p>
@@ -249,18 +330,17 @@ export function App() {
               </div>
               <p className="hero-disclosure">A fictional farm-shop experience demonstrating a real website service. No produce is sold here.</p>
             </div>
-            <nav className="entrance-links" aria-label="Go straight to the market or farm-life scenes">
-              <a href="#shop"><img src={publicAsset('media/catalogue-expanded/apple.avif')} alt="" width="180" height="120" /><span>Shop</span></a>
-              <a href="#hens"><img src={publicAsset('media/farm-life-motion/hens-poster.avif')} alt="" width="180" height="120" /><span>Hens</span></a>
-              <a href="#cattle"><img src={publicAsset('media/farm-life-motion/cattle-poster.avif')} alt="" width="180" height="120" /><span>Cattle</span></a>
-              <a href="#sheep"><img src={publicAsset('media/farm-life-motion/sheep-poster.avif')} alt="" width="180" height="120" /><span>Sheep</span></a>
+            <nav className="entrance-links" aria-label="Go straight to the market or farm-life scenes" aria-hidden={openingContentState === 'opening' || openingContentState === 'settled'} inert={openingContentState === 'opening' || openingContentState === 'settled' ? true : undefined}>
+              <a href="#shop"><img src={publicAsset('media/catalogue-expanded/apple.avif')} alt="" width="960" height="640" /><span>Shop</span></a>
+              <a href="#hens"><img src={publicAsset('media/farm-life-motion/hens-poster.avif')} alt="" width="1280" height="720" /><span>Hens</span></a>
+              <a href="#cattle"><img src={publicAsset('media/farm-life-motion/cattle-poster.avif')} alt="" width="1280" height="720" /><span>Cattle</span></a>
+              <a href="#sheep"><img src={publicAsset('media/farm-life-motion/sheep-poster.avif')} alt="" width="1280" height="720" /><span>Sheep</span></a>
             </nav>
             <div className="market-opening__progress" aria-hidden="true">
               <span>Morning light</span><i /><span>Open stand</span>
             </div>
             <div className="market-opening__controls">
-              {openingState !== 'open' && openingState !== 'fallback' && <button className="market-opening__motion" type="button" aria-pressed={openingState === 'paused'} onClick={() => setOpeningState((state) => state === 'playing' ? 'paused' : 'playing')}>{openingState === 'paused' ? 'Resume opening' : openingState === 'waiting' ? 'Open the stand' : 'Pause opening'}</button>}
-              {openingState !== 'open' && openingState !== 'fallback' && <button className="market-opening__skip" type="button" onClick={() => settleOpening()}>Skip opening</button>}
+              {(openingState === 'playing' || openingState === 'paused') && <button className="market-opening__motion" type="button" aria-pressed={openingState === 'paused'} onClick={() => { releaseIntroHold(); setOpeningState((state) => state === 'playing' ? 'paused' : 'playing') }}>{openingState === 'paused' ? 'Resume opening' : 'Pause opening'}</button>}
             </div>
             {openingState === 'waiting' && <div className="scroll-cue" aria-hidden="true"><span /> Scroll to open the stand</div>}
           </div>
@@ -297,7 +377,7 @@ export function App() {
       </main>
 
       <footer>
-        <a href="#top">Return to the farm stand ↑</a>
+        <a className="footer-brand" href="#top" aria-label="Return to the farm stand"><Logo /> <span>Return to the farm stand ↑</span></a>
         <p>Farm stand website example · no orders, payments, bookings, or submissions</p>
         <p>Produce models: Poly Haven, CC0 · photography: credited Pexels contributors · background: project-generated original</p>
       </footer>

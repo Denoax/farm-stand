@@ -52,11 +52,10 @@ function BasketDialog({ basket, dispatch, open, onClose, returnFocus }: ShopSect
       returnFocus.current?.focus()
     }}>
       <div className="dialog-bar basket-drawer__header">
-        <div><p className="eyebrow">Demonstration basket</p><h2 id="basket-heading">Your basket <span>{basketCount(basket)}</span></h2></div>
+        <div className="basket-drawer__title"><p className="eyebrow">Demonstration basket</p><h2 id="basket-heading">Your basket <span>{basketCount(basket)}</span></h2></div>
         <button className="icon-button" type="button" onClick={() => dialogRef.current?.close()} aria-label="Close basket">×</button>
       </div>
       <div className="basket-drawer__scroll">
-        <p className="demo-boundary"><strong>Demo only.</strong> No order, payment, stock, or collection slot is submitted.</p>
         {removedLine && (
           <div className="basket-undo" role="status">
             <span>{removedLine.product.name}{removedLine.variantLabel ? `, ${removedLine.variantLabel}` : ''} removed.</span>
@@ -70,11 +69,10 @@ function BasketDialog({ basket, dispatch, open, onClose, returnFocus }: ShopSect
             <ul className="basket-lines">
               {lines.map((line) => (
                 <li key={line.lineId}>
-                  <img src={line.product.image} alt="" width="120" height="90" loading="lazy" style={{ objectPosition: line.product.imagePosition }} />
+                  <img className="basket-line-image" src={line.product.image} alt="" width="120" height="90" loading="lazy" style={{ objectPosition: line.product.imagePosition }} />
                   <div className="basket-line-copy"><strong>{line.product.name}</strong>{line.variantLabel && <span>Size: {line.variantLabel}</span>}<span>{line.product.unit}</span><span>{formatSampleCad(line.product.samplePriceMinor)} sample price × {line.quantity}</span></div>
-                  <QuantityEditor line={line} dispatch={dispatch} />
                   <strong className="line-total">{formatSampleCad(line.product.samplePriceMinor * line.quantity)}</strong>
-                  <button className="text-button text-button--danger" type="button" onClick={() => { setRemovedLine(line); dispatch({ type: 'remove', lineId: line.lineId }) }}>Remove</button>
+                  <div className="basket-line-actions"><QuantityEditor line={line} dispatch={dispatch} /><button className="text-button text-button--danger" type="button" onClick={() => { setRemovedLine(line); dispatch({ type: 'remove', lineId: line.lineId }) }}>Remove</button></div>
                 </li>
               ))}
             </ul>
@@ -94,7 +92,6 @@ function BasketDialog({ basket, dispatch, open, onClose, returnFocus }: ShopSect
       <div className="basket-drawer__footer">
         <div className="basket-total"><span>Illustrative subtotal · CAD</span><strong>{formatSampleCad(basketSubtotal(basket))}</strong></div>
         <button className="button button--sun" type="button" disabled={!lines.length} onClick={() => setCollectionOpen(true)}>Preview collection</button>
-        <small>Prices are read from the current catalogue, never from saved basket data.</small>
       </div>
     </dialog>
   )

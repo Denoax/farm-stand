@@ -1,4 +1,6 @@
-# Treatment A — production review
+# Treatment A — production review (superseded snapshot)
+
+This document records the earlier `3df19290dc357e161af32847f6d383ed2de33f94` production review. Its close-passage choreography and seven-product statements are historical, not current implementation truth. See `OPENING-UI-FINISH-REVIEW.md` and `STATE.md` for the revised opening and 48-product market state.
 
 ## Decision
 

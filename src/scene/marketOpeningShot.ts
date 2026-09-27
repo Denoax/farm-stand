@@ -1,13 +1,13 @@
-export type MarketOpeningShot = 'light' | 'lift' | 'threshold' | 'passage' | 'open' | 'rest'
+export type MarketOpeningShot = 'light' | 'lift' | 'apple-exit' | 'table-exit' | 'settled' | 'reintroduced'
 
 export interface MarketOpeningState {
   progress: number
   shot: MarketOpeningShot
   shutterLift: number
-  passage: number
-  passageExit: number
   cameraPullback: number
-  appleReveal: number
+  appleExit: number
+  tableExit: number
+  contentReturn: number
 }
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
@@ -19,25 +19,25 @@ const interval = (progress: number, start: number, end: number) => smoothstep((p
 
 export function evaluateMarketOpening(progress: number): MarketOpeningState {
   const normalized = clamp01(progress)
-  const shot: MarketOpeningShot = normalized < 0.12
+  const shot: MarketOpeningShot = normalized < 0.08
     ? 'light'
-    : normalized < 0.28
+    : normalized < 0.5
       ? 'lift'
-      : normalized < 0.48
-        ? 'threshold'
-        : normalized < 0.66
-          ? 'passage'
-          : normalized < 0.84
-            ? 'open'
-            : 'rest'
+      : normalized < 0.64
+        ? 'apple-exit'
+        : normalized < 0.75
+          ? 'table-exit'
+          : normalized < 0.895
+            ? 'settled'
+            : 'reintroduced'
 
   return {
     progress: normalized,
     shot,
-    shutterLift: interval(normalized, 0.1, 0.49),
-    passage: interval(normalized, 0.48, 0.565),
-    passageExit: interval(normalized, 0.565, 0.66),
-    cameraPullback: interval(normalized, 0.12, 0.48),
-    appleReveal: interval(normalized, 0.66, 0.76),
+    shutterLift: interval(normalized, 0.06, 0.47),
+    cameraPullback: interval(normalized, 0.08, 0.47),
+    appleExit: interval(normalized, 0.5, 0.63),
+    tableExit: interval(normalized, 0.64, 0.74),
+    contentReturn: interval(normalized, 0.895, 1),
   }
 }

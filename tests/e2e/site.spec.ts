@@ -15,12 +15,20 @@ async function addProduct(page: Page, productId: string, name = 'Add to basket')
   await expect(count).toHaveText(String(before + 1))
 }
 
+async function dispatchWheel(page: Page, deltaY: number) {
+  await page.evaluate((value) => window.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: value })), deltaY)
+}
+
 test('project-path build loads the opening and keeps entrance links usable', async ({ page }) => {
   const failedResponses: string[] = []
   page.on('response', (response) => { if (response.status() >= 400) failedResponses.push(`${response.status()} ${response.url()}`) })
   await page.goto(projectPath, { waitUntil: 'networkidle' })
   await expect(page.locator('.hero-stage')).toHaveClass(/hero-stage--ready/)
   await expect(page.getByRole('heading', { name: 'This is what your farm could look like online.' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Farm stand website demonstration, home' })).toBeVisible()
+  await expect(page.locator('.wordmark .logo-mark')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Open the stand' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Skip opening' })).toHaveCount(0)
   await expect(page.getByRole('navigation', { name: /straight to/i }).getByRole('link')).toHaveCount(4)
   await expect(page.getByRole('link', { name: 'Shop' }).last()).toHaveAttribute('href', '#shop')
   const resources = await page.evaluate(() => performance.getEntriesByType('resource').map((entry) => new URL(entry.name).pathname))
@@ -28,42 +36,107 @@ test('project-path build loads the opening and keeps entrance links usable', asy
   expect(failedResponses).toEqual([])
 })
 
-test('opening starts on meaningful downward intent, pauses, resumes, skips, and stays complete', async ({ page }) => {
+test('opening starts on meaningful downward intent, pauses, resumes, escapes, and stays complete', async ({ page }) => {
   await page.goto(projectPath)
   const stage = page.locator('.hero-stage')
+  await expect(stage).toHaveClass(/hero-stage--ready/)
   await expect(stage).toHaveAttribute('data-opening-state', 'waiting')
-  await page.mouse.wheel(0, 4)
+  await dispatchWheel(page, 4)
   await expect(stage).toHaveAttribute('data-opening-state', 'waiting')
-  await page.getByRole('button', { name: 'Open the stand' }).click()
+  await dispatchWheel(page, 20)
   await expect(stage).toHaveAttribute('data-opening-state', 'playing')
+  await expect(stage).toHaveAttribute('data-scroll-hold', 'active')
   await expect.poll(async () => Number(await stage.getAttribute('data-requested-progress'))).toBeGreaterThan(.01)
   await page.getByRole('button', { name: 'Pause opening' }).click()
   await expect(stage).toHaveAttribute('data-opening-state', 'paused')
+  await expect(stage).toHaveAttribute('data-scroll-hold', 'released')
   const paused = Number(await stage.getAttribute('data-requested-progress'))
   await page.mouse.wheel(0, -200)
   await page.waitForTimeout(250)
   expect(Number(await stage.getAttribute('data-requested-progress'))).toBeCloseTo(paused, 2)
   await page.getByRole('button', { name: 'Resume opening' }).click()
   await expect(stage).toHaveAttribute('data-opening-state', 'playing')
-  await page.getByRole('button', { name: 'Skip opening' }).click()
+  await page.keyboard.press('Escape')
   await expect(stage).toHaveAttribute('data-opening-state', 'open')
   await expect(stage).toHaveAttribute('data-requested-progress', '1.0000')
   await page.reload()
   await expect(stage).toHaveAttribute('data-opening-state', 'open')
-  await expect(page.getByRole('button', { name: 'Open the stand' })).toHaveCount(0)
+  await expect(stage).toHaveAttribute('data-scroll-hold', 'released')
 })
 
-test('keyboard intent starts the clock and leaving the hero settles it open', async ({ page }) => {
+test('initial scroll hold is bounded, preserves position, and never repeats', async ({ page }, testInfo) => {
   await page.goto(projectPath)
-  await page.keyboard.press('ArrowDown')
-  await expect(page.locator('.hero-stage')).toHaveAttribute('data-opening-state', 'playing')
+  const stage = page.locator('.hero-stage')
+  await expect(stage).toHaveClass(/hero-stage--ready/)
+  await page.evaluate(() => {
+    const root = document.querySelector('[data-opening-state]')!
+    const started = performance.now()
+    let sawActive = false
+    ;(window as typeof window & { __introHoldDuration?: number }).__introHoldDuration = undefined
+    const observer = new MutationObserver(() => {
+      const value = root.getAttribute('data-scroll-hold')
+      if (value === 'active') sawActive = true
+      if (sawActive && value === 'released') {
+        ;(window as typeof window & { __introHoldDuration?: number }).__introHoldDuration = performance.now() - started
+        observer.disconnect()
+      }
+    })
+    observer.observe(root, { attributes: true, attributeFilter: ['data-scroll-hold'] })
+    window.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 24 }))
+  })
+  await expect(stage).toHaveAttribute('data-scroll-hold', 'active')
+  if (testInfo.project.name === 'portrait-chromium') await dispatchWheel(page, 800)
+  else await page.mouse.wheel(0, 800)
+  expect(await page.evaluate(() => scrollY)).toBe(0)
+  if (testInfo.project.name === 'portrait-chromium') {
+    await expect(stage).toHaveAttribute('data-scroll-hold', 'released', { timeout: 2000 })
+  } else {
+    await expect.poll(async () => page.evaluate(() => (window as typeof window & { __introHoldDuration?: number }).__introHoldDuration ?? 0), { timeout: 1400 }).toBeGreaterThan(0)
+    const heldFor = await page.evaluate(() => (window as typeof window & { __introHoldDuration?: number }).__introHoldDuration!)
+    expect(heldFor).toBeGreaterThanOrEqual(850)
+    expect(heldFor).toBeLessThanOrEqual(1200)
+  }
+  if (testInfo.project.name === 'portrait-chromium') await page.evaluate(() => scrollBy(0, 800))
+  else await page.mouse.wheel(0, 800)
+  await expect.poll(async () => page.evaluate(() => scrollY)).toBeGreaterThan(0)
   await page.locator('#shop').scrollIntoViewIfNeeded()
-  await expect(page.locator('.hero-stage')).toHaveAttribute('data-opening-state', 'open')
+  await expect(stage).toHaveAttribute('data-opening-state', 'open')
+  await page.evaluate(() => scrollTo(0, 0))
+  await dispatchWheel(page, 40)
+  await expect(stage).toHaveAttribute('data-scroll-hold', 'released')
+})
+
+test('keyboard intent ignores controls and header navigation settles the opening', async ({ page }) => {
+  await page.goto(projectPath)
+  const stage = page.locator('.hero-stage')
+  await expect(stage).toHaveClass(/hero-stage--ready/)
+  await page.getByRole('link', { name: 'Farm stand website demonstration, home' }).focus()
+  await page.keyboard.press('ArrowDown')
+  await expect(stage).toHaveAttribute('data-opening-state', 'waiting')
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+  await page.keyboard.press('ArrowDown')
+  await expect(stage).toHaveAttribute('data-opening-state', 'playing')
+  await page.getByRole('link', { name: 'Shop' }).first().click()
+  await expect(stage).toHaveAttribute('data-opening-state', 'open')
+  await expect(stage).toHaveAttribute('data-scroll-hold', 'released')
   await expect(page.getByRole('heading', { name: 'Shop the stand.' })).toBeVisible()
 })
 
-test('touch intent starts the opening without scroll ownership', async ({ page }) => {
+test('focused hero actions remain focused instead of becoming inert mid-opening', async ({ page }) => {
   await page.goto(projectPath)
+  const stage = page.locator('.hero-stage')
+  await expect(stage).toHaveClass(/hero-stage--ready/)
+  const shopPhoto = page.getByRole('navigation', { name: /straight to/i }).getByRole('link', { name: 'Shop' })
+  await shopPhoto.focus()
+  await dispatchWheel(page, 24)
+  await expect(stage).toHaveAttribute('data-opening-state', 'open')
+  await expect(shopPhoto).toBeFocused()
+  await expect(stage).toHaveAttribute('data-scroll-hold', 'released')
+})
+
+test('touch interruption releases the bounded opening hold', async ({ page }) => {
+  await page.goto(projectPath)
+  await expect(page.locator('.hero-stage')).toHaveClass(/hero-stage--ready/)
   await page.locator('.hero-stage').evaluate((stage) => {
     const start = new Touch({ identifier: 1, target: stage, clientX: 100, clientY: 500 })
     const move = new Touch({ identifier: 1, target: stage, clientX: 100, clientY: 470 })
@@ -71,18 +144,24 @@ test('touch intent starts the opening without scroll ownership', async ({ page }
     stage.dispatchEvent(new TouchEvent('touchmove', { bubbles: true, touches: [move] }))
   })
   await expect(page.locator('.hero-stage')).toHaveAttribute('data-opening-state', 'playing')
+  await expect(page.locator('.hero-stage')).toHaveAttribute('data-scroll-hold', 'active')
+  await page.evaluate(() => window.dispatchEvent(new TouchEvent('touchcancel', { bubbles: true })))
+  await expect(page.locator('.hero-stage')).toHaveAttribute('data-scroll-hold', 'released')
   await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden')
 })
 
-test('hidden-tab lifecycle time is excluded from the opening clock', async ({ page }) => {
+test('hidden-tab lifecycle releases the hold and excludes hidden time from the clock', async ({ page }) => {
   await page.goto(projectPath)
-  await page.getByRole('button', { name: 'Open the stand' }).click()
+  await expect(page.locator('.hero-stage')).toHaveClass(/hero-stage--ready/)
+  await dispatchWheel(page, 24)
+  await expect(page.locator('.hero-stage')).toHaveAttribute('data-scroll-hold', 'active')
   await page.waitForTimeout(350)
   const before = Number(await page.locator('.hero-stage').getAttribute('data-requested-progress'))
   await page.evaluate(() => {
     Object.defineProperty(document, 'hidden', { configurable: true, value: true })
     document.dispatchEvent(new Event('visibilitychange'))
   })
+  await expect(page.locator('.hero-stage')).toHaveAttribute('data-scroll-hold', 'released')
   await page.waitForTimeout(700)
   await page.evaluate(() => {
     Object.defineProperty(document, 'hidden', { configurable: true, value: false })
@@ -91,6 +170,30 @@ test('hidden-tab lifecycle time is excluded from the opening clock', async ({ pa
   await page.waitForTimeout(80)
   const after = Number(await page.locator('.hero-stage').getAttribute('data-requested-progress'))
   expect(after - before).toBeLessThan(.12)
+})
+
+test('opening pieces are monotonic and exit in the assigned order', async ({ page }) => {
+  test.slow()
+  await page.goto(projectPath)
+  const stage = page.locator('.hero-stage')
+  const scene = page.getByTestId('scene-host')
+  await expect(stage).toHaveClass(/hero-stage--ready/)
+  await dispatchWheel(page, 24)
+  await expect(stage).toHaveAttribute('data-opening-state', 'playing')
+  const shutterSamples: number[] = []
+  for (let index = 0; index < 40 && Number(await scene.getAttribute('data-apple-exit')) < .1; index += 1) {
+    shutterSamples.push(Number(await scene.getAttribute('data-shutter-lift')))
+    await page.waitForTimeout(120)
+  }
+  expect(Number(await scene.getAttribute('data-apple-exit'))).toBeGreaterThanOrEqual(.1)
+  expect(shutterSamples.every((value, index) => index === 0 || value >= shutterSamples[index - 1] - .001)).toBe(true)
+  await expect.poll(async () => Number(await scene.getAttribute('data-apple-exit')), { timeout: 3000 }).toBeGreaterThan(.9)
+  await expect.poll(async () => Number(await scene.getAttribute('data-table-exit')), { timeout: 2500 }).toBeGreaterThan(.1)
+  expect(Number(await scene.getAttribute('data-apple-exit'))).toBeGreaterThan(.98)
+  expect(Number(await scene.getAttribute('data-shutter-lift'))).toBeGreaterThan(.99)
+  await expect(stage).toHaveAttribute('data-opening-state', 'open', { timeout: 4000 })
+  await expect(stage).toHaveAttribute('data-opening-content', 'complete')
+  expect(Number(await scene.getAttribute('data-table-exit'))).toBeGreaterThan(.99)
 })
 
 test('direct destination bypasses the opening and reveals non-featured products', async ({ page }) => {
@@ -131,6 +234,8 @@ test('basket supports variants, quantity, undo, preview, and clear', async ({ pa
   await expect(page.locator('#product-squash').getByRole('button', { name: 'Unavailable example' })).toBeDisabled()
   await page.getByRole('button', { name: /Open demonstration basket, 3 items/ }).click()
   const drawer = page.getByRole('dialog', { name: /Your basket/ })
+  await expect(drawer).not.toContainText('Demo only. No order, payment, stock, or collection slot is submitted.')
+  await expect(drawer).not.toContainText('Prices are read from the current catalogue')
   await expect(drawer.getByText('Size: Small')).toBeVisible()
   await expect(drawer.getByText('Size: Medium')).toBeVisible()
   await drawer.getByRole('button', { name: 'Increase Orchard apples quantity' }).click()
@@ -211,10 +316,38 @@ test('layouts avoid horizontal overflow and portrait basket stays within the vie
   await addProduct(page, 'apple')
   await page.getByRole('button', { name: /Open demonstration basket/ }).click()
   await page.waitForTimeout(450)
-  const rect = await page.getByRole('dialog', { name: /Your basket/ }).evaluate((node) => node.getBoundingClientRect())
+  const drawer = page.getByRole('dialog', { name: /Your basket/ })
+  const rect = await drawer.evaluate((node) => node.getBoundingClientRect())
   expect(rect.left).toBeGreaterThanOrEqual(0)
   expect(rect.right).toBeLessThanOrEqual(390)
   expect(rect.bottom).toBeLessThanOrEqual(844)
+  const controlRects = await drawer.locator('.basket-quantity button').evaluateAll((buttons) => buttons.map((button) => {
+    const box = button.getBoundingClientRect()
+    return { width: box.width, height: box.height, radius: getComputedStyle(button).borderRadius }
+  }))
+  expect(controlRects.length).toBeGreaterThan(0)
+  expect(controlRects.every(({ width, height, radius }) => width === 44 && height === 44 && radius === '50%')).toBe(true)
+})
+
+test('dense basket keeps product copy adjacent at 390px and 320px', async ({ page }) => {
+  const lines = { apple: 1, 'farm-tee:s': 1, 'farm-tee:m': 12, 'fruit-box': 2, 'pickled-cucumbers': 3, watermelon: 1, eggs: 4 }
+  for (const size of [{ width: 390, height: 844 }, { width: 320, height: 740 }]) {
+    await page.setViewportSize(size)
+    await page.goto(`${projectPath}#shop`)
+    await page.evaluate((value) => sessionStorage.setItem('farm-stand-demo-basket-v2', JSON.stringify({ version: 2, lines: value })), lines)
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: /Open demonstration basket, 24 items/ }).first().click()
+    const drawer = page.getByRole('dialog', { name: /Your basket/ })
+    const geometry = await drawer.locator('.basket-lines li').first().evaluate((row) => {
+      const image = row.querySelector('.basket-line-image')!.getBoundingClientRect()
+      const copy = row.querySelector('.basket-line-copy')!.getBoundingClientRect()
+      return { imageRight: image.right, imageTop: image.top, copyLeft: copy.left, copyTop: copy.top }
+    })
+    expect(geometry.copyLeft).toBeGreaterThan(geometry.imageRight)
+    expect(Math.abs(geometry.copyTop - geometry.imageTop)).toBeLessThan(8)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1)
+    await drawer.getByRole('button', { name: 'Close basket' }).click()
+  }
 })
 
 test('visit, service, and contact remain fictional and send nothing', async ({ page }) => {

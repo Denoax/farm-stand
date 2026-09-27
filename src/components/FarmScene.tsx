@@ -101,7 +101,9 @@ export function FarmScene({ progressRef, motionPaused, onStateChange, onPresente
     sun.shadow.camera.top = 6
     sun.shadow.camera.bottom = -5
     sun.shadow.bias = -0.00025
-    scene.add(sun)
+    sun.shadow.normalBias = 0.018
+    sun.target.position.set(-1.6, -2, 0.8)
+    scene.add(sun, sun.target)
     const thresholdLight = new THREE.SpotLight(0xffc867, 72, 14, 0.34, 0.68, 1.35)
     thresholdLight.position.set(-3.4, 4.1, 4.8)
     thresholdLight.target.position.set(-1.8, -1.8, 0.5)
@@ -118,7 +120,6 @@ export function FarmScene({ progressRef, motionPaused, onStateChange, onPresente
     const shutterWood = new THREE.MeshStandardMaterial({ map: woodTexture, color: 0x65462f, roughness: 0.94, metalness: 0 })
     const shutterEdge = new THREE.MeshStandardMaterial({ map: woodTexture, color: 0x2f2119, roughness: 0.97, metalness: 0 })
     const counterWood = new THREE.MeshStandardMaterial({ map: woodTexture, color: 0x8a684b, roughness: 0.9, metalness: 0 })
-    const passageWood = new THREE.MeshStandardMaterial({ map: woodTexture, color: 0xa77a54, roughness: 0.9, metalness: 0 })
     const iron = new THREE.MeshStandardMaterial({ color: 0x202622, roughness: 0.72, metalness: 0.45 })
 
     const shutter = new THREE.Group()
@@ -132,36 +133,15 @@ export function FarmScene({ progressRef, motionPaused, onStateChange, onPresente
     shutter.add(braceLeft, braceRight)
     scene.add(shutter)
 
-    const threshold = new THREE.Group()
-    threshold.add(makeBoard([13.2, 1.02, 1.52], counterWood, [0, -2.57, 0.68]))
-    threshold.add(makeBoard([13.4, 0.16, 1.7], shutterEdge, [0, -2.02, 0.7]))
-    threshold.add(makeBoard([0.34, 8.6, 0.42], iron, [-5.55, 0.15, -0.02]))
-    threshold.add(makeBoard([0.34, 8.6, 0.42], iron, [5.55, 0.15, -0.02]))
-    scene.add(threshold)
+    const fixedRails = new THREE.Group()
+    fixedRails.add(makeBoard([0.34, 8.6, 0.42], iron, [-5.55, 0.15, -0.02]))
+    fixedRails.add(makeBoard([0.34, 8.6, 0.42], iron, [5.55, 0.15, -0.02]))
+    scene.add(fixedRails)
 
-    const passage = new THREE.Group()
-    passage.position.set(0, 7.5, 4.15)
-    passage.add(makeBoard([14.5, 6.9, 1.15], passageWood, [0, 0, 0]))
-    passage.add(makeBoard([0.28, 7.05, 0.18], iron, [0, 0, 0.66]))
-    passage.add(makeBoard([0.24, 7.05, 0.18], iron, [-3.45, 0, 0.66]))
-    passage.add(makeBoard([0.24, 7.05, 0.18], iron, [3.45, 0, 0.66]))
-    const boltGeometry = new THREE.SphereGeometry(0.1, 16, 8)
-    for (const x of [-3.45, 0, 3.45]) {
-      for (const y of [-2.25, 0, 2.25]) {
-        const bolt = new THREE.Mesh(boltGeometry, iron)
-        bolt.position.set(x, y, 0.82)
-        passage.add(bolt)
-      }
-    }
-    scene.add(passage)
-
-    const contact = new THREE.Mesh(
-      new THREE.CircleGeometry(0.72, 40),
-      new THREE.MeshBasicMaterial({ color: 0x20150e, transparent: true, opacity: 0.4, depthWrite: false }),
-    )
-    contact.scale.set(1, 0.22, 1)
-    contact.position.set(-2.25, -1.91, 1.53)
-    scene.add(contact)
+    const displayTable = new THREE.Group()
+    displayTable.add(makeBoard([13.2, 1.02, 1.52], counterWood, [0, -2.57, 0.68]))
+    displayTable.add(makeBoard([13.4, 0.16, 1.7], shutterEdge, [0, -2.02, 0.7]))
+    scene.add(displayTable)
 
     let apple: THREE.Group | undefined
     let disposed = false
@@ -181,7 +161,7 @@ export function FarmScene({ progressRef, motionPaused, onStateChange, onPresente
       (gltf) => {
         if (disposed) return
         apple = prepareApple(gltf.scene)
-        apple.position.set(-2.25, -1.94, 1.54)
+        apple.position.set(-1.75, -2.02, 1.32)
         apple.rotation.set(0.02, -0.38, 0.07)
         scene.add(apple)
         render()
@@ -226,30 +206,14 @@ export function FarmScene({ progressRef, motionPaused, onStateChange, onPresente
       shutter.position.z = THREE.MathUtils.lerp(0, -0.38, state.cameraPullback)
       shutter.scale.setScalar(1 - state.cameraPullback * 0.025)
 
-      passage.position.y = state.passage < 1
-        ? THREE.MathUtils.lerp(7.5, 0, state.passage)
-        : THREE.MathUtils.lerp(0, -8.2, state.passageExit)
-      passage.position.z = 4.15
-      passage.rotation.x = THREE.MathUtils.lerp(-0.06, 0.04, state.passage)
-      passage.visible = state.progress >= 0.46 && state.progress <= 0.68
-
-      const underCover = state.progress >= 0.545 && state.progress <= 0.64
-      threshold.visible = state.progress < 0.47
-      apple.visible = !underCover && (state.progress < 0.57 || state.progress >= 0.66)
-      contact.visible = apple.visible
-      contact.position.x = portrait ? -0.3 : state.progress >= 0.66 ? -2.65 : -1.75
-      contact.position.y = portrait ? -1.73 : state.progress >= 0.66 ? -1.95 : -1.7
-      contact.position.z = state.progress >= 0.66 ? 0.64 : 1.53
+      displayTable.position.y = THREE.MathUtils.lerp(0, portrait ? -7.2 : -6.6, state.tableExit)
       thresholdLight.intensity = THREE.MathUtils.lerp(72, 42, state.shutterLift)
 
-      if (state.progress >= 0.66) {
-        apple.position.set(portrait ? -0.3 : -2.65, portrait ? -1.76 : -1.98, 0.65)
-        apple.scale.setScalar(portrait ? 0.7 : 0.92)
-        apple.rotation.set(0.02, -0.31, 0.07)
-      } else {
-        apple.position.set(portrait ? -0.3 : -1.75, portrait ? -1.76 : -1.73, 1.54)
-        apple.scale.setScalar(portrait ? 0.78 : 1)
-      }
+      const appleStartX = portrait ? -0.28 : -1.75
+      const appleEndX = portrait ? -5.4 : -7.2
+      apple.position.set(THREE.MathUtils.lerp(appleStartX, appleEndX, state.appleExit), -2.02, 1.32)
+      apple.scale.setScalar(portrait ? 0.78 : 1)
+      apple.rotation.set(0.02, THREE.MathUtils.lerp(-0.38, -0.12, state.appleExit), 0.07 + state.appleExit * 1.18)
 
       renderer.render(scene, camera)
       sceneHost.dataset.scene = state.shot
@@ -258,6 +222,11 @@ export function FarmScene({ progressRef, motionPaused, onStateChange, onPresente
       sceneHost.dataset.drawCalls = String(renderer.info.render.calls)
       sceneHost.dataset.triangles = String(renderer.info.render.triangles)
       sceneHost.dataset.renderCount = String(Number(sceneHost.dataset.renderCount ?? 0) + 1)
+      sceneHost.dataset.shutterLift = state.shutterLift.toFixed(4)
+      sceneHost.dataset.appleExit = state.appleExit.toFixed(4)
+      sceneHost.dataset.tableExit = state.tableExit.toFixed(4)
+      sceneHost.dataset.appleX = apple.position.x.toFixed(3)
+      sceneHost.dataset.tableY = displayTable.position.y.toFixed(3)
       sceneHost.dataset.rendering = 'active'
       onPresented(state.progress, state.shot)
     }
