@@ -104,35 +104,35 @@
     },
     {
       "id": "market_opening_first_paint_posters",
-      "source": "Deterministic first-frame captures of the implemented timber shutter, rails, counter, right reveal wall, lighting, and retained CC0 apple over the new real-farm plate",
+      "source": "Deterministic first-frame captures of the implemented timber shutter, rails, permanent frame, lighting, and retained CC0 apple over the selected bright orchard plate",
       "source_sha256": [
-        "b4dce0460574d990a6f04d21dcbb8010ea865afa602184cb13f4a511ce69a2e9",
-        "1ce985490e5db88b71793516ddbfc3fa8369f92242705e4903f731903ba2c396"
+        "c2f9130818b89e017d14e438ac3451965998eb9cc440d7a1178615e01ca547f1",
+        "07b62c3e36defd86ca3914bf8d78dcd1c805d25055cd2fbcb2b1aa047a71bd2e"
       ],
       "derivative_path": [
         "public/media/market-opening-poster-desktop.avif",
         "public/media/market-opening-poster-portrait.avif"
       ],
       "derivative_sha256": [
-        "3f861d909f9668b9054aed0232f541608761b3f87a71c8ca76303a2976240a7f",
-        "d1edf16ac7d40ebe2456778abc3adbf8a197d6c4a21770082a2d20830420b54e"
+        "9f7a46ca7efd1d0b47e6da4e60c342178376caf06955d1fb7c575307566df7e3",
+        "409cb18990c414a36505b21fb03c2d7568be52ae1c263174d883fcfa6d1ffc1c"
       ],
-      "transformation": "Captured from the permanent-frame local WebGL start state at 1536 by 1024 and 640 by 960 CSS pixels with HTML interface layers suppressed; still-image AVIF-encoded with FFmpeg at CRF 30. The real apple mesh rests on the permanent receiving counter and casts its calculated shadow. These are loading posters, not independent artwork or review baselines."
+      "transformation": "Captured from the current permanent-frame local WebGL start state at 1536 by 1024 and 640 by 960 CSS pixels with HTML interface layers suppressed; still-image AVIF-encoded with FFmpeg at CRF 30. These are loading posters, not independent artwork or review baselines."
     },
     {
       "id": "market_opening_settled_posters",
-      "source": "Deterministic complete-state captures of the implemented permanent frame, real Hudson Graves farm photograph, timber reveal, lighting, and camera",
+      "source": "Deterministic complete-state captures of the implemented permanent frame, real Mark Stebnicki orchard photograph, lighting, and camera, with the obsolete photo backing wall removed",
       "source_sha256": [
-        "686120338c454ba854504bf2c9e45b7972407e64f4b3df8906830af3b9552a87",
-        "1a9471c8d1f20e051d2f49d030e51cb5d416d8bb5ecde2deb347da587a24427b"
+        "96c36b5f18c0a34d52635fcd1315dca5516e80e120e7d937478b44b49a974716",
+        "b36c272db9cd63dc85f590c5d87d28ce9b069fb76711fe9199cc73637c42e5af"
       ],
       "derivative_path": [
         "public/media/market-opening-settled-desktop.avif",
         "public/media/market-opening-settled-portrait.avif"
       ],
       "derivative_sha256": [
-        "9bec7e3a1164e259ddff31a2d2ed1874c02c788a88fe35bab597fc8f712c4d6d",
-        "ae81090bfaa8e976fdb6eb53841eb0a259510e469dd5197f999b62b31d7a14ab"
+        "fec9e92c753c77149a61c2ac935b2f9f9fdc007d1b9d5e8f202d893e59f15c6e",
+        "7feb324146e9bdd5711d1e9e84f1a32ece102455eb5ea2462afd7fe68807758e"
       ],
       "transformation": "Captured at 1536 by 1024 and 640 by 960 CSS pixels with interface layers suppressed; still-image AVIF-encoded with FFmpeg at CRF 30. Used for reduced motion, scene failure, and complete-session loading so the aperture never becomes empty or structurally mismatched."
     },
@@ -184,9 +184,9 @@
     {
       "id": "farm_stand_social_capture",
       "source": "Deterministic 1200 by 630 complete-state capture of the implemented permanent-frame hero",
-      "source_sha256": "45e4d812de333f5cd5bc7add088241c689b27ae82ab42ab0c6d5de37f301321c",
+      "source_sha256": "7ea3425d539b9ba2ce7b8a38e699e17470b0f41464ca729e3c390d62312fce55",
       "derivative_path": "public/media/farm-stand-social.jpg",
-      "derivative_sha256": "cb037d260f0ed22a3ed3db094b795ac2a111974093d978fd949345fec7a9cd52",
+      "derivative_sha256": "d80619832a24d0eaa01183fc005aedd562d0fb0ae2b2d5f123bddcc7a4165a87",
       "transformation": "Captured from the complete local composition and JPEG-encoded with FFmpeg at quality 3 for Open Graph clients."
     },
     {
@@ -477,26 +477,27 @@
   ],
   "real_farm_patch": {
     "photograph": {
-      "title": "Farm buildings in a field at sunset",
-      "creator": "Hudson Graves",
-      "page": "https://unsplash.com/photos/farm-buildings-in-a-field-at-sunset-t5s7F2_IxLg",
-      "license_evidence": "https://unsplash.com/license",
+      "title": "Trees in Orchard",
+      "creator": "Mark Stebnicki",
+      "page": "https://www.pexels.com/photo/trees-in-orchard-17765489/",
+      "license_claim": "Pexels free-use license",
+      "license_evidence": "https://www.pexels.com/license/",
       "acquired_on": "2026-09-27",
-      "source_dimensions": "4000x2667",
-      "source_sha256": "634f10d8bee3b91eb729637e347cc774a8697ac29477455108d95712b87ea0f9",
+      "source_dimensions": "8640x5760",
+      "source_sha256": "d01d7c94cc243a152e5f83abb7c660e0bb0048afd8ced354b74600f649b59631",
       "delivery": [
         {
-          "path": "public/media/real-farm/hudson-graves-desktop.avif",
+          "path": "public/media/real-farm/mark-stebnicki-orchard-desktop.avif",
           "dimensions": "2400x1600",
-          "sha256": "01de76841d7f3315c1abee376e408e24029255f802120c38e3e28eb7c7680af3"
+          "sha256": "65e5b4a60edaeb3c3d3af864f3b3bd77d3844301ae773c662da0c421dc8f73b9"
         },
         {
-          "path": "public/media/real-farm/hudson-graves-portrait.avif",
+          "path": "public/media/real-farm/mark-stebnicki-orchard-portrait.avif",
           "dimensions": "1200x1800",
-          "sha256": "437d81e9f28ab4a20bd9be31242cd0ea0877bc9c72b008eb0745cc5783360a48"
+          "sha256": "74bd1f11bfc75ec8be7af3cf2c3f4e4d88f840c0016f2a9393b4c15e5b4023b5"
         }
       ],
-      "transformation": "Desktop resize and deliberate portrait crop, with restrained exposure and colour encoding. No generative alteration or multi-photo composite."
+      "transformation": "Desktop 3:2 resize plus a deliberate central 2:3 portrait crop, selected inside the actual permanent frame and AVIF-encoded with FFmpeg. No generative alteration or multi-photo composite."
     },
     "leaves": {
       "title": "LeafSet006",
@@ -505,12 +506,13 @@
       "license_claim": "CC0",
       "source_package": "LeafSet006_1K-PNG.zip",
       "source_sha256": "4472ada45a3e0c56be20a4018339bb0e18db96a863b60f13dc3a9e228d9c2958",
-      "transformation": "Combined provider colour and opacity maps, cropped transparent bounds, flipped selected variants, and WebP-encoded. Runtime CSS supplies restrained autumn colour variants.",
+      "transformation": "Combined provider colour and opacity maps, cropped transparent bounds, flipped selected variants, and WebP-encoded. A dense authored canopy master repeats and rotates those real leaf cutouts over a dark leaf bed so four edge panels can guarantee full transition coverage.",
       "delivery": [
         { "path": "public/media/leaves/leaf-a.webp", "sha256": "28b927680c588d5159615be74e0f2798448d8c88f3e22c78d9603945ce35fa9d" },
         { "path": "public/media/leaves/leaf-b.webp", "sha256": "9d4b37b78aa95693615cb9f3650bbe5fa9641ecf41a254322963a2172597a974" },
         { "path": "public/media/leaves/leaf-c.webp", "sha256": "a8c5ab6faa6a4b34d4f2576be986ab0b0217ed536d4ac1b2cc1c67175084ce70" },
-        { "path": "public/media/leaves/leaf-d.webp", "sha256": "880c4241fd1a89bac6ebb41cf19d4a310b60829b5ce16e038753f496b3e071f6" }
+        { "path": "public/media/leaves/leaf-d.webp", "sha256": "880c4241fd1a89bac6ebb41cf19d4a310b60829b5ce16e038753f496b3e071f6" },
+        { "path": "public/media/leaves/leaf-canopy.webp", "sha256": "8720ad7cc85e8c18496679369e86964733d04a1edac7af0fd78657b958a895c2", "dimensions": "2400x1600" }
       ]
     },
     "audio": [
@@ -585,16 +587,53 @@
         "duration_seconds": 1.646
       },
       {
-        "role": "interface tick",
-        "title": "scratch_001",
+        "role": "add action",
+        "title": "confirmation_002",
         "creator": "Kenney",
         "page": "https://kenney.nl/assets/interface-sounds",
         "license_claim": "CC0",
         "source_pack_sha256": "f2193d072726d6758a5f7871b2dcc54dcce0d5c35c6f0a62f92549b327c81232",
-        "source_sha256": "5c294d2e1a6b6d07ee2d75b17105a55ad3527e5482dd60652dc49c2ea4c70096",
-        "delivery_path": "public/audio/paper-tick.mp3",
-        "delivery_sha256": "3fe4f093e6e734e124847ae78bb9918724e882ee1767162b8a5de640ed9259bc",
-        "duration_seconds": 0.183
+        "source_sha256": "33b17a9a9a2397c62b285c52c33a907fdffb476909c99e42dde603f6a7a8b12c",
+        "delivery_path": "public/audio/add.mp3",
+        "delivery_sha256": "8828691f584087ebe1aeb2bf7b80b602af3fcdf1b9a505fd2cb812489bb01961",
+        "duration_seconds": 0.576,
+        "transformation": "Source OGG loudness-normalized to -20 LUFS with -3 dB true-peak ceiling and MP3-encoded."
+      },
+      {
+        "role": "details action",
+        "title": "open_004",
+        "creator": "Kenney",
+        "page": "https://kenney.nl/assets/interface-sounds",
+        "license_claim": "CC0",
+        "source_pack_sha256": "f2193d072726d6758a5f7871b2dcc54dcce0d5c35c6f0a62f92549b327c81232",
+        "source_sha256": "4e02b8287bc4d9e7bf7a889cb9e48613c8eb22a310dfb0bf29c2bfd0a1e4bea5",
+        "delivery_path": "public/audio/details.mp3",
+        "delivery_sha256": "b3c46fa5eb5fe97fe6271c38b76452a19a6f99b68aa59627064cef8ae79799cb",
+        "duration_seconds": 0.36
+      },
+      {
+        "role": "quantity action",
+        "title": "click_004",
+        "creator": "Kenney",
+        "page": "https://kenney.nl/assets/interface-sounds",
+        "license_claim": "CC0",
+        "source_pack_sha256": "f2193d072726d6758a5f7871b2dcc54dcce0d5c35c6f0a62f92549b327c81232",
+        "source_sha256": "09e2c1b643b71b9aff9932b4e02d78db116446b9a14b00a5b2a9b28d2668fd8e",
+        "delivery_path": "public/audio/quantity.mp3",
+        "delivery_sha256": "454cf62b98d5e4f4488f745d562b4b1352ff3e20752a3da9557f8997e1646009",
+        "duration_seconds": 0.048
+      },
+      {
+        "role": "remove action",
+        "title": "close_003",
+        "creator": "Kenney",
+        "page": "https://kenney.nl/assets/interface-sounds",
+        "license_claim": "CC0",
+        "source_pack_sha256": "f2193d072726d6758a5f7871b2dcc54dcce0d5c35c6f0a62f92549b327c81232",
+        "source_sha256": "39a1a7f3bc001766c1881841e9903c6b16f5a10b5666e0791d7f6444677d8b05",
+        "delivery_path": "public/audio/remove.mp3",
+        "delivery_sha256": "8aa90eda4f2c218ca5eb80cca58902692ca7b980a8e0ec7efaeb538fda03d836",
+        "duration_seconds": 0.36
       }
     ]
   }

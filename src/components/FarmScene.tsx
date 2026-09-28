@@ -247,21 +247,6 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
     )
     scene.add(permanentFrame)
 
-    // A real timber reveal sits behind the pinned photographs. The board wall
-    // is part of the same set as the frame and is covered by the shutter while
-    // closed, so the returned photographs have a credible mounting surface.
-    const photoWall = new THREE.Group()
-    photoWall.name = 'right-photo-wall'
-    for (let index = 0; index < 3; index += 1) {
-      photoWall.add(makeBoard(
-        [0.62, 4.7, 0.18],
-        boardMaterials(mapsFor(index % WOOD_VARIANTS.length, 'vertical'), 'vertical', 4.7, 0.62, index % 2 ? 0xe7dac5 : 0xefe3d0),
-        [1.55 + index * 0.58, -0.18, 0.38],
-        0.018,
-      ))
-    }
-    scene.add(photoWall)
-
     const shutter = new THREE.Group()
     shutter.name = 'single-rising-shutter'
     for (let index = 0; index < 8; index += 1) {
@@ -355,7 +340,6 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
       }
 
       permanentFrame.scale.x = frameScaleX
-      photoWall.scale.x = frameScaleX
       trackHardware.scale.x = frameScaleX
       shutter.scale.x = frameScaleX
       shutter.position.y = state.shutterLift * (portrait ? 6.55 : 6.15)
@@ -373,9 +357,6 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
       apple.group.scale.setScalar(appleScale)
       apple.group.position.set(appleX, COUNTER_TOP_Y + apple.supportHeightAt(rollAngle) * appleScale, appleLaneZ)
       apple.group.quaternion.copy(rollingQuaternion.setFromAxisAngle(rollingAxis, rollAngle))
-
-      const wallAnchor = new THREE.Vector3(2.13 * frameScaleX, -0.18, 0.38).project(camera)
-      sceneHost.parentElement?.style.setProperty('--photo-wall-anchor-x', `${(wallAnchor.x * 0.5 + 0.5) * sceneHost.clientWidth}px`)
 
       renderer.render(scene, camera)
       sceneHost.dataset.scene = state.shot

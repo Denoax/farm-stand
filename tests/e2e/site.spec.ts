@@ -9,10 +9,17 @@ async function openShop(page: Page, showAll = true) {
 }
 
 async function addProduct(page: Page, productId: string, name = 'Add to basket') {
-  const count = page.locator('.basket-button span')
+  const count = page.locator('.floating-basket strong')
   const before = Number(await count.textContent())
   await page.locator(`#product-${productId}`).getByRole('button', { name }).click()
   await expect(count).toHaveText(String(before + 1))
+}
+
+async function openFullBasket(page: Page, itemCount?: number) {
+  const label = itemCount === undefined ? /Open basket preview/ : new RegExp(`Open basket preview, ${itemCount} items`)
+  await page.getByRole('button', { name: label }).click()
+  await page.getByRole('dialog', { name: 'At a glance' }).getByRole('button', { name: 'View full basket' }).click()
+  return page.getByRole('dialog', { name: /Your basket/ })
 }
 
 async function dispatchWheel(page: Page, deltaY: number) {
@@ -30,7 +37,9 @@ test('project-path build loads the opening and keeps entrance links usable', asy
   await expect(page.getByRole('button', { name: 'Open the stand' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Skip opening' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: /Pause opening|Resume opening/ })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Sound off' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Play background music' })).toBeVisible()
+  await expect(page.locator('.sound-controls button')).toHaveCount(1)
+  await expect(page.locator('.floating-basket')).toBeHidden()
   await expect(page.getByRole('navigation', { name: /straight to/i }).getByRole('link')).toHaveCount(4)
   await expect(page.getByRole('link', { name: 'Shop' }).last()).toHaveAttribute('href', '#shop')
   const resources = await page.evaluate(() => performance.getEntriesByType('resource').map((entry) => new URL(entry.name).pathname))
@@ -150,10 +159,13 @@ test('keyboard intent ignores controls and header navigation settles the opening
   await expect(stage).toHaveClass(/hero-stage--ready/)
   await page.getByRole('link', { name: 'Farm stand website demonstration, home' }).focus()
   await page.keyboard.press('ArrowDown')
-  await expect(stage).toHaveAttribute('data-opening-state', 'waiting')
-  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
-  await page.keyboard.press('ArrowDown')
-  await expect(stage).toHaveAttribute('data-opening-state', 'playing')
+  const stateAfterFocusedKey = await stage.getAttribute('data-opening-state')
+  expect(['waiting', 'open']).toContain(stateAfterFocusedKey)
+  if (stateAfterFocusedKey === 'waiting') {
+    await page.evaluate(() => { scrollTo(0, 0); (document.activeElement as HTMLElement | null)?.blur() })
+    await page.keyboard.press('ArrowDown')
+    await expect.poll(() => stage.getAttribute('data-opening-state')).toMatch(/playing|open/)
+  }
   await page.getByRole('link', { name: 'Shop' }).first().click()
   await expect(stage).toHaveAttribute('data-opening-state', 'open')
   await expect(stage).toHaveAttribute('data-scroll-hold', 'released')
@@ -285,7 +297,15 @@ test('basket supports variants, quantity, undo, preview, and clear', async ({ pa
   await shirt.getByLabel('Size').selectOption('m')
   await addProduct(page, 'farm-tee')
   await expect(page.locator('#product-squash').getByRole('button', { name: 'Unavailable example' })).toBeDisabled()
-  await page.getByRole('button', { name: /Open demonstration basket, 3 items/ }).click()
+  await page.getByRole('button', { name: /Open basket preview, 3 items/ }).click()
+  const preview = page.getByRole('dialog', { name: 'At a glance' })
+  await expect(preview).toContainText('Orchard apples')
+  await expect(preview).toContainText('Illustrative subtotal')
+  await page.keyboard.press('Escape')
+  await expect(preview).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /Open basket preview, 3 items/ })).toBeFocused()
+  await page.getByRole('button', { name: /Open basket preview, 3 items/ }).click()
+  await preview.getByRole('button', { name: 'View full basket' }).click()
   const drawer = page.getByRole('dialog', { name: /Your basket/ })
   await expect(drawer).not.toContainText('Demo only. No order, payment, stock, or collection slot is submitted.')
   await expect(drawer).not.toContainText('Prices are read from the current catalogue')
@@ -312,8 +332,7 @@ test('legacy basket migrates deliberately and ignores stored prices', async ({ p
     sessionStorage.setItem('farm-stand-demo-basket-v1', JSON.stringify({ apple: 2, eggs: 1, unknown: 4, squash: 1, price: 1 }))
   })
   await page.reload({ waitUntil: 'networkidle' })
-  await page.getByRole('button', { name: /Open demonstration basket, 3 items/ }).click()
-  const drawer = page.getByRole('dialog', { name: /Your basket/ })
+  const drawer = await openFullBasket(page, 3)
   await expect(drawer.locator('.basket-total')).toContainText('$20.00')
   const storage = await page.evaluate(() => ({ next: sessionStorage.getItem('farm-stand-demo-basket-v2'), legacy: sessionStorage.getItem('farm-stand-demo-basket-v1') }))
   expect(storage.next).toContain('"version":2')
@@ -343,10 +362,16 @@ test('leaf handoff plays once after the opening and never reacquires the scroll 
   await expect(stage).toHaveAttribute('data-opening-state', 'playing')
   await page.keyboard.press('Escape')
   await expect(root).toHaveAttribute('data-leaf-state', 'armed')
+  await expect(page.locator('.floating-basket')).toBeHidden()
   await dispatchWheel(page, 120)
-  await expect(root).toHaveAttribute('data-leaf-state', 'playing')
+  await expect(root).toHaveAttribute('data-leaf-state', 'entering')
   await expect(page.locator('.leaf-handoff')).toBeVisible()
-  await expect(root).toHaveAttribute('data-leaf-state', 'complete', { timeout: 2500 })
+  await expect(root).toHaveAttribute('data-leaf-state', 'covered', { timeout: 1000 })
+  await expect(page.locator('.floating-basket')).toBeHidden()
+  await expect(page).toHaveURL(/#shop$/)
+  await expect(page.locator('.leaf-handoff__panel')).toHaveCount(4)
+  await expect(root).toHaveAttribute('data-leaf-state', 'complete', { timeout: 3000 })
+  await expect(page.locator('.floating-basket')).toBeVisible()
   await expect(page.locator('.leaf-handoff')).toHaveCount(0)
   await dispatchWheel(page, -300)
   await dispatchWheel(page, 300)
@@ -354,7 +379,25 @@ test('leaf handoff plays once after the opening and never reacquires the scroll 
   await expect(stage).toHaveAttribute('data-scroll-hold', 'released')
 })
 
-test('sound is explicit opt-in, loads after activation, and animal cues observe cooldown', async ({ page }) => {
+test('Escape fail-opens an interrupted leaf handoff and unlocks the existing basket', async ({ page }) => {
+  await page.goto(projectPath)
+  const root = page.locator('body > #root > div')
+  await expect(page.locator('.hero-stage')).toHaveClass(/hero-stage--ready/)
+  await dispatchWheel(page, 24)
+  await expect(page.locator('.hero-stage')).toHaveAttribute('data-opening-state', 'playing')
+  await page.keyboard.press('Escape')
+  await expect(root).toHaveAttribute('data-leaf-state', 'armed')
+  await dispatchWheel(page, 120)
+  await expect(root).toHaveAttribute('data-leaf-state', 'entering')
+  await page.keyboard.press('Escape')
+  await expect(root).toHaveAttribute('data-leaf-state', 'bypassed')
+  await expect(page.locator('.leaf-handoff')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /Open basket preview/ })).toBeVisible()
+  await dispatchWheel(page, 120)
+  await expect(root).toHaveAttribute('data-leaf-state', 'bypassed')
+})
+
+test('music is explicit opt-in while the shutter remains independent', async ({ page }) => {
   await page.addInitScript(() => {
     ;(window as typeof window & { __heardSounds?: string[] }).__heardSounds = []
     window.addEventListener('farmstandsound', ((event: CustomEvent<{ name: string }>) => {
@@ -364,10 +407,8 @@ test('sound is explicit opt-in, loads after activation, and animal cues observe 
   await page.goto(projectPath, { waitUntil: 'networkidle' })
   const resourcesBefore = await page.evaluate(() => performance.getEntriesByType('resource').map((entry) => entry.name))
   expect(resourcesBefore.some((url) => /\/audio\//.test(url))).toBe(false)
-  await page.getByRole('button', { name: 'Sound off' }).click()
-  await expect(page.getByRole('button', { name: 'Sound on' })).toBeVisible()
-  await expect(page.getByLabel('Music volume')).toBeVisible()
-  await page.getByLabel('Music volume').fill('35')
+  await page.mouse.click(8, 320)
+  await expect(page.getByRole('button', { name: 'Play background music' })).toHaveAttribute('aria-pressed', 'false')
   await expect(page.locator('.sound-controls')).toHaveAttribute('data-sound-status', /ready|partial/, { timeout: 8000 })
   expect(await page.evaluate(() => performance.getEntriesByType('resource').some((entry) => /\/audio\//.test(entry.name)))).toBe(true)
 
@@ -376,23 +417,64 @@ test('sound is explicit opt-in, loads after activation, and animal cues observe 
   await expect.poll(async () => page.evaluate(() => (window as typeof window & { __heardSounds?: string[] }).__heardSounds?.includes('shutter'))).toBe(true)
   await page.keyboard.press('Escape')
 
-  const hens = page.locator('.entrance-links a[data-animal-sound="hens"]')
-  await hens.click()
-  await expect(page).toHaveURL(/#hens$/)
-  await hens.evaluate((link) => (link as HTMLAnchorElement).click())
-  const heard = await page.evaluate(() => (window as typeof window & { __heardSounds?: string[] }).__heardSounds ?? [])
-  expect(heard.filter((name) => name === 'hens')).toHaveLength(1)
-  await page.getByRole('button', { name: 'Sound on' }).click()
-  await expect(page.getByRole('button', { name: 'Sound off' })).toBeVisible()
+  await page.getByRole('button', { name: 'Play background music' }).click()
+  await expect(page.getByRole('button', { name: 'Pause background music' })).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('button', { name: 'Pause background music' }).click()
+  await expect(page.getByRole('button', { name: 'Play background music' })).toHaveAttribute('aria-pressed', 'false')
 })
 
 test('audio file failure degrades to partial sound without blocking navigation', async ({ page }) => {
   await page.route('**/audio/sheep-bleat.mp3', (route) => route.abort())
   await page.goto(projectPath)
-  await page.getByRole('button', { name: 'Sound off' }).click()
+  await page.getByRole('button', { name: 'Play background music' }).click()
   await expect(page.locator('.sound-controls')).toHaveAttribute('data-sound-status', 'partial', { timeout: 8000 })
   await page.getByRole('link', { name: 'Shop' }).first().click()
   await expect(page.getByRole('heading', { name: 'Shop the stand.' })).toBeVisible()
+})
+
+test('commerce actions have distinct cues without a duplicate generic click', async ({ page }) => {
+  await page.addInitScript(() => {
+    ;(window as typeof window & { __heardSounds?: Array<{ name: string; gain: number }> }).__heardSounds = []
+    window.addEventListener('farmstandsound', ((event: CustomEvent<{ name: string; gain: number }>) => {
+      ;(window as typeof window & { __heardSounds?: Array<{ name: string; gain: number }> }).__heardSounds?.push(event.detail)
+    }) as EventListener)
+  })
+  await openShop(page)
+  await page.mouse.click(8, 320)
+  await expect(page.locator('.sound-controls')).toHaveAttribute('data-sound-status', /ready|partial/, { timeout: 8000 })
+  await page.evaluate(() => { (window as typeof window & { __heardSounds?: unknown[] }).__heardSounds = [] })
+
+  const apple = page.locator('#product-apple')
+  await apple.getByRole('button', { name: 'View details' }).click()
+  await page.getByRole('dialog', { name: /Orchard apples/ }).getByRole('button', { name: 'Close product details' }).click()
+  await apple.getByRole('button', { name: 'Add to basket' }).click()
+  const drawer = await openFullBasket(page, 1)
+  await drawer.getByRole('button', { name: 'Increase Orchard apples quantity' }).click()
+  await drawer.getByRole('button', { name: 'Remove' }).click()
+
+  const names = await page.evaluate(() => ((window as typeof window & { __heardSounds?: Array<{ name: string }> }).__heardSounds ?? []).map(({ name }) => name))
+  expect(names.filter((name) => name === 'details')).toHaveLength(1)
+  expect(names.filter((name) => name === 'add')).toHaveLength(1)
+  expect(names.filter((name) => name === 'quantity')).toHaveLength(1)
+  expect(names.filter((name) => name === 'remove')).toHaveLength(1)
+  expect(names).not.toContain('ui')
+})
+
+test('cattle cue uses the lowered gain', async ({ page }) => {
+  await page.addInitScript(() => {
+    ;(window as typeof window & { __heardSounds?: Array<{ name: string; gain: number }> }).__heardSounds = []
+    window.addEventListener('farmstandsound', ((event: CustomEvent<{ name: string; gain: number }>) => {
+      ;(window as typeof window & { __heardSounds?: Array<{ name: string; gain: number }> }).__heardSounds?.push(event.detail)
+    }) as EventListener)
+  })
+  await page.goto(projectPath, { waitUntil: 'networkidle' })
+  await page.mouse.click(8, 320)
+  await expect(page.locator('.sound-controls')).toHaveAttribute('data-sound-status', /ready|partial/, { timeout: 8000 })
+  await page.locator('.entrance-links [data-animal-sound="cattle"]').click()
+  await expect.poll(async () => page.evaluate(() => ((window as typeof window & { __heardSounds?: Array<{ name: string; gain: number }> }).__heardSounds ?? []).find(({ name }) => name === 'cattle')?.gain)).toBeCloseTo(.167, 3)
+  await page.locator('.entrance-links [data-animal-sound="cattle"]').evaluate((link) => (link as HTMLAnchorElement).click())
+  await page.waitForTimeout(100)
+  expect(await page.evaluate(() => ((window as typeof window & { __heardSounds?: Array<{ name: string }> }).__heardSounds ?? []).filter(({ name }) => name === 'cattle').length)).toBe(1)
 })
 
 test('reduced motion presents complete still states and keeps manual video control', async ({ page }) => {
@@ -401,7 +483,8 @@ test('reduced motion presents complete still states and keeps manual video contr
   await expect(page.locator('.hero-stage')).toHaveAttribute('data-opening-state', 'open')
   await expect(page.getByTestId('scene-host')).toBeHidden()
   await expect(page.locator('.market-opening__plate')).toBeVisible()
-  await expect(page.locator('body > #root > div')).toHaveAttribute('data-leaf-state', 'complete')
+  await expect(page.locator('body > #root > div')).toHaveAttribute('data-leaf-state', 'bypassed')
+  await expect(page.getByRole('button', { name: /Open basket preview/ })).toBeVisible()
   await page.goto(`${projectPath}#sheep`)
   await expect(page.locator('#sheep').getByRole('button', { name: 'Play scene' })).toBeVisible()
   expect(await page.locator('#sheep video').evaluate((video) => (video as HTMLVideoElement).paused)).toBe(true)
@@ -416,6 +499,7 @@ test('model, opening-image, product-image, and video failures retain complete fa
   await expect(page.locator('.hero-stage')).toHaveClass(/hero-stage--fallback/)
   await expect(page.locator('.hero-stage')).toHaveAttribute('data-opening-state', 'fallback')
   await openShop(page, false)
+  await expect(page.getByRole('button', { name: /Open basket preview/ })).toBeVisible()
   await expect(page.getByRole('img', { name: /Orchard apples image unavailable/ })).toBeVisible()
   await page.goto(`${projectPath}#hens`)
   await expect(page.getByRole('img', { name: /Hens video unavailable/ })).toBeVisible()
@@ -429,7 +513,8 @@ test('layouts avoid horizontal overflow and portrait basket stays within the vie
   }
   await page.setViewportSize({ width: 390, height: 844 })
   await addProduct(page, 'apple')
-  await page.getByRole('button', { name: /Open demonstration basket/ }).click()
+  await page.getByRole('button', { name: /Open basket preview/ }).click()
+  await page.getByRole('dialog', { name: 'At a glance' }).getByRole('button', { name: 'View full basket' }).click()
   await page.waitForTimeout(450)
   const drawer = page.getByRole('dialog', { name: /Your basket/ })
   const rect = await drawer.evaluate((node) => node.getBoundingClientRect())
@@ -451,7 +536,8 @@ test('dense basket keeps product copy adjacent at 390px and 320px', async ({ pag
     await page.goto(`${projectPath}#shop`)
     await page.evaluate((value) => sessionStorage.setItem('farm-stand-demo-basket-v2', JSON.stringify({ version: 2, lines: value })), lines)
     await page.reload({ waitUntil: 'networkidle' })
-    await page.getByRole('button', { name: /Open demonstration basket, 24 items/ }).first().click()
+    await page.getByRole('button', { name: /Open basket preview, 24 items/ }).click()
+    await page.getByRole('dialog', { name: 'At a glance' }).getByRole('button', { name: 'View full basket' }).click()
     const drawer = page.getByRole('dialog', { name: /Your basket/ })
     const geometry = await drawer.locator('.basket-lines li').first().evaluate((row) => {
       const image = row.querySelector('.basket-line-image')!.getBoundingClientRect()

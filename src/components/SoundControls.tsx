@@ -2,56 +2,30 @@ import type { SoundscapeSnapshot } from '../audio/useSoundscape'
 
 interface SoundControlsProps {
   snapshot: SoundscapeSnapshot
-  onEnable: () => void
-  onDisable: () => void
-  onMusicChange: (enabled: boolean) => void
-  onMusicLevelChange: (level: number) => void
+  onToggle: () => void
 }
 
-export function SoundControls({ snapshot, onEnable, onDisable, onMusicChange, onMusicLevelChange }: SoundControlsProps) {
+export function SoundControls({ snapshot, onToggle }: SoundControlsProps) {
+  const label = snapshot.musicPlaying ? 'Pause background music' : 'Play background music'
   return (
-    <div className="sound-controls" data-sound-enabled={snapshot.enabled ? 'true' : 'false'} data-sound-status={snapshot.status}>
+    <div className="sound-controls" data-sound-ready={snapshot.audioReady ? 'true' : 'false'} data-sound-status={snapshot.status}>
       <button
         type="button"
-        className="sound-controls__master"
-        aria-pressed={snapshot.enabled}
+        className="music-toggle"
+        aria-label={label}
+        title={label}
+        aria-pressed={snapshot.musicPlaying}
         data-opening-preserve="true"
-        onClick={() => { if (snapshot.enabled) onDisable(); else void onEnable() }}
+        onClick={() => void onToggle()}
       >
-        <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18">
-          <path d="M4 9v6h4l5 4V5L8 9H4Z" fill="currentColor" />
-          {snapshot.enabled
-            ? <path d="M16 8.2c1.5 1.1 1.5 6.5 0 7.6M18.7 5.8c3 2.7 3 9.7 0 12.4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-            : <path d="m16.2 9 5 5m0-5-5 5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />}
+        <svg aria-hidden="true" viewBox="0 0 24 24" width="21" height="21">
+          <path d="M9 18V6.7l10-2.1v10.1" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <ellipse cx="6.4" cy="18.1" rx="3.1" ry="2.3" fill="currentColor" />
+          <ellipse cx="16.5" cy="14.8" rx="3.1" ry="2.3" fill="currentColor" />
+          {!snapshot.musicPlaying && <path d="m4.2 4.2 15.6 15.6" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" />}
         </svg>
-        Sound {snapshot.enabled ? 'on' : 'off'}
       </button>
-      {snapshot.enabled && <>
-        <button
-          type="button"
-          className="sound-controls__music"
-          aria-pressed={snapshot.musicEnabled}
-          data-opening-preserve="true"
-          onClick={() => void onMusicChange(!snapshot.musicEnabled)}
-        >
-          Music {snapshot.musicEnabled ? 'on' : 'off'}
-        </button>
-        {snapshot.musicEnabled && (
-          <label className="sound-controls__level">
-            <span className="visually-hidden">Music volume</span>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={Math.round(snapshot.musicLevel * 100)}
-              aria-label="Music volume"
-              data-opening-preserve="true"
-              onChange={(event) => onMusicLevelChange(Number(event.currentTarget.value) / 100)}
-            />
-          </label>
-        )}
-      </>}
-      {snapshot.musicBlocked && <span className="visually-hidden" role="status">Music is waiting for another permitted interaction.</span>}
+      {snapshot.musicBlocked && <span className="visually-hidden" role="status">Music was blocked. Activate the music button to try again.</span>}
     </div>
   )
 }

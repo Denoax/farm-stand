@@ -95,7 +95,7 @@ async function recordOpening(label, viewport) {
   await page.waitForTimeout(3000)
   await screenshot(page, `${label}-10-stable-rest.png`)
   await page.mouse.wheel(0, 600)
-  await page.waitForSelector('[data-leaf-state="playing"]')
+  await page.waitForSelector('[data-leaf-state="entering"]')
   await page.waitForTimeout(520)
   await screenshot(page, `${label}-11-leaf-handoff.png`)
   await page.waitForSelector('[data-leaf-state="complete"]')

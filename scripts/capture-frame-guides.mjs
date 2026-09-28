@@ -17,7 +17,7 @@ async function capture(name, viewport, portrait = false) {
   await page.screenshot({ path: path.join(outputDir, `${name}-integrated-current-plate.png`) })
 
   await page.addStyleTag({ content: `
-    .site-header, .hero-copy, .entrance-links, .market-opening__progress, .scroll-cue, .scene-status, .basket-button { display: none !important; }
+    .site-header, .hero-copy, .entrance-links, .market-opening__progress, .scroll-cue, .scene-status, .floating-basket { display: none !important; }
     .market-opening__plate img { opacity: .24 !important; filter: grayscale(.65) contrast(.72) brightness(.78); }
     .market-opening__plate::after, .scene-vignette { display: none !important; }
   ` })
@@ -33,7 +33,7 @@ async function capture(name, viewport, portrait = false) {
       guide.append(element)
     }
     region('HTML copy safe', portraitLayout ? 'left:4%;top:14%;width:92%;height:39%' : 'left:5%;top:17%;width:43%;height:52%', '#f0ce56')
-    region('photo wall', portraitLayout ? 'left:33%;top:60%;width:62%;height:31%' : 'left:66%;top:27%;width:25%;height:47%', '#65d3cb')
+    region('pinned photo links', portraitLayout ? 'left:33%;top:56%;width:62%;height:35%' : 'left:58%;top:25%;width:31%;height:50%', '#65d3cb')
     region('live frame owns these edges', portraitLayout ? 'left:7%;top:8%;width:86%;height:84%' : 'left:5%;top:8%;width:90%;height:84%', '#f26752')
     const horizon = document.createElement('div')
     horizon.textContent = 'live counter contact plane'
