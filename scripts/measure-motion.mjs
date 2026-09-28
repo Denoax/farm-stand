@@ -108,11 +108,11 @@ const result = {
   },
   initialScrollHold: {
     runs: holdRuns,
-    method: 'Three fresh contexts measure DOM acquisition-to-release on the independent real-time deadline, then send a second intent to verify the hold does not reacquire.',
+    method: 'Three fresh contexts measure DOM acquisition until the renderer reports the completed presented state, then send a second intent to verify the hold does not reacquire. The independent nine-second watchdog is not the normal release path.',
   },
 }
 
-await fs.mkdir(path.resolve('evidence/permanent-frame/review'), { recursive: true })
-await fs.writeFile(path.resolve('evidence/permanent-frame/review/motion-measurements.json'), `${JSON.stringify(result, null, 2)}\n`)
+await fs.mkdir(path.resolve('evidence/real-farm/review'), { recursive: true })
+await fs.writeFile(path.resolve('evidence/real-farm/review/motion-measurements.json'), `${JSON.stringify(result, null, 2)}\n`)
 await browser.close()
 console.log(JSON.stringify(result, null, 2))

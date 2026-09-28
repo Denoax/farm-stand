@@ -30,10 +30,14 @@ test('project-path build loads the opening and keeps entrance links usable', asy
   await expect(page.getByRole('button', { name: 'Open the stand' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Skip opening' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: /Pause opening|Resume opening/ })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Sound off' })).toBeVisible()
   await expect(page.getByRole('navigation', { name: /straight to/i }).getByRole('link')).toHaveCount(4)
   await expect(page.getByRole('link', { name: 'Shop' }).last()).toHaveAttribute('href', '#shop')
   const resources = await page.evaluate(() => performance.getEntriesByType('resource').map((entry) => new URL(entry.name).pathname))
   expect(resources.every((path) => path.startsWith('/farm-stand/'))).toBe(true)
+  expect(resources.some((path) => path.includes('/audio/'))).toBe(false)
+  await expect(page.getByText('Websites for growers and local businesses.')).toHaveCount(0)
+  await expect(page.getByText('A fictional farm-shop experience demonstrating a real website service. No produce is sold here.')).toHaveCount(0)
   expect(failedResponses).toEqual([])
 })
 
@@ -41,7 +45,8 @@ test('opening starts on meaningful downward intent, fades during the hold, escap
   await page.goto(projectPath)
   const stage = page.locator('.hero-stage')
   await expect(stage).toHaveClass(/hero-stage--ready/)
-  await expect(stage).toHaveAttribute('data-scroll-hold-deadline-ms', '900')
+  await expect(stage).toHaveAttribute('data-scroll-hold-policy', 'presented-complete')
+  await expect(stage).toHaveAttribute('data-scroll-hold-watchdog-ms', '9000')
   await expect(stage).toHaveAttribute('data-opening-state', 'waiting')
   await dispatchWheel(page, 4)
   await expect(stage).toHaveAttribute('data-opening-state', 'waiting')
@@ -85,11 +90,13 @@ test('opening starts on meaningful downward intent, fades during the hold, escap
   await expect(stage).toHaveAttribute('data-scroll-hold', 'released')
 })
 
-test('initial scroll hold is bounded, preserves position, and never repeats', async ({ page }, testInfo) => {
+test('single scroll hold lasts through presented completion, preserves position, and never repeats', async ({ page }, testInfo) => {
+  test.slow()
   await page.goto(projectPath)
   const stage = page.locator('.hero-stage')
   await expect(stage).toHaveClass(/hero-stage--ready/)
-  await expect(stage).toHaveAttribute('data-scroll-hold-deadline-ms', '900')
+  await expect(stage).toHaveAttribute('data-scroll-hold-policy', 'presented-complete')
+  await expect(stage).toHaveAttribute('data-scroll-hold-watchdog-ms', '9000')
   await page.evaluate(() => {
     window.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 24 }))
     const followup = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 800 })
@@ -98,14 +105,42 @@ test('initial scroll hold is bounded, preserves position, and never repeats', as
   await expect(stage).toHaveAttribute('data-opening-state', 'playing')
   expect(await page.evaluate(() => (window as typeof window & { __holdBlockedFollowup?: boolean }).__holdBlockedFollowup)).toBe(true)
   expect(await page.evaluate(() => scrollY)).toBe(0)
-  await expect(stage).toHaveAttribute('data-scroll-hold', 'released', { timeout: 5000 })
+  await page.waitForTimeout(1100)
+  await expect(stage).toHaveAttribute('data-scroll-hold', 'active')
+  await expect(stage).toHaveAttribute('data-opening-state', 'open', { timeout: 8000 })
+  await expect(stage).toHaveAttribute('data-presented-progress', '1.0000')
+  await expect(stage).toHaveAttribute('data-scroll-hold', 'released')
   if (testInfo.project.name === 'portrait-chromium') await page.evaluate(() => scrollBy(0, 800))
   else await page.mouse.wheel(0, 800)
   await expect.poll(async () => page.evaluate(() => scrollY)).toBeGreaterThan(0)
-  await page.keyboard.press('Escape')
-  await expect(stage).toHaveAttribute('data-opening-state', 'open')
   await page.evaluate(() => scrollTo(0, 0))
   await dispatchWheel(page, 40)
+  await expect(stage).toHaveAttribute('data-scroll-hold', 'released')
+})
+
+test('non-root position bypasses the opening gate', async ({ page }) => {
+  await page.goto(projectPath)
+  const stage = page.locator('.hero-stage')
+  await expect(stage).toHaveClass(/hero-stage--ready/)
+  await page.evaluate(() => scrollTo(0, 300))
+  await dispatchWheel(page, 24)
+  await expect(stage).toHaveAttribute('data-opening-state', 'open')
+  await expect(stage).toHaveAttribute('data-scroll-hold', 'released')
+})
+
+test('watchdog fail-opens when requested frames stop presenting', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'portrait-chromium', 'The shared timer invariant is exercised once in release validation.')
+  test.slow()
+  await page.goto(projectPath)
+  const stage = page.locator('.hero-stage')
+  await expect(stage).toHaveClass(/hero-stage--ready/)
+  await page.evaluate(() => {
+    window.requestAnimationFrame = () => 1
+    window.cancelAnimationFrame = () => undefined
+  })
+  await dispatchWheel(page, 24)
+  await expect(stage).toHaveAttribute('data-scroll-hold', 'active')
+  await expect(stage).toHaveAttribute('data-opening-state', 'open', { timeout: 10_500 })
   await expect(stage).toHaveAttribute('data-scroll-hold', 'released')
 })
 
@@ -151,33 +186,29 @@ test('touch interruption releases the bounded opening hold', async ({ page }) =>
     while (stage.getAttribute('data-scroll-hold') !== 'released') await new Promise(requestAnimationFrame)
     return { active, released: stage.getAttribute('data-scroll-hold') }
   })
-  await expect(page.locator('.hero-stage')).toHaveAttribute('data-opening-state', 'playing')
+  await expect(page.locator('.hero-stage')).toHaveAttribute('data-opening-state', 'open')
   expect(touchStates.active).toBe('active')
   expect(touchStates.released).toBe('released')
   await expect(page.locator('.hero-stage')).toHaveAttribute('data-scroll-hold', 'released')
   await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden')
 })
 
-test('hidden-tab lifecycle releases the hold and excludes hidden time from the clock', async ({ page }) => {
+test('hidden-tab lifecycle settles and releases the hold', async ({ page }) => {
   await page.goto(projectPath)
   await expect(page.locator('.hero-stage')).toHaveClass(/hero-stage--ready/)
   await dispatchWheel(page, 24)
   await expect(page.locator('.hero-stage')).toHaveAttribute('data-scroll-hold', 'active')
   await page.waitForTimeout(350)
-  const before = Number(await page.locator('.hero-stage').getAttribute('data-requested-progress'))
   await page.evaluate(() => {
     Object.defineProperty(document, 'hidden', { configurable: true, value: true })
     document.dispatchEvent(new Event('visibilitychange'))
   })
   await expect(page.locator('.hero-stage')).toHaveAttribute('data-scroll-hold', 'released')
-  await page.waitForTimeout(700)
+  await expect(page.locator('.hero-stage')).toHaveAttribute('data-opening-state', 'open')
   await page.evaluate(() => {
     Object.defineProperty(document, 'hidden', { configurable: true, value: false })
     document.dispatchEvent(new Event('visibilitychange'))
   })
-  await page.waitForTimeout(80)
-  const after = Number(await page.locator('.hero-stage').getAttribute('data-requested-progress'))
-  expect(after - before).toBeLessThan(.12)
 })
 
 test('shutter is monotonic, the apple roll is distance-coupled, and the frame stays permanent', async ({ page }) => {
@@ -208,6 +239,8 @@ test('shutter is monotonic, the apple roll is distance-coupled, and the frame st
   expect(initialTravel).toBe(0)
   expect(roll.travel).toBeGreaterThan(initialTravel)
   expect(roll.rotation * roll.radius).toBeCloseTo(roll.travel, 3)
+  expect(Number(await scene.getAttribute('data-apple-clearance'))).toBeGreaterThan(0)
+  await expect(scene).toHaveAttribute('data-apple-collision-free', 'true')
   expect(Number(await scene.getAttribute('data-shutter-lift'))).toBeGreaterThan(.99)
   await page.keyboard.press('Escape')
   await expect(stage).toHaveAttribute('data-opening-state', 'open')
@@ -301,12 +334,74 @@ test('farm-life scenes use matching posters and never play more than one large v
   await expect(page.locator('#product-eggs')).toBeFocused()
 })
 
+test('leaf handoff plays once after the opening and never reacquires the scroll gate', async ({ page }) => {
+  await page.goto(projectPath)
+  const stage = page.locator('.hero-stage')
+  const root = page.locator('body > #root > div')
+  await expect(stage).toHaveClass(/hero-stage--ready/)
+  await dispatchWheel(page, 24)
+  await expect(stage).toHaveAttribute('data-opening-state', 'playing')
+  await page.keyboard.press('Escape')
+  await expect(root).toHaveAttribute('data-leaf-state', 'armed')
+  await dispatchWheel(page, 120)
+  await expect(root).toHaveAttribute('data-leaf-state', 'playing')
+  await expect(page.locator('.leaf-handoff')).toBeVisible()
+  await expect(root).toHaveAttribute('data-leaf-state', 'complete', { timeout: 2500 })
+  await expect(page.locator('.leaf-handoff')).toHaveCount(0)
+  await dispatchWheel(page, -300)
+  await dispatchWheel(page, 300)
+  await expect(root).toHaveAttribute('data-leaf-state', 'complete')
+  await expect(stage).toHaveAttribute('data-scroll-hold', 'released')
+})
+
+test('sound is explicit opt-in, loads after activation, and animal cues observe cooldown', async ({ page }) => {
+  await page.addInitScript(() => {
+    ;(window as typeof window & { __heardSounds?: string[] }).__heardSounds = []
+    window.addEventListener('farmstandsound', ((event: CustomEvent<{ name: string }>) => {
+      ;(window as typeof window & { __heardSounds?: string[] }).__heardSounds?.push(event.detail.name)
+    }) as EventListener)
+  })
+  await page.goto(projectPath, { waitUntil: 'networkidle' })
+  const resourcesBefore = await page.evaluate(() => performance.getEntriesByType('resource').map((entry) => entry.name))
+  expect(resourcesBefore.some((url) => /\/audio\//.test(url))).toBe(false)
+  await page.getByRole('button', { name: 'Sound off' }).click()
+  await expect(page.getByRole('button', { name: 'Sound on' })).toBeVisible()
+  await expect(page.getByLabel('Music volume')).toBeVisible()
+  await page.getByLabel('Music volume').fill('35')
+  await expect(page.locator('.sound-controls')).toHaveAttribute('data-sound-status', /ready|partial/, { timeout: 8000 })
+  expect(await page.evaluate(() => performance.getEntriesByType('resource').some((entry) => /\/audio\//.test(entry.name)))).toBe(true)
+
+  await dispatchWheel(page, 24)
+  await expect(page.locator('.hero-stage')).toHaveAttribute('data-opening-state', 'playing')
+  await expect.poll(async () => page.evaluate(() => (window as typeof window & { __heardSounds?: string[] }).__heardSounds?.includes('shutter'))).toBe(true)
+  await page.keyboard.press('Escape')
+
+  const hens = page.locator('.entrance-links a[data-animal-sound="hens"]')
+  await hens.click()
+  await expect(page).toHaveURL(/#hens$/)
+  await hens.evaluate((link) => (link as HTMLAnchorElement).click())
+  const heard = await page.evaluate(() => (window as typeof window & { __heardSounds?: string[] }).__heardSounds ?? [])
+  expect(heard.filter((name) => name === 'hens')).toHaveLength(1)
+  await page.getByRole('button', { name: 'Sound on' }).click()
+  await expect(page.getByRole('button', { name: 'Sound off' })).toBeVisible()
+})
+
+test('audio file failure degrades to partial sound without blocking navigation', async ({ page }) => {
+  await page.route('**/audio/sheep-bleat.mp3', (route) => route.abort())
+  await page.goto(projectPath)
+  await page.getByRole('button', { name: 'Sound off' }).click()
+  await expect(page.locator('.sound-controls')).toHaveAttribute('data-sound-status', 'partial', { timeout: 8000 })
+  await page.getByRole('link', { name: 'Shop' }).first().click()
+  await expect(page.getByRole('heading', { name: 'Shop the stand.' })).toBeVisible()
+})
+
 test('reduced motion presents complete still states and keeps manual video control', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto(projectPath)
   await expect(page.locator('.hero-stage')).toHaveAttribute('data-opening-state', 'open')
   await expect(page.getByTestId('scene-host')).toBeHidden()
   await expect(page.locator('.market-opening__plate')).toBeVisible()
+  await expect(page.locator('body > #root > div')).toHaveAttribute('data-leaf-state', 'complete')
   await page.goto(`${projectPath}#sheep`)
   await expect(page.locator('#sheep').getByRole('button', { name: 'Play scene' })).toBeVisible()
   expect(await page.locator('#sheep video').evaluate((video) => (video as HTMLVideoElement).paused)).toBe(true)
@@ -314,7 +409,7 @@ test('reduced motion presents complete still states and keeps manual video contr
 
 test('model, opening-image, product-image, and video failures retain complete fallbacks', async ({ page }) => {
   await page.route('**/models/**', (route) => route.abort())
-  await page.route('**/media/market-opening-open-*.avif', (route) => route.abort())
+  await page.route('**/media/real-farm/*.avif', (route) => route.abort())
   await page.route('**/media/catalogue-expanded/apple.avif', (route) => route.abort())
   await page.route('**/media/farm-life-motion/hens.mp4', (route) => route.abort())
   await page.goto(projectPath)

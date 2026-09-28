@@ -3,8 +3,8 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 const baseURL = process.env.BASE_URL ?? 'http://127.0.0.1:4173/farm-stand/'
-const evidenceDir = path.resolve('evidence/permanent-frame/review')
-const sourceDir = path.resolve('evidence/permanent-frame/poster-source')
+const evidenceDir = path.resolve('evidence/real-farm/review')
+const sourceDir = path.resolve('evidence/real-farm/poster-source')
 await fs.mkdir(evidenceDir, { recursive: true })
 await fs.mkdir(sourceDir, { recursive: true })
 
@@ -33,7 +33,7 @@ function observe(page, label) {
   page.on('pageerror', (error) => report.pageErrors.push({ label, message: error.message }))
   page.on('requestfailed', (request) => {
     const failure = { label, url: request.url(), error: request.failure()?.errorText ?? 'unknown' }
-    if ((label.startsWith('model-failure') && /\/models\//.test(failure.url)) || (label.startsWith('plate-failure') && /market-opening-open-/.test(failure.url))) report.expectedFailures.push(failure)
+    if ((label.startsWith('model-failure') && /\/models\//.test(failure.url)) || (label.startsWith('plate-failure') && /\/real-farm\//.test(failure.url))) report.expectedFailures.push(failure)
     else if (/\.mp4(?:$|\?)/.test(failure.url) && failure.error === 'net::ERR_ABORTED') report.expectedFailures.push(failure)
     else report.requestFailures.push(failure)
   })
@@ -94,6 +94,13 @@ async function recordOpening(label, viewport) {
   await page.waitForSelector('.hero-stage[data-opening-state="open"]', { timeout: 9000 })
   await page.waitForTimeout(3000)
   await screenshot(page, `${label}-10-stable-rest.png`)
+  await page.mouse.wheel(0, 600)
+  await page.waitForSelector('[data-leaf-state="playing"]')
+  await page.waitForTimeout(520)
+  await screenshot(page, `${label}-11-leaf-handoff.png`)
+  await page.waitForSelector('[data-leaf-state="complete"]')
+  await page.waitForTimeout(450)
+  await screenshot(page, `${label}-12-shop-arrival.png`)
   await retainVideo(context, page, `${label}-opening-normal-speed.webm`)
 }
 
@@ -167,7 +174,28 @@ await screenshot(reducedPage, 'reduced-motion-portrait.png')
 await reducedContext.close()
 
 await captureFailure('model-failure-desktop', '**/models/**')
-await captureFailure('plate-failure-desktop', '**/media/market-opening-open-*.avif')
+await captureFailure('plate-failure-desktop', '**/media/real-farm/*.avif')
+
+const clearanceContext = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 })
+const clearancePage = await clearanceContext.newPage()
+await clearancePage.goto(`${baseURL}?debugAppleClearance=1`)
+await clearancePage.waitForSelector('.hero-stage--ready')
+await clearancePage.evaluate(() => {
+  document.querySelector('.hero-copy')?.remove()
+  document.querySelector('.entrance-links')?.remove()
+  document.querySelector('.scene-vignette')?.remove()
+  window.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 24 }))
+})
+await waitForProgress(clearancePage, .68)
+await screenshot(clearancePage, 'apple-clearance-side-debug.png')
+report.appleClearance = await clearancePage.locator('.scene-host').evaluate((node) => ({
+  clearance: node.getAttribute('data-apple-clearance'),
+  collisionFree: node.getAttribute('data-apple-collision-free'),
+  appleZ: node.getAttribute('data-apple-z'),
+  appleHalfExtentZ: node.getAttribute('data-apple-half-extent-z'),
+  postRearZ: node.getAttribute('data-post-rear-z'),
+}))
+await clearanceContext.close()
 
 const contextLossContext = await browser.newContext({ viewport: { width: 1440, height: 900 } })
 const contextLossPage = await contextLossContext.newPage()

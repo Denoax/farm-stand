@@ -15,6 +15,7 @@ interface FarmSceneProps {
 interface PreparedApple {
   group: THREE.Group
   effectiveRadius: number
+  halfExtentZ: number
   supportHeightAt: (angle: number) => number
 }
 
@@ -95,10 +96,13 @@ function prepareApple(model: THREE.Object3D): PreparedApple {
     const upper = (lower + 1) % APPLE_SUPPORT_SAMPLES
     return THREE.MathUtils.lerp(supportHeights[lower], supportHeights[upper], sample - Math.floor(sample))
   }
+  let halfExtentZ = 0.001
+  for (const point of vertices) halfExtentZ = Math.max(halfExtentZ, Math.abs(point.z))
 
   return {
     group,
     effectiveRadius: Math.max(0.001, (size.x + size.y) * scale * 0.25),
+    halfExtentZ,
     supportHeightAt,
   }
 }
@@ -194,7 +198,10 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
     frontFill.position.set(2.8, 2.4, 5.8)
     scene.add(frontFill)
     const sun = new THREE.DirectionalLight(0xffdfa6, 4.8)
-    sun.position.set(-4.8, 5.4, 4.8)
+    // The selected farm photograph is lit from camera-right. Keep the live
+    // timber and apple on that same side of the light so the layers read as
+    // one threshold rather than a foreground pasted over a backdrop.
+    sun.position.set(4.8, 5.4, 4.8)
     sun.castShadow = true
     sun.shadow.mapSize.set(1024, 1024)
     sun.shadow.camera.left = -7
@@ -206,7 +213,7 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
     sun.target.position.set(-1.4, -1.7, 0.8)
     scene.add(sun, sun.target)
     const thresholdLight = new THREE.SpotLight(0xffcf7e, 62, 14, 0.34, 0.68, 1.35)
-    thresholdLight.position.set(-3.4, 4.1, 4.8)
+    thresholdLight.position.set(3.4, 4.1, 4.8)
     thresholdLight.target.position.set(-1.5, -1.6, 0.7)
     scene.add(thresholdLight, thresholdLight.target)
 
@@ -239,6 +246,21 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
       makeBoard([7.65, 0.2, 1.62], boardMaterials(mapsFor(1, 'horizontal'), 'horizontal', 7.65, 0.2, 0xf4ead8), [0, COUNTER_TOP_Y - 0.1, 0.96], 0.035),
     )
     scene.add(permanentFrame)
+
+    // A real timber reveal sits behind the pinned photographs. The board wall
+    // is part of the same set as the frame and is covered by the shutter while
+    // closed, so the returned photographs have a credible mounting surface.
+    const photoWall = new THREE.Group()
+    photoWall.name = 'right-photo-wall'
+    for (let index = 0; index < 3; index += 1) {
+      photoWall.add(makeBoard(
+        [0.62, 4.7, 0.18],
+        boardMaterials(mapsFor(index % WOOD_VARIANTS.length, 'vertical'), 'vertical', 4.7, 0.62, index % 2 ? 0xe7dac5 : 0xefe3d0),
+        [1.55 + index * 0.58, -0.18, 0.38],
+        0.018,
+      ))
+    }
+    scene.add(photoWall)
 
     const shutter = new THREE.Group()
     shutter.name = 'single-rising-shutter'
@@ -311,6 +333,7 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
     const travelDirection = new THREE.Vector3(-1, 0, 0)
     const rollingAxis = counterNormal.clone().cross(travelDirection).normalize()
     const rollingQuaternion = new THREE.Quaternion()
+    const debugClearance = import.meta.env.DEV && new URLSearchParams(location.search).has('debugAppleClearance')
 
     function render() {
       frame = 0
@@ -321,12 +344,18 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
       // same world-space posts to crowd an increasingly wide composition.
       const frameScaleX = portrait ? 0.48 : THREE.MathUtils.clamp(camera.aspect / 1.48, 1, 1.22)
 
-      camera.position.x = portrait ? 0.06 : THREE.MathUtils.lerp(0.18, 0, state.cameraPullback)
-      camera.position.y = portrait ? 0.3 : THREE.MathUtils.lerp(0.12, 0.26, state.cameraPullback)
-      camera.position.z = portrait ? THREE.MathUtils.lerp(8.85, 9.35, state.cameraPullback) : THREE.MathUtils.lerp(7.45, 8.05, state.cameraPullback)
-      camera.lookAt(portrait ? 0.03 : 0, -0.08, 0.5)
+      if (debugClearance) {
+        camera.position.set(-7.8, -0.65, 0.78)
+        camera.lookAt(-3.12, -1.55, 0.78)
+      } else {
+        camera.position.x = portrait ? 0.06 : THREE.MathUtils.lerp(0.18, 0, state.cameraPullback)
+        camera.position.y = portrait ? 0.3 : THREE.MathUtils.lerp(0.12, 0.26, state.cameraPullback)
+        camera.position.z = portrait ? THREE.MathUtils.lerp(8.85, 9.35, state.cameraPullback) : THREE.MathUtils.lerp(7.45, 8.05, state.cameraPullback)
+        camera.lookAt(portrait ? 0.03 : 0, -0.08, 0.5)
+      }
 
       permanentFrame.scale.x = frameScaleX
+      photoWall.scale.x = frameScaleX
       trackHardware.scale.x = frameScaleX
       shutter.scale.x = frameScaleX
       shutter.position.y = state.shutterLift * (portrait ? 6.55 : 6.15)
@@ -338,9 +367,15 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
       const appleX = THREE.MathUtils.lerp(appleStartX, appleEndX, state.appleRoll)
       const distance = appleStartX - appleX
       const rollAngle = distance / (apple.effectiveRadius * appleScale)
+      const postRearZ = 1.36 - 0.72 / 2
+      const appleLaneZ = Math.min(0.62, postRearZ - apple.halfExtentZ * appleScale - 0.09)
+      const appleClearance = postRearZ - (appleLaneZ + apple.halfExtentZ * appleScale)
       apple.group.scale.setScalar(appleScale)
-      apple.group.position.set(appleX, COUNTER_TOP_Y + apple.supportHeightAt(rollAngle) * appleScale, 1.35)
+      apple.group.position.set(appleX, COUNTER_TOP_Y + apple.supportHeightAt(rollAngle) * appleScale, appleLaneZ)
       apple.group.quaternion.copy(rollingQuaternion.setFromAxisAngle(rollingAxis, rollAngle))
+
+      const wallAnchor = new THREE.Vector3(2.13 * frameScaleX, -0.18, 0.38).project(camera)
+      sceneHost.parentElement?.style.setProperty('--photo-wall-anchor-x', `${(wallAnchor.x * 0.5 + 0.5) * sceneHost.clientWidth}px`)
 
       renderer.render(scene, camera)
       sceneHost.dataset.scene = state.shot
@@ -355,6 +390,11 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
       sceneHost.dataset.appleRotation = rollAngle.toFixed(4)
       sceneHost.dataset.appleEffectiveRadius = (apple.effectiveRadius * appleScale).toFixed(4)
       sceneHost.dataset.appleX = appleX.toFixed(3)
+      sceneHost.dataset.appleZ = appleLaneZ.toFixed(3)
+      sceneHost.dataset.appleHalfExtentZ = (apple.halfExtentZ * appleScale).toFixed(3)
+      sceneHost.dataset.postRearZ = postRearZ.toFixed(3)
+      sceneHost.dataset.appleClearance = appleClearance.toFixed(3)
+      sceneHost.dataset.appleCollisionFree = appleClearance > 0 ? 'true' : 'false'
       sceneHost.dataset.counterY = COUNTER_TOP_Y.toFixed(3)
       sceneHost.dataset.frame = 'permanent'
       sceneHost.dataset.rendering = 'active'

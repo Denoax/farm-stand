@@ -104,37 +104,37 @@
     },
     {
       "id": "market_opening_first_paint_posters",
-      "source": "Deterministic first-frame captures of the implemented timber shutter, rails, counter, lighting, contact shadow, and retained CC0 apple",
+      "source": "Deterministic first-frame captures of the implemented timber shutter, rails, counter, right reveal wall, lighting, and retained CC0 apple over the new real-farm plate",
       "source_sha256": [
-        "451fafb5eb552210c8c4094a200867cf3f8ec3ca7bb8392d0f5ad2cf6d2d35d2",
-        "25962aae21a6fec41f1261c02c35fb456f2812494551f205ed848ae0602a638b"
+        "b4dce0460574d990a6f04d21dcbb8010ea865afa602184cb13f4a511ce69a2e9",
+        "1ce985490e5db88b71793516ddbfc3fa8369f92242705e4903f731903ba2c396"
       ],
       "derivative_path": [
         "public/media/market-opening-poster-desktop.avif",
         "public/media/market-opening-poster-portrait.avif"
       ],
       "derivative_sha256": [
-        "6d2461c2dd56c70514dcd1834d84e6a4889ee42dc8a3af6d8222e76c54d47044",
-        "e279f2f1ce0dc3cb368dff3fcf62e6324875aca8af24bf97e4b50202cd1090d5"
+        "3f861d909f9668b9054aed0232f541608761b3f87a71c8ca76303a2976240a7f",
+        "d1edf16ac7d40ebe2456778abc3adbf8a197d6c4a21770082a2d20830420b54e"
       ],
-      "transformation": "Captured from the permanent-frame local WebGL start state at 1536 by 1024 and 640 by 960 CSS pixels with HTML interface layers suppressed; still-image AVIF-encoded with FFmpeg at CRF 28. The real apple mesh rests on the permanent receiving counter and casts its calculated shadow. These are loading posters, not independent artwork or review baselines."
+      "transformation": "Captured from the permanent-frame local WebGL start state at 1536 by 1024 and 640 by 960 CSS pixels with HTML interface layers suppressed; still-image AVIF-encoded with FFmpeg at CRF 30. The real apple mesh rests on the permanent receiving counter and casts its calculated shadow. These are loading posters, not independent artwork or review baselines."
     },
     {
       "id": "market_opening_settled_posters",
-      "source": "Deterministic complete-state captures of the implemented permanent frame, registered rear plate, lighting, and camera",
+      "source": "Deterministic complete-state captures of the implemented permanent frame, real Hudson Graves farm photograph, timber reveal, lighting, and camera",
       "source_sha256": [
-        "08dc491f79cc69fcb72a36e70800edd0842b7c5211a75a6d244698b5d4df6c5c",
-        "20965fbbe47115fc68ef2f0913a69612bd2e350e9499fb5f876f605cd94e20ff"
+        "686120338c454ba854504bf2c9e45b7972407e64f4b3df8906830af3b9552a87",
+        "1a9471c8d1f20e051d2f49d030e51cb5d416d8bb5ecde2deb347da587a24427b"
       ],
       "derivative_path": [
         "public/media/market-opening-settled-desktop.avif",
         "public/media/market-opening-settled-portrait.avif"
       ],
       "derivative_sha256": [
-        "9a98fa0266035efa77ba81205231511eaa3c5c20384b7d52a1ecdd98e525d33a",
-        "f75469adcb9a34a3af66ae355b6b9876fff175f87e998dc2ef4eaff84db2e8a6"
+        "9bec7e3a1164e259ddff31a2d2ed1874c02c788a88fe35bab597fc8f712c4d6d",
+        "ae81090bfaa8e976fdb6eb53841eb0a259510e469dd5197f999b62b31d7a14ab"
       ],
-      "transformation": "Captured at 1536 by 1024 and 640 by 960 CSS pixels with interface layers suppressed; still-image AVIF-encoded with FFmpeg at CRF 27. Used for reduced motion, scene failure, and complete-session loading so the aperture never becomes empty or structurally mismatched."
+      "transformation": "Captured at 1536 by 1024 and 640 by 960 CSS pixels with interface layers suppressed; still-image AVIF-encoded with FFmpeg at CRF 30. Used for reduced motion, scene failure, and complete-session loading so the aperture never becomes empty or structurally mismatched."
     },
     {
       "id": "permanent_frame_rough_wood_maps",
@@ -184,9 +184,9 @@
     {
       "id": "farm_stand_social_capture",
       "source": "Deterministic 1200 by 630 complete-state capture of the implemented permanent-frame hero",
-      "source_sha256": "273b13fee9ea6607b98c58dbd3f048fff69233bb30b9c4a596847ecc054bb5a9",
+      "source_sha256": "45e4d812de333f5cd5bc7add088241c689b27ae82ab42ab0c6d5de37f301321c",
       "derivative_path": "public/media/farm-stand-social.jpg",
-      "derivative_sha256": "43d195a1216acfc63977b6e11f9441755b33612577ab53a51092655c489440fb",
+      "derivative_sha256": "cb037d260f0ed22a3ed3db094b795ac2a111974093d978fd949345fec7a9cd52",
       "transformation": "Captured from the complete local composition and JPEG-encoded with FFmpeg at quality 3 for Open Graph clients."
     },
     {
@@ -462,6 +462,140 @@
       "binary_bundled": true,
       "delivery_path": "public/fonts/source-sans-3-latin.woff2",
       "license_path": "assets/licenses/Source-Sans-3-OFL.txt"
+    },
+    {
+      "family": "Caveat",
+      "role": "four handwritten photograph captions only",
+      "source": "https://github.com/google/fonts/tree/5571d84c0d8c70ec1af4f64072d8c5cf1e4e9643/ofl/caveat",
+      "source_commit": "5571d84c0d8c70ec1af4f64072d8c5cf1e4e9643",
+      "status": "downloaded_from_official_distribution",
+      "binary_bundled": true,
+      "delivery_path": "public/fonts/caveat-latin-600.woff2",
+      "delivery_sha256": "d51e2283010e661d9f3dafdc9ff4b82b2ebcb2f7aa43ca48a105f5f68d46cc32",
+      "license_path": "assets/licenses/Caveat-OFL.txt"
     }
-  ]
+  ],
+  "real_farm_patch": {
+    "photograph": {
+      "title": "Farm buildings in a field at sunset",
+      "creator": "Hudson Graves",
+      "page": "https://unsplash.com/photos/farm-buildings-in-a-field-at-sunset-t5s7F2_IxLg",
+      "license_evidence": "https://unsplash.com/license",
+      "acquired_on": "2026-09-27",
+      "source_dimensions": "4000x2667",
+      "source_sha256": "634f10d8bee3b91eb729637e347cc774a8697ac29477455108d95712b87ea0f9",
+      "delivery": [
+        {
+          "path": "public/media/real-farm/hudson-graves-desktop.avif",
+          "dimensions": "2400x1600",
+          "sha256": "01de76841d7f3315c1abee376e408e24029255f802120c38e3e28eb7c7680af3"
+        },
+        {
+          "path": "public/media/real-farm/hudson-graves-portrait.avif",
+          "dimensions": "1200x1800",
+          "sha256": "437d81e9f28ab4a20bd9be31242cd0ea0877bc9c72b008eb0745cc5783360a48"
+        }
+      ],
+      "transformation": "Desktop resize and deliberate portrait crop, with restrained exposure and colour encoding. No generative alteration or multi-photo composite."
+    },
+    "leaves": {
+      "title": "LeafSet006",
+      "creator": "ambientCG",
+      "page": "https://ambientcg.com/view?id=LeafSet006",
+      "license_claim": "CC0",
+      "source_package": "LeafSet006_1K-PNG.zip",
+      "source_sha256": "4472ada45a3e0c56be20a4018339bb0e18db96a863b60f13dc3a9e228d9c2958",
+      "transformation": "Combined provider colour and opacity maps, cropped transparent bounds, flipped selected variants, and WebP-encoded. Runtime CSS supplies restrained autumn colour variants.",
+      "delivery": [
+        { "path": "public/media/leaves/leaf-a.webp", "sha256": "28b927680c588d5159615be74e0f2798448d8c88f3e22c78d9603945ce35fa9d" },
+        { "path": "public/media/leaves/leaf-b.webp", "sha256": "9d4b37b78aa95693615cb9f3650bbe5fa9641ecf41a254322963a2172597a974" },
+        { "path": "public/media/leaves/leaf-c.webp", "sha256": "a8c5ab6faa6a4b34d4f2576be986ab0b0217ed536d4ac1b2cc1c67175084ce70" },
+        { "path": "public/media/leaves/leaf-d.webp", "sha256": "880c4241fd1a89bac6ebb41cf19d4a310b60829b5ce16e038753f496b3e071f6" }
+      ]
+    },
+    "audio": [
+      {
+        "role": "music",
+        "title": "Morning",
+        "creator": "Kevin MacLeod",
+        "isrc": "USUAN2300003",
+        "page": "https://incompetech.com/music/royalty-free/index.html?Search=Search&isrc=USUAN2300003",
+        "license_claim": "CC BY 4.0",
+        "license_evidence": "https://creativecommons.org/licenses/by/4.0/",
+        "source_sha256": "25a18be2e8b47ee75c336d9e27ac709bf71f0409806d696ab49ea2bddc113d80",
+        "delivery_path": "public/audio/morning-bed.mp3",
+        "delivery_sha256": "cf90ba01f17c9e03a087b07f169e373b6b394c8eadae43ec0a358c347e7027cf",
+        "duration_seconds": 153.339,
+        "transformation": "Transcoded to 96 kb/s MP3 with 4 dB level reduction; looped and mixed at low adjustable application gain only after opt-in."
+      },
+      {
+        "role": "shutter",
+        "title": "Old barn door opening",
+        "creator": "Sadiquecat",
+        "page": "https://freesound.org/people/Sadiquecat/sounds/801774/",
+        "license_claim": "CC0",
+        "source_sha256": "ed73ad694fce96690b78d329a92f2477e41cc6dc1452f2e173625da1b02801be",
+        "delivery_path": "public/audio/shutter-open.mp3",
+        "delivery_sha256": "11ebea48594ca10de61656390a03f58468afabc02962ac8857395b0bb2138c3a",
+        "duration_seconds": 2.688,
+        "transformation": "Tempo-adjusted to 1.15x, high/low-pass filtered, reduced 3 dB, faded and MP3-encoded; tied to presented shutter lift and stopped at lift completion."
+      },
+      {
+        "role": "hens",
+        "title": "Chickens and hens",
+        "creator": "musicradiocreative",
+        "page": "https://freesound.org/people/musicradiocreative/sounds/197103/",
+        "license_claim": "CC0",
+        "source_sha256": "567c9fbad298bf610eb88b465e4a1b0effcb5a2eee8b3a899d2103a6741a81e2",
+        "delivery_path": "public/audio/hens-cluck.mp3",
+        "delivery_sha256": "c96c235f5fb47179b5b563af22313ae3871dea85a5f218e56e171e0258592fed",
+        "duration_seconds": 2.743
+      },
+      {
+        "role": "cattle",
+        "title": "Cow - Moo 2",
+        "creator": "JarredGibb",
+        "page": "https://freesound.org/people/JarredGibb/sounds/233129/",
+        "license_claim": "CC0",
+        "source_sha256": "e07d41f040d1895db68594aa4182aebdaf933f2ec47365af79fa153f30d3d6ea",
+        "delivery_path": "public/audio/cattle-low.mp3",
+        "delivery_sha256": "5e49d9591731611738a0d1a3f8a85f68680f7f10e8e7d9b2a51f6db0236f70b0",
+        "duration_seconds": 2.208
+      },
+      {
+        "role": "sheep",
+        "title": "Sheep - Lamb Bleat",
+        "creator": "TheKingOfGeeks360",
+        "page": "https://freesound.org/people/TheKingOfGeeks360/sounds/787563/",
+        "license_claim": "CC0",
+        "source_sha256": "e79fde0df45d7cc5034978ecf3864f364a2392c0b14b41994f3ad7eb52c9e68e",
+        "delivery_path": "public/audio/sheep-bleat.mp3",
+        "delivery_sha256": "625b132e5089ed3eb8ee0b8bed8438dc052e87deda5e0b65093b2d3e806013bc",
+        "duration_seconds": 1.254
+      },
+      {
+        "role": "leaf rustle",
+        "title": "Dry leaf",
+        "creator": "TRP",
+        "page": "https://freesound.org/people/TRP/sounds/575223/",
+        "license_claim": "CC0",
+        "source_sha256": "62899ab35a505d6511c9c71e1cdb1efd5680271c9de2e5b6f0f4b62c63377170",
+        "delivery_path": "public/audio/leaf-rustle.mp3",
+        "delivery_sha256": "d7cbdde13821452ec200f0ee3c196c3e655141268406403b7e7fd99b33ea6d2c",
+        "duration_seconds": 1.646
+      },
+      {
+        "role": "interface tick",
+        "title": "scratch_001",
+        "creator": "Kenney",
+        "page": "https://kenney.nl/assets/interface-sounds",
+        "license_claim": "CC0",
+        "source_pack_sha256": "f2193d072726d6758a5f7871b2dcc54dcce0d5c35c6f0a62f92549b327c81232",
+        "source_sha256": "5c294d2e1a6b6d07ee2d75b17105a55ad3527e5482dd60652dc49c2ea4c70096",
+        "delivery_path": "public/audio/paper-tick.mp3",
+        "delivery_sha256": "3fe4f093e6e734e124847ae78bb9918724e882ee1767162b8a5de640ed9259bc",
+        "duration_seconds": 0.183
+      }
+    ]
+  }
 }

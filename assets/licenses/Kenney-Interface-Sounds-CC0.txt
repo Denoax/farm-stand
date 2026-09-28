@@ -1,0 +1,9 @@
+Interface Sounds 1.0
+Created and distributed by Kenney (https://kenney.nl/)
+Created 11 February 2020.
+
+The source pack states that it is dedicated to the public domain under
+Creative Commons Zero (CC0):
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Source asset page: https://kenney.nl/assets/interface-sounds

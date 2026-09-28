@@ -1,13 +1,17 @@
 import { lazy, Suspense, useCallback, useEffect, useReducer, useRef, useState } from 'react'
-import { business } from './content/config'
 import { ContactPreview } from './components/ContactPreview'
 import { ShopSection } from './components/ShopSection'
 import { FarmLife } from './components/FarmLife'
 import { VisitSection } from './components/VisitSection'
 import { TryUpdate } from './components/TryUpdate'
 import { Logo } from './components/Logo'
+import { LeafHandoff } from './components/LeafHandoff'
+import { SoundControls } from './components/SoundControls'
 import { basketReducer, basketStorageKey, legacyBasketStorageKey, parseBasketSnapshot, serializeBasket } from './state/basket'
 import type { ProductId } from './content/catalogue'
+import { evaluateMarketOpening } from './scene/marketOpeningShot'
+import { useOpeningScrollGate } from './hooks/useOpeningScrollGate'
+import { useSoundscape, type AnimalSound } from './audio/useSoundscape'
 
 const FarmScene = lazy(() => import('./components/FarmScene').then((module) => ({ default: module.FarmScene })))
 const publicAsset = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`
@@ -15,12 +19,13 @@ const publicAsset = (path: string) => `${import.meta.env.BASE_URL}${path.replace
 type SceneState = 'loading' | 'ready' | 'fallback'
 type OpeningState = 'waiting' | 'playing' | 'open' | 'fallback'
 type OpeningContentState = 'initial' | 'opening' | 'settled' | 'reintroduced' | 'complete'
+type LeafState = 'idle' | 'armed' | 'playing' | 'complete'
 
 const openingStorageKey = 'farm-stand-market-opening-v2'
 const openingDuration = 6500
 const contentReturnStart = 0.895
 const openingSettleStart = 0.75
-const introHoldDuration = 900
+const openingWatchdog = 9000
 
 function progressAtTime(milliseconds: number) {
   return Math.min(openingDuration, Math.max(0, milliseconds)) / openingDuration
@@ -46,13 +51,16 @@ export function App() {
   const [sceneState, setSceneState] = useState<SceneState>('loading')
   const [openingState, setOpeningState] = useState<OpeningState>(() => shouldBypassOpening() ? 'open' : 'waiting')
   const [openingContentState, setOpeningContentState] = useState<OpeningContentState>(() => shouldBypassOpening() ? 'complete' : 'initial')
-  const [introHoldActive, setIntroHoldActive] = useState(false)
+  const [leafState, setLeafState] = useState<LeafState>(() => shouldBypassOpening() ? 'complete' : 'idle')
+  const leafStateRef = useRef(leafState)
   const openingStateRef = useRef(openingState)
   const sceneStateRef = useRef(sceneState)
-  const introHoldRef = useRef(false)
-  const introHoldTimerRef = useRef<number | undefined>(undefined)
+  const openingPlayedRef = useRef(false)
   const elapsedRef = useRef(openingState === 'open' ? openingDuration : 0)
+  const { active: introHoldActive, activeRef: introHoldRef, begin: beginIntroHold, release: releaseIntroHold } = useOpeningScrollGate(openingWatchdog)
+  const soundscape = useSoundscape()
   openingStateRef.current = openingState
+  leafStateRef.current = leafState
   sceneStateRef.current = sceneState
   progressRef.current = openingState === 'open' || openingState === 'fallback' ? 1 : progressRef.current
   const [basket, dispatchBasket] = useReducer(basketReducer, {}, () => {
@@ -63,22 +71,11 @@ export function App() {
     }
   })
   const [shopFocusRequest, setShopFocusRequest] = useState<{ productId: ProductId; sequence: number }>()
-  const releaseIntroHold = useCallback((updateState = true) => {
-    if (introHoldTimerRef.current !== undefined) window.clearTimeout(introHoldTimerRef.current)
-    introHoldTimerRef.current = undefined
-    introHoldRef.current = false
-    if (updateState) setIntroHoldActive(false)
-  }, [])
-  const beginIntroHold = useCallback(() => {
-    if (introHoldRef.current) return
-    introHoldRef.current = true
-    setIntroHoldActive(true)
-    introHoldTimerRef.current = window.setTimeout(() => releaseIntroHold(), introHoldDuration)
-  }, [releaseIntroHold])
   const settleOpening = useCallback((state: Extract<OpeningState, 'open' | 'fallback'> = 'open') => {
     releaseIntroHold()
     elapsedRef.current = openingDuration
     progressRef.current = 1
+    openingStateRef.current = state
     setOpeningState(state)
     setOpeningContentState('complete')
     const stage = stageRef.current
@@ -96,13 +93,15 @@ export function App() {
     stage.dataset.presentedProgress = value
     stage.dataset.shot = shot
     document.documentElement.style.setProperty('--stage-progress', value)
+    soundscape.syncOpening(shot, evaluateMarketOpening(progress).shutterLift)
     if (openingStateRef.current === 'playing') {
       setOpeningContentState((current) => {
         const next = contentStateAtProgress(progress)
         return current === next ? current : next
       })
+      if (progress >= 0.9999) settleOpening()
     }
-  }, [])
+  }, [settleOpening, soundscape.syncOpening])
   const viewShopProduct = useCallback((productId: ProductId) => {
     window.history.replaceState(null, '', `#product-${productId}`)
     setShopFocusRequest((current) => ({ productId, sequence: (current?.sequence ?? 0) + 1 }))
@@ -159,9 +158,12 @@ export function App() {
     const play = () => {
       if (openingStateRef.current === 'open' || openingStateRef.current === 'fallback' || reducedMotion.matches) return settleOpening()
       if (sceneStateRef.current !== 'ready') return
+      if (window.scrollY > 1) return settleOpening()
       const focused = document.activeElement
       if (focused instanceof Element && focused.closest('.hero-copy, .entrance-links')) return settleOpening()
-      beginIntroHold()
+      openingPlayedRef.current = true
+      openingStateRef.current = 'playing'
+      beginIntroHold(() => settleOpening())
       setOpeningContentState('opening')
       setOpeningState('playing')
     }
@@ -208,13 +210,22 @@ export function App() {
       }
     }
     const onPreference = () => { if (reducedMotion.matches) settleOpening() }
-    const onVisibility = () => { if (document.hidden) releaseIntroHold() }
-    const onTouchCancel = () => releaseIntroHold()
+    const onVisibility = () => { if (document.hidden && openingStateRef.current === 'playing') settleOpening() }
+    const onTouchCancel = () => { if (openingStateRef.current === 'playing') settleOpening() }
+    const onPageHide = () => { if (openingStateRef.current === 'playing') settleOpening() }
+    const settleRestoredPosition = () => {
+      if (window.scrollY > 1 && openingStateRef.current === 'waiting') settleOpening()
+    }
+    const onFocusIn = (event: FocusEvent) => {
+      if (openingStateRef.current !== 'playing') return
+      const target = event.target instanceof Element ? event.target : null
+      if (target && !target.closest('.hero-sticky')) settleOpening()
+    }
     const onActivation = (event: MouseEvent) => {
       const target = event.target instanceof Element ? event.target.closest('a[href^="#"], button') : null
       if (!target) return
-      releaseIntroHold()
-      if (target.matches('a[href^="#"]') && openingStateRef.current === 'playing') settleOpening()
+      if (target.matches('[data-opening-preserve]')) return
+      if (openingStateRef.current === 'playing') settleOpening()
     }
 
     if (openingStateRef.current === 'open') present()
@@ -222,22 +233,30 @@ export function App() {
     window.addEventListener('touchstart', onTouchStart, { passive: true })
     window.addEventListener('touchmove', onTouchMove, { passive: false })
     window.addEventListener('touchcancel', onTouchCancel)
+    window.addEventListener('pagehide', onPageHide)
+    window.addEventListener('pageshow', settleRestoredPosition)
     window.addEventListener('keydown', onKeyDown)
     document.addEventListener('click', onActivation, true)
+    document.addEventListener('focusin', onFocusIn)
     document.addEventListener('visibilitychange', onVisibility)
     reducedMotion.addEventListener('change', onPreference)
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.intersectionRatio < .02 && openingStateRef.current === 'playing') settleOpening()
     }, { threshold: .02 })
     observer.observe(stage)
+    let restorationFrame = requestAnimationFrame(() => { restorationFrame = requestAnimationFrame(settleRestoredPosition) })
     return () => {
+      cancelAnimationFrame(restorationFrame)
       observer.disconnect()
       window.removeEventListener('wheel', onWheel)
       window.removeEventListener('touchstart', onTouchStart)
       window.removeEventListener('touchmove', onTouchMove)
       window.removeEventListener('touchcancel', onTouchCancel)
+      window.removeEventListener('pagehide', onPageHide)
+      window.removeEventListener('pageshow', settleRestoredPosition)
       window.removeEventListener('keydown', onKeyDown)
       document.removeEventListener('click', onActivation, true)
+      document.removeEventListener('focusin', onFocusIn)
       document.removeEventListener('visibilitychange', onVisibility)
       reducedMotion.removeEventListener('change', onPreference)
       releaseIntroHold(false)
@@ -256,7 +275,7 @@ export function App() {
         frame = requestAnimationFrame(tick)
         return
       }
-      if (previousTime !== null) elapsedRef.current += Math.min(time - previousTime, 80)
+      if (previousTime !== null) elapsedRef.current += time - previousTime
       previousTime = time
       const progress = progressAtTime(elapsedRef.current)
       progressRef.current = progress
@@ -266,8 +285,10 @@ export function App() {
         stage.style.setProperty('--stage-progress', progress.toFixed(4))
       }
       window.dispatchEvent(new Event('farmstageprogress'))
-      if (elapsedRef.current >= openingDuration) settleOpening()
-      else frame = requestAnimationFrame(tick)
+      // The scroll gate is released by FarmScene's onPresented callback, not
+      // by this requested timeline. If WebGL never presents the completed
+      // state, the bounded watchdog releases and settles the experience.
+      if (elapsedRef.current < openingDuration) frame = requestAnimationFrame(tick)
     }
     document.addEventListener('visibilitychange', resetClock)
     frame = requestAnimationFrame(tick)
@@ -277,8 +298,125 @@ export function App() {
     }
   }, [openingState, settleOpening])
 
+  useEffect(() => {
+    if (openingState !== 'open' || !openingPlayedRef.current || leafState !== 'idle') return
+    setLeafState('armed')
+  }, [leafState, openingState])
+
+  useEffect(() => {
+    if (leafState !== 'armed') return
+    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)')
+    let touchY: number | null = null
+    const start = () => {
+      if (leafStateRef.current !== 'armed') return
+      if (reducedMotion.matches) {
+        leafStateRef.current = 'complete'
+        setLeafState('complete')
+      }
+      else {
+        leafStateRef.current = 'playing'
+        soundscape.playLeaves()
+        setLeafState('playing')
+      }
+    }
+    const onWheel = (event: WheelEvent) => { if (event.deltaY > 0) start() }
+    const onTouchStart = (event: TouchEvent) => { touchY = event.touches[0]?.clientY ?? null }
+    const onTouchMove = (event: TouchEvent) => {
+      const y = event.touches[0]?.clientY
+      if (touchY !== null && y !== undefined && touchY - y > 14) start()
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!['ArrowDown', 'PageDown', ' ', 'End'].includes(event.key)) return
+      const target = event.target instanceof Element ? event.target : null
+      if (!target?.closest('input, textarea, select, [contenteditable="true"]')) start()
+    }
+    const onClick = (event: MouseEvent) => {
+      const link = event.target instanceof Element ? event.target.closest('a[href^="#"]') : null
+      if (!link) return
+      if (link.getAttribute('href') === '#shop') start()
+      else {
+        leafStateRef.current = 'complete'
+        setLeafState('complete')
+      }
+    }
+    const onPreference = () => {
+      if (!reducedMotion.matches) return
+      leafStateRef.current = 'complete'
+      setLeafState('complete')
+    }
+    addEventListener('wheel', onWheel, { passive: true })
+    addEventListener('touchstart', onTouchStart, { passive: true })
+    addEventListener('touchmove', onTouchMove, { passive: true })
+    addEventListener('keydown', onKeyDown)
+    document.addEventListener('click', onClick, true)
+    reducedMotion.addEventListener('change', onPreference)
+    return () => {
+      removeEventListener('wheel', onWheel)
+      removeEventListener('touchstart', onTouchStart)
+      removeEventListener('touchmove', onTouchMove)
+      removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('click', onClick, true)
+      reducedMotion.removeEventListener('change', onPreference)
+    }
+  }, [leafState, soundscape.playLeaves])
+
+  useEffect(() => {
+    if (!soundscape.snapshot.enabled) return
+    let lastPointerMove = 0
+    const dwellTimers = new Map<Element, number>()
+    const kindFor = (element: Element) => element.getAttribute('data-animal-sound') as AnimalSound | null
+    const onPointerMove = (event: PointerEvent) => { if (event.pointerType === 'mouse') lastPointerMove = performance.now() }
+    const onPointerEnter = (event: Event) => {
+      const target = event.currentTarget as Element
+      const kind = kindFor(target)
+      if (!kind || performance.now() - lastPointerMove > 450) return
+      dwellTimers.set(target, window.setTimeout(() => { soundscape.playAnimal(kind); dwellTimers.delete(target) }, 180))
+    }
+    const onPointerLeave = (event: Event) => {
+      const target = event.currentTarget as Element
+      const timer = dwellTimers.get(target)
+      if (timer !== undefined) window.clearTimeout(timer)
+      dwellTimers.delete(target)
+    }
+    const animalLinks = [...document.querySelectorAll('[data-animal-sound]')]
+    animalLinks.forEach((link) => {
+      link.addEventListener('pointerenter', onPointerEnter)
+      link.addEventListener('pointerleave', onPointerLeave)
+    })
+    addEventListener('pointermove', onPointerMove, { passive: true })
+    return () => {
+      animalLinks.forEach((link) => {
+        link.removeEventListener('pointerenter', onPointerEnter)
+        link.removeEventListener('pointerleave', onPointerLeave)
+      })
+      removeEventListener('pointermove', onPointerMove)
+      dwellTimers.forEach((timer) => window.clearTimeout(timer))
+    }
+  }, [soundscape.playAnimal, soundscape.snapshot.enabled])
+
+  useEffect(() => {
+    if (!soundscape.snapshot.enabled) return
+    const onClick = (event: MouseEvent) => {
+      const target = event.target instanceof Element ? event.target.closest('button, a.button, .nav-cta, .text-link, [data-animal-sound]') : null
+      if (!target || target.matches('[data-sound-silent], .sound-controls, .sound-controls *')) return
+      const animalKind = target.getAttribute('data-animal-sound') as AnimalSound | null
+      if (animalKind) soundscape.playAnimal(animalKind)
+      else soundscape.playUi()
+    }
+    document.addEventListener('click', onClick)
+    return () => document.removeEventListener('click', onClick)
+  }, [soundscape.playAnimal, soundscape.playUi, soundscape.snapshot.enabled])
+
   return (
-    <div data-opening-state={openingState} data-opening-content={openingContentState} data-scroll-hold={introHoldActive ? 'active' : 'released'} data-scroll-hold-deadline-ms={introHoldDuration}>
+    <div
+      data-opening-state={openingState}
+      data-opening-content={openingContentState}
+      data-scroll-hold={introHoldActive ? 'active' : 'released'}
+      data-scroll-hold-policy="presented-complete"
+      data-scroll-hold-watchdog-ms={openingWatchdog}
+      data-leaf-state={leafState}
+      data-sound-enabled={soundscape.snapshot.enabled ? 'true' : 'false'}
+    >
       <a className="skip-link" href="#main">Skip to the main content</a>
       <header className="site-header">
         <a className="wordmark" href="#top" aria-label="Farm stand website demonstration, home">
@@ -290,6 +428,13 @@ export function App() {
           <a href="#website">Your website</a>
           <a className="nav-cta" href="#contact">Discuss a website</a>
         </nav>
+        <SoundControls
+          snapshot={soundscape.snapshot}
+          onEnable={soundscape.enable}
+          onDisable={soundscape.disable}
+          onMusicChange={soundscape.setMusicEnabled}
+          onMusicLevelChange={soundscape.setMusicLevel}
+        />
       </header>
 
       <main id="main">
@@ -301,14 +446,15 @@ export function App() {
           data-opening-state={openingState}
           data-opening-content={openingContentState}
           data-scroll-hold={introHoldActive ? 'active' : 'released'}
-          data-scroll-hold-deadline-ms={introHoldDuration}
+          data-scroll-hold-policy="presented-complete"
+          data-scroll-hold-watchdog-ms={openingWatchdog}
         >
           <div className="hero-sticky">
             <picture className="market-opening__plate" aria-hidden="true">
-              <source media="(max-width: 760px)" srcSet={publicAsset('media/market-opening-open-portrait.avif')} />
-              <img src={publicAsset('media/market-opening-open-desktop.avif')} alt="" width="1536" height="1024" fetchPriority="high" onError={() => setSceneState('fallback')} />
+              <source media="(max-width: 760px)" srcSet={publicAsset('media/real-farm/hudson-graves-portrait.avif')} />
+              <img src={publicAsset('media/real-farm/hudson-graves-desktop.avif')} alt="" width="2400" height="1600" fetchPriority="high" onError={() => setSceneState('fallback')} />
             </picture>
-            <div className="scene-visual" aria-label="Morning light reaches a supported apple as a timber market shutter lifts to reveal the open farm stand">
+            <div className="scene-visual" aria-label="Morning light crosses a real red-barn farm as a timber market shutter lifts and a supported apple rolls behind the left post">
               <picture className="fallback-poster" aria-hidden="true">
                 <source media="(max-width: 760px)" srcSet={publicAsset('media/market-opening-poster-portrait.avif')} />
                 <img src={publicAsset('media/market-opening-poster-desktop.avif')} alt="" />
@@ -326,20 +472,18 @@ export function App() {
               </p>
             </div>
             <div className="hero-copy" aria-hidden={openingContentState === 'opening' || openingContentState === 'settled'} inert={openingContentState === 'opening' || openingContentState === 'settled' ? true : undefined}>
-              <p className="eyebrow eyebrow--hero">{business.service_descriptor}</p>
               <h1 id="hero-heading">This is what your farm could look like online.</h1>
               <p className="hero-support">Show what’s available. Help customers find you. Make enquiries straightforward.</p>
               <div className="hero-actions">
                 <a className="button button--sun" href="#shop">Explore the demo <span aria-hidden="true">↓</span></a>
                 <a className="text-link" href="#contact">Discuss my website <span aria-hidden="true">↗</span></a>
               </div>
-              <p className="hero-disclosure">A fictional farm-shop experience demonstrating a real website service. No produce is sold here.</p>
             </div>
             <nav className="entrance-links" aria-label="Go straight to the market or farm-life scenes" aria-hidden={openingContentState === 'opening' || openingContentState === 'settled'} inert={openingContentState === 'opening' || openingContentState === 'settled' ? true : undefined}>
               <a href="#shop"><img src={publicAsset('media/catalogue-expanded/apple.avif')} alt="" width="960" height="640" /><span>Shop</span></a>
-              <a href="#hens"><img src={publicAsset('media/farm-life-motion/hens-poster.avif')} alt="" width="1280" height="720" /><span>Hens</span></a>
-              <a href="#cattle"><img src={publicAsset('media/farm-life-motion/cattle-poster.avif')} alt="" width="1280" height="720" /><span>Cattle</span></a>
-              <a href="#sheep"><img src={publicAsset('media/farm-life-motion/sheep-poster.avif')} alt="" width="1280" height="720" /><span>Sheep</span></a>
+              <a href="#hens" data-animal-sound="hens"><img src={publicAsset('media/farm-life-motion/hens-poster.avif')} alt="" width="1280" height="720" /><span>Hens</span></a>
+              <a href="#cattle" data-animal-sound="cattle"><img src={publicAsset('media/farm-life-motion/cattle-poster.avif')} alt="" width="1280" height="720" /><span>Cattle</span></a>
+              <a href="#sheep" data-animal-sound="sheep"><img src={publicAsset('media/farm-life-motion/sheep-poster.avif')} alt="" width="1280" height="720" /><span>Sheep</span></a>
             </nav>
             <div className="market-opening__progress" aria-hidden="true">
               <span>Morning light</span><i /><span>Open stand</span>
@@ -378,10 +522,13 @@ export function App() {
         <ContactPreview />
       </main>
 
+      <LeafHandoff active={leafState === 'playing'} onComplete={() => setLeafState('complete')} />
+
       <footer>
         <a className="footer-brand" href="#top" aria-label="Return to the farm stand"><Logo /> <span>Return to the farm stand ↑</span></a>
         <p>Farm stand website example · no orders, payments, bookings, or submissions</p>
-        <p>Produce models: Poly Haven, CC0 · photography: credited Pexels contributors · background: project-generated original</p>
+        <p>Produce models: Poly Haven, CC0 · product photography: credited Pexels contributors</p>
+        <p>Farm photograph: <a href="https://unsplash.com/photos/farm-buildings-in-a-field-at-sunset-t5s7F2_IxLg">Hudson Graves / Unsplash</a> · leaf texture: <a href="https://ambientcg.com/view?id=LeafSet006">ambientCG, CC0</a> · <a href="https://incompetech.com/music/royalty-free/index.html?Search=Search&amp;isrc=USUAN2300003">“Morning” by Kevin MacLeod</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a></p>
       </footer>
     </div>
   )
