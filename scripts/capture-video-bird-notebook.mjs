@@ -53,12 +53,13 @@ async function captureTransition({ kind, viewport, label, targets }) {
   for (const seconds of targets) {
     await waitMediaTime(page, seconds)
     const time = Number(await page.locator('.video-handoff').getAttribute('data-media-time'))
+    const coverTime = Number(await page.locator('.video-handoff').getAttribute('data-cover-time')) || null
     const state = await page.locator('body > #root > div').getAttribute('data-handoff-state')
     const hash = await page.evaluate(() => location.hash)
     const output = path.join(evidenceDir, 'transitions', `${label}-${seconds.toFixed(2)}s.png`)
     await page.screenshot({ path: output })
     report.captures.push(path.relative(evidenceDir, output))
-    report.transitions.push({ label, requestedTime: seconds, capturedTime: time, state, hash })
+    report.transitions.push({ label, requestedTime: seconds, capturedTime: time, coverTime, state, hash })
   }
   await page.waitForSelector('.video-handoff', { state: 'detached', timeout: 8000 })
   const final = await page.evaluate(() => ({ hash: location.hash, scrollY, focusedId: document.activeElement?.id }))

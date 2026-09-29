@@ -58,6 +58,7 @@ export function VideoHandoff({ clip, phase, onReady, onCovered, onRevealing, onE
       if (wrapperRef.current) wrapperRef.current.dataset.mediaTime = mediaTime.toFixed(4)
       if (!coveredRef.current && mediaTime >= clip.coverStart && mediaTime <= clip.coverEnd) {
         coveredRef.current = true
+        if (wrapperRef.current) wrapperRef.current.dataset.coverTime = mediaTime.toFixed(4)
         onCovered()
       }
       if (coveredRef.current && !revealingRef.current && mediaTime > clip.coverEnd) {
