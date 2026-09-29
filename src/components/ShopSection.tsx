@@ -171,11 +171,15 @@ export function ShopSection({ basket, dispatch, focusRequest, marketReady, onCom
     if (!basketPreviewOpen) return
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node
-      if (!basketPreviewRef.current?.contains(target) && !basketTriggerRef.current?.contains(target)) setBasketPreviewOpen(false)
+      if (!basketPreviewRef.current?.contains(target) && !basketTriggerRef.current?.contains(target)) {
+        setBasketPreviewOpen(false)
+        onCommerceSound('basket-close')
+      }
     }
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
       setBasketPreviewOpen(false)
+      onCommerceSound('basket-close')
       basketTriggerRef.current?.focus()
     }
     document.addEventListener('pointerdown', onPointerDown)
@@ -184,7 +188,7 @@ export function ShopSection({ basket, dispatch, focusRequest, marketReady, onCom
       document.removeEventListener('pointerdown', onPointerDown)
       document.removeEventListener('keydown', onKeyDown)
     }
-  }, [basketPreviewOpen])
+  }, [basketPreviewOpen, onCommerceSound])
 
   useEffect(() => {
     if (!focusRequest || handledFocusRequestRef.current === focusRequest.sequence) return
@@ -254,10 +258,29 @@ export function ShopSection({ basket, dispatch, focusRequest, marketReady, onCom
 
   const closeDetails = () => detailDialogRef.current?.close()
   const clearBrowse = () => { setFilter('featured'); setProduceGroup('all'); setQuery('') }
+  const toggleBasketPreview = () => {
+    setBasketFeedback(null)
+    setBasketPreviewOpen(!basketPreviewOpen)
+    onCommerceSound(basketPreviewOpen ? 'basket-close' : 'basket-open')
+  }
+  const closeBasketPreview = () => {
+    if (!basketPreviewOpen) return
+    setBasketPreviewOpen(false)
+    onCommerceSound('basket-close')
+    basketTriggerRef.current?.focus()
+  }
+  const openFullBasket = () => {
+    setBasketPreviewOpen(false)
+    setBasketOpen(true)
+    setBasketFeedback(null)
+    onCommerceSound('basket-open')
+  }
 
   return (
     <section className="catalogue" id="shop" aria-labelledby="shop-heading">
-      <span className="market-boundary-stile" aria-hidden="true" />
+      <div className="market-clipboard">
+        <span className="market-clipboard__clip" aria-hidden="true"><i /></span>
+        <div className="market-clipboard__paper">
       <div className="section-intro catalogue-intro">
         <div><p className="eyebrow">Demonstration market</p><h2 id="shop-heading">Shop the stand.</h2></div>
         <div className="catalogue-summary"><p>Browse 48 photographed examples across the market. Prices and availability are illustrative; nothing can be ordered here.</p></div>
@@ -292,6 +315,8 @@ export function ShopSection({ basket, dispatch, focusRequest, marketReady, onCom
           )
         })}
       </div> : <div className="market-empty" role="status"><h3>No market items match.</h3><p>Try a shorter search or reset the browse controls.</p><button className="button button--ink" type="button" onClick={clearBrowse}>Show market picks</button></div>}
+        </div>
+      </div>
 
       <button
         ref={basketTriggerRef}
@@ -301,7 +326,7 @@ export function ShopSection({ basket, dispatch, focusRequest, marketReady, onCom
         aria-label={`Open basket preview, ${basketCount(basket)} items`}
         aria-expanded={basketPreviewOpen}
         aria-controls="mini-basket"
-        onClick={() => { setBasketFeedback(null); setBasketPreviewOpen((open) => !open) }}
+        onClick={toggleBasketPreview}
       >
         <svg aria-hidden="true" viewBox="0 0 24 24" width="23" height="23"><path d="M5.2 9.2h13.6l-1 10H6.2l-1-10Zm3.1 0 3.7-5 3.7 5M8.8 13v3.4m3.2-3.4v3.4m3.2-3.4v3.4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
         <strong aria-hidden="true">{basketCount(basket)}</strong>
@@ -309,7 +334,7 @@ export function ShopSection({ basket, dispatch, focusRequest, marketReady, onCom
 
       {marketReady && basketPreviewOpen && (
         <div className="mini-basket" id="mini-basket" ref={basketPreviewRef} role="dialog" aria-modal="false" aria-labelledby="mini-basket-heading">
-          <div className="mini-basket__header"><div><p className="eyebrow">Demonstration basket</p><h2 id="mini-basket-heading">At a glance</h2></div><button className="icon-button" type="button" aria-label="Close basket preview" onClick={() => { setBasketPreviewOpen(false); basketTriggerRef.current?.focus() }}>×</button></div>
+          <div className="mini-basket__header"><div><p className="eyebrow">Demonstration basket</p><h2 id="mini-basket-heading">At a glance</h2></div><button className="icon-button" type="button" aria-label="Close basket preview" onClick={closeBasketPreview}>×</button></div>
           {previewLines.length ? (
             <>
               <ul className="mini-basket__lines">
@@ -319,18 +344,18 @@ export function ShopSection({ basket, dispatch, focusRequest, marketReady, onCom
             </>
           ) : <p className="mini-basket__empty">Your demonstration basket is empty. Browse the market to add an item.</p>}
           <div className="mini-basket__footer"><span>Illustrative subtotal · CAD</span><strong>{formatSampleCad(basketSubtotal(basket))}</strong></div>
-          <button className="button button--ink" type="button" onClick={() => { setBasketPreviewOpen(false); setBasketOpen(true) }}>View full basket</button>
+          <button className="button button--ink" type="button" onClick={openFullBasket}>View full basket</button>
         </div>
       )}
 
       <p className="visually-hidden" aria-live="polite">{announcement}</p>
-      {basketFeedback && !basketOpen && !basketPreviewOpen && !detailProduct && <div className="basket-feedback" aria-label="Basket update"><p><strong>{basketFeedback.product.name}{basketFeedback.variantLabel ? ` · ${basketFeedback.variantLabel}` : ''}</strong> {basketFeedback.message}</p><div><button className="text-button" type="button" onClick={() => { setBasketPreviewOpen(false); setBasketOpen(true); setBasketFeedback(null) }}>View basket</button><button className="icon-button" type="button" aria-label="Dismiss basket update" onClick={() => setBasketFeedback(null)}>×</button></div></div>}
+      {basketFeedback && !basketOpen && !basketPreviewOpen && !detailProduct && <div className="basket-feedback" aria-label="Basket update"><p><strong>{basketFeedback.product.name}{basketFeedback.variantLabel ? ` · ${basketFeedback.variantLabel}` : ''}</strong> {basketFeedback.message}</p><div><button className="text-button" type="button" onClick={openFullBasket}>View basket</button><button className="icon-button" type="button" aria-label="Dismiss basket update" onClick={() => setBasketFeedback(null)}>×</button></div></div>}
 
       <dialog className="product-dialog" ref={detailDialogRef} aria-labelledby={detailProduct ? `detail-${detailProduct.id}` : undefined} onClose={() => { setDetailProduct(null); detailTriggerRef.current?.focus() }}>
         {detailProduct && <><button className="icon-button dialog-close" type="button" onClick={closeDetails} aria-label="Close product details">×</button><ProductPicture product={detailProduct} eager /><div className="product-dialog__copy"><p className="eyebrow">{detailProduct.unit}</p><h2 id={`detail-${detailProduct.id}`}>{detailProduct.name}</h2><p>{detailProduct.detail}</p><p><strong>{detailProduct.availability}</strong></p>{detailProduct.boxContents && <p><strong>Shown in this box:</strong> {detailProduct.boxContents.join(', ')}.</p>}<VariantSelect product={detailProduct} value={detailVariant} onChange={setDetailVariant} suffix="detail" />{basketFeedback?.product.id === detailProduct.id && <p className="product-add-note" role="status"><strong>{basketFeedback.variantLabel ? `${basketFeedback.variantLabel}: ` : ''}</strong>{basketFeedback.message}</p>}<div className="product-dialog__footer"><span>{formatSampleCad(detailProduct.samplePriceMinor)} CAD · illustrative sample price</span><div className="product-dialog__actions"><button className="button button--ink" type="button" disabled={!detailProduct.available} onClick={() => add(detailProduct, detailVariant)}>{detailProduct.available ? 'Add to demonstration basket' : 'Unavailable example'}</button></div></div></div></>}
       </dialog>
 
-      <BasketDialog basket={basket} dispatch={dispatch} open={basketOpen} onClose={() => setBasketOpen(false)} onSound={onCommerceSound} returnFocus={basketTriggerRef} />
+      <BasketDialog basket={basket} dispatch={dispatch} open={basketOpen} onClose={() => { setBasketOpen(false); onCommerceSound('basket-close') }} onSound={onCommerceSound} returnFocus={basketTriggerRef} />
     </section>
   )
 }

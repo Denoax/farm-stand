@@ -72,6 +72,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 }
 
 .wordmark { display: grid; place-items: center; width: 3rem; height: 3rem; color: #fffdf7; text-decoration: none; }
+.header-brand { display: flex; align-items: center; gap: .65rem; }
 .logo-mark { --logo-source: none; display: block; width: 2.65rem; height: 2.65rem; background: currentColor; -webkit-mask: var(--logo-source) center / contain no-repeat; mask: var(--logo-source) center / contain no-repeat; }
 .site-header nav { display: flex; align-items: center; gap: clamp(.8rem, 1.6vw, 1.6rem); }
 .site-header nav a { text-decoration: none; font: 600 1.03125rem/1.15 'Source Sans 3', 'Segoe UI', sans-serif; letter-spacing: .005em; }
@@ -796,14 +797,14 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
 .hero-sticky { isolation: isolate; min-height: 42rem; background: #1d2d24; }
 .market-opening__plate { position: absolute; z-index: 0; inset: 0; display: block; overflow: hidden; background: #6f8262; }
 .market-opening__plate::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgb(17 29 16 / .24), rgb(17 29 16 / .03) 46%, transparent 72%); pointer-events: none; }
-.market-opening__plate img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 52%; }
+.market-opening__plate img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: var(--orchard-position-x, 50%) var(--orchard-position-y, 52%); transform: scale(var(--orchard-scale, 1)); }
 .scene-visual { z-index: 2; background: transparent; }
 .scene-host { z-index: 2; opacity: 0; transition: none; }
 .hero-stage--ready .scene-host { display: block; opacity: 1; }
 .fallback-poster { z-index: 1; display: block; visibility: visible; opacity: 1; background: #293a2d; }
-.fallback-poster img { display: block; object-position: 50% 54%; }
+.fallback-poster img { display: block; object-position: 50% 50%; }
 .settled-poster { position: absolute; z-index: 1; inset: 0; display: none; overflow: hidden; background: #293a2d; }
-.settled-poster img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 54%; }
+.settled-poster img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; }
 .hero-stage--ready .fallback-poster { visibility: hidden; opacity: 0; }
 .hero-stage--fallback .fallback-poster { display: block; visibility: visible; opacity: 1; }
 .hero-stage--fallback .settled-poster,
@@ -813,7 +814,14 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
 .hero-stage--loading .hero-copy, .hero-stage--fallback .hero-copy { transform: translateY(-48%); opacity: 1; }
 .market-opening__progress { position: absolute; z-index: 6; right: clamp(1rem, 3vw, 3rem); bottom: 1.3rem; display: flex; align-items: center; gap: .65rem; color: rgb(255 255 255 / .74); font-size: .68rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; opacity: clamp(0, calc(1 - var(--stage-progress) * 1.15), 1); }
 .market-opening__progress i { width: 3.75rem; height: 1px; overflow: hidden; background: linear-gradient(90deg, #e8b94c calc(var(--stage-progress) * 100%), rgb(255 255 255 / .34) 0); }
-.scroll-cue { left: clamp(1.25rem, 6vw, 6rem); transform: none; }
+.scroll-cue {
+  left: clamp(1.25rem, 6vw, 6rem);
+  opacity: 1;
+  transform: none;
+  animation: scroll-cue-arrive .5s ease-out both, scroll-cue-emphasis .85s .55s ease-in-out 1 both;
+}
+@keyframes scroll-cue-arrive { from { opacity: 0; transform: translateY(.4rem); } to { opacity: 1; transform: translateY(0); } }
+@keyframes scroll-cue-emphasis { 50% { color: #fff8d8; } }
 .catalogue { margin-top: 0; }
 .hero-stage--loading .market-opening__plate { opacity: 0; }
 .hero-stage--loading .scene-visual { background: #201108 url('/media/crate-wood.webp') center / cover no-repeat; }
@@ -963,18 +971,42 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
   .farm-profile__image { transform: none !important; }
 }
 
-/* Finished shop handoff, floating basket, and independent opt-in music. */
-.market-boundary-stile {
+/* One continuous clipboard surface for the market. */
+.catalogue { background: #d8d1bd; }
+.market-clipboard {
+  position: relative;
+  padding: clamp(.55rem, 1vw, .8rem);
+  border: 1px solid rgb(55 31 15 / .5);
+  border-radius: .42rem;
+  background: #70452b url('/media/materials/rough-wood-b-diff.jpg') center / 34rem auto repeat;
+  box-shadow: inset .18rem .16rem .28rem rgb(255 225 177 / .14), 0 1.2rem 3rem rgb(38 39 25 / .2);
+}
+.market-clipboard__paper {
+  position: relative;
+  min-height: 30rem;
+  padding: clamp(3.3rem, 5vw, 5rem) clamp(1rem, 4.3vw, 4.3rem) clamp(2.5rem, 5vw, 4.8rem);
+  background: #fffaf0;
+  box-shadow: inset 0 0 0 1px rgb(119 104 77 / .12), inset 0 0 4rem rgb(111 91 55 / .035);
+}
+.market-clipboard__clip {
   position: absolute;
-  z-index: 2;
-  top: -1.05rem;
-  left: clamp(1.25rem, 6vw, 6rem);
-  width: 1.5rem;
-  height: 6.4rem;
-  border: 1px solid rgb(55 31 15 / .42);
-  background: #6b4028 url('/media/materials/rough-wood-b-vertical-diff.jpg') center / cover no-repeat;
-  box-shadow: inset .18rem 0 .25rem rgb(255 225 177 / .16), .25rem .45rem .75rem rgb(30 31 18 / .19);
+  z-index: 3;
+  top: -.42rem;
+  left: 50%;
+  width: clamp(5.6rem, 8vw, 7.2rem);
+  height: 2.15rem;
+  border: 1px solid #5f625e;
+  border-radius: .55rem .55rem .28rem .28rem;
+  background: linear-gradient(180deg, #d9dbd4, #8d928d 48%, #5d625f 51%, #a9ada7);
+  box-shadow: inset 0 .12rem .18rem rgb(255 255 255 / .55), 0 .25rem .45rem rgb(32 30 24 / .28);
   transform: translateX(-50%);
+}
+.market-clipboard__clip i {
+  position: absolute;
+  inset: .48rem 1.05rem .34rem;
+  border: 1px solid #666a66;
+  border-radius: .2rem;
+  background: linear-gradient(180deg, #b8bcb6, #707570);
 }
 .floating-basket {
   position: fixed;
@@ -1031,25 +1063,22 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
 .basket-feedback { bottom: max(5.25rem, calc(env(safe-area-inset-bottom) + 5.25rem)); }
 
 .sound-controls {
-  position: fixed;
-  z-index: 24;
-  top: 5rem;
-  right: clamp(1rem, 3vw, 3rem);
   display: flex;
   align-items: center;
-  padding: .2rem;
-  border: 1px solid rgb(255 255 255 / .24);
-  border-radius: 999px;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / .32);
+  border-radius: 50%;
   color: #fffdf7;
-  background: rgb(15 43 34 / .82);
+  background: var(--action);
   box-shadow: 0 .35rem 1rem rgb(8 24 17 / .18);
-  backdrop-filter: blur(8px);
 }
 .sound-controls button {
   display: grid;
   place-items: center;
-  width: 2.55rem;
-  height: 2.55rem;
+  width: 2.75rem;
+  height: 2.75rem;
   padding: 0;
   border: 0;
   border-radius: 999px;
@@ -1057,7 +1086,7 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
   background: transparent;
   cursor: pointer;
 }
-.sound-controls button:hover { background: rgb(255 255 255 / .12); }
+.sound-controls button:hover { background: var(--action-hover); }
 .sound-controls button[aria-pressed="true"] { color: #fff3bd; }
 
 .leaf-handoff {
@@ -1093,12 +1122,15 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
 @keyframes leaf-panel-left-out { from { transform: translate(0); } to { transform: translate(-20%, 116%); } }
 
 @media (max-width: 760px) {
-  .sound-controls { top: 4.8rem; right: .75rem; }
+  .header-brand { gap: .45rem; }
+  .sound-controls, .sound-controls button { width: 2.65rem; height: 2.65rem; }
+  .market-clipboard__paper { padding: 3rem .72rem 2rem; }
+  .catalogue { padding-inline: .55rem; }
   .mini-basket { right: .75rem; bottom: calc(max(.75rem, env(safe-area-inset-bottom)) + 4.2rem); width: calc(100vw - 1.5rem); }
   .floating-basket { right: max(.75rem, env(safe-area-inset-right)); bottom: max(.75rem, env(safe-area-inset-bottom)); }
-  .market-boundary-stile { right: 1.25rem; left: auto; height: 4.2rem; transform: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .leaf-handoff { display: none; }
+  .scroll-cue { animation: none; }
 }

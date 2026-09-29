@@ -106,16 +106,16 @@
       "id": "market_opening_first_paint_posters",
       "source": "Deterministic first-frame captures of the implemented timber shutter, rails, permanent frame, lighting, and retained CC0 apple over the selected bright orchard plate",
       "source_sha256": [
-        "c2f9130818b89e017d14e438ac3451965998eb9cc440d7a1178615e01ca547f1",
-        "07b62c3e36defd86ca3914bf8d78dcd1c805d25055cd2fbcb2b1aa047a71bd2e"
+        "e223715b697f5394dcfe6f1a64ec6382243d09c6cb6f95cfe9a982243723b383",
+        "ddf8f95ae8212fe2bf492ae36427052f8b331339ca216cbed1fe55d4e1387608"
       ],
       "derivative_path": [
         "public/media/market-opening-poster-desktop.avif",
         "public/media/market-opening-poster-portrait.avif"
       ],
       "derivative_sha256": [
-        "9f7a46ca7efd1d0b47e6da4e60c342178376caf06955d1fb7c575307566df7e3",
-        "409cb18990c414a36505b21fb03c2d7568be52ae1c263174d883fcfa6d1ffc1c"
+        "aa8034c70fab0549796b955375b910f953bcd50c31c173aba29d7367d9c2ecd4",
+        "d2c9988bd21deb151c6073ca410df07026cc42255bd7b65c5c44c5ab8ce0a02d"
       ],
       "transformation": "Captured from the current permanent-frame local WebGL start state at 1536 by 1024 and 640 by 960 CSS pixels with HTML interface layers suppressed; still-image AVIF-encoded with FFmpeg at CRF 30. These are loading posters, not independent artwork or review baselines."
     },
@@ -123,16 +123,16 @@
       "id": "market_opening_settled_posters",
       "source": "Deterministic complete-state captures of the implemented permanent frame, real Mark Stebnicki orchard photograph, lighting, and camera, with the obsolete photo backing wall removed",
       "source_sha256": [
-        "96c36b5f18c0a34d52635fcd1315dca5516e80e120e7d937478b44b49a974716",
-        "b36c272db9cd63dc85f590c5d87d28ce9b069fb76711fe9199cc73637c42e5af"
+        "57563b35dced4359665edc35dfe4bf7e069359cf459dca301a3ecefd2e180f9c",
+        "d68c3bf3bcb4aac3372d49843f2284d9216797ebb719f2ad7e0d552bebac8352"
       ],
       "derivative_path": [
         "public/media/market-opening-settled-desktop.avif",
         "public/media/market-opening-settled-portrait.avif"
       ],
       "derivative_sha256": [
-        "fec9e92c753c77149a61c2ac935b2f9f9fdc007d1b9d5e8f202d893e59f15c6e",
-        "7feb324146e9bdd5711d1e9e84f1a32ece102455eb5ea2462afd7fe68807758e"
+        "8f2a652dfea6c5aa7eaabb5e35a8fe58222b267b9f020bd83985420484e6486d",
+        "8058396cf26f9932724844ca97d0a5399b271b2e3b65df10af9088ce6fd70b30"
       ],
       "transformation": "Captured at 1536 by 1024 and 640 by 960 CSS pixels with interface layers suppressed; still-image AVIF-encoded with FFmpeg at CRF 30. Used for reduced motion, scene failure, and complete-session loading so the aperture never becomes empty or structurally mismatched."
     },
@@ -184,9 +184,9 @@
     {
       "id": "farm_stand_social_capture",
       "source": "Deterministic 1200 by 630 complete-state capture of the implemented permanent-frame hero",
-      "source_sha256": "7ea3425d539b9ba2ce7b8a38e699e17470b0f41464ca729e3c390d62312fce55",
+      "source_sha256": "1dffc5dc1a8b95f54b3fc550c44dd6bdf3bf0060d101f2fbce4a3551c2d9548e",
       "derivative_path": "public/media/farm-stand-social.jpg",
-      "derivative_sha256": "d80619832a24d0eaa01183fc005aedd562d0fb0ae2b2d5f123bddcc7a4165a87",
+      "derivative_sha256": "9bfc0cedd455511875bae50c0710bcf3fe6c4dfc197b92aa803a68d6e2d95543",
       "transformation": "Captured from the complete local composition and JPEG-encoded with FFmpeg at quality 3 for Open Graph clients."
     },
     {
@@ -634,6 +634,32 @@
         "delivery_path": "public/audio/remove.mp3",
         "delivery_sha256": "8aa90eda4f2c218ca5eb80cca58902692ca7b980a8e0ec7efaeb538fda03d836",
         "duration_seconds": 0.36
+      },
+      {
+        "role": "basket open action",
+        "title": "maximize_002",
+        "creator": "Kenney",
+        "page": "https://kenney.nl/assets/interface-sounds",
+        "license_claim": "CC0",
+        "source_pack_sha256": "f2193d072726d6758a5f7871b2dcc54dcce0d5c35c6f0a62f92549b327c81232",
+        "source_sha256": "cc51162cb4506158b953b121bf479aad070056533ade5c5cd2f980183127ceb4",
+        "delivery_path": "public/audio/basket-open.mp3",
+        "delivery_sha256": "750d839913611e17af096bc8d5efccbb16abb0b9799307a6ba3bc48a3e0b2cdf",
+        "duration_seconds": 0.287,
+        "transformation": "Source OGG attenuated by 5 dB and MP3-encoded at 96 kbps."
+      },
+      {
+        "role": "basket close action",
+        "title": "minimize_002",
+        "creator": "Kenney",
+        "page": "https://kenney.nl/assets/interface-sounds",
+        "license_claim": "CC0",
+        "source_pack_sha256": "f2193d072726d6758a5f7871b2dcc54dcce0d5c35c6f0a62f92549b327c81232",
+        "source_sha256": "670e47846dc003fe29d39c8dfebb8635bfcacae3c0916392c0e8bff659493ad6",
+        "delivery_path": "public/audio/basket-close.mp3",
+        "delivery_sha256": "3a984717f5ea4a1eed382152457f5928d8d307f9e21b6f4254a1e2c17c8f0cff",
+        "duration_seconds": 0.287,
+        "transformation": "Source OGG attenuated by 5 dB and MP3-encoded at 96 kbps."
       }
     ]
   }

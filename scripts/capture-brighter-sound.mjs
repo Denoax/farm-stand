@@ -22,9 +22,11 @@ await page.addInitScript(() => addEventListener('farmstandsound', (event) => { w
 
 await page.goto(`${baseURL}?recordSound=1`, { waitUntil: 'networkidle' })
 await page.waitForSelector('.hero-stage--ready')
+const musicStateOnArrival = await page.locator('.music-toggle').getAttribute('data-music-state')
 await page.getByRole('button', { name: 'Play background music' }).click()
-await page.waitForSelector('.sound-controls[data-sound-status="ready"]', { timeout: 8000 })
-await page.getByRole('button', { name: 'Pause background music' }).waitFor()
+await page.waitForFunction(() => /ready|partial/.test(document.querySelector('.sound-controls')?.getAttribute('data-sound-status') ?? ''), null, { timeout: 8000 })
+await page.getByRole('button', { name: 'Mute background music' }).waitFor()
+const musicStateAfterActivation = await page.locator('.music-toggle').getAttribute('data-music-state')
 
 await page.evaluate(async () => {
   const stream = window.__farmStandAudioStream
@@ -48,7 +50,8 @@ const drawer = page.getByRole('dialog', { name: /Your basket/ })
 await drawer.getByRole('button', { name: 'Increase Orchard apples quantity' }).click()
 await drawer.getByRole('button', { name: 'Remove' }).click()
 await drawer.getByRole('button', { name: 'Close basket' }).click()
-await page.getByRole('button', { name: 'Pause background music' }).click()
+await page.getByRole('button', { name: 'Mute background music' }).click()
+const musicStateAfterMute = await page.locator('.music-toggle').getAttribute('data-music-state')
 await page.waitForTimeout(450)
 
 const audioDataURL = await page.evaluate(() => new Promise((resolve, reject) => {
@@ -88,6 +91,7 @@ const { stdout: streamReport } = await run('ffprobe', ['-v', 'error', '-show_ent
 await fs.writeFile(path.join(evidenceDir, 'sound-capture.json'), `${JSON.stringify({
   capturedAt: new Date().toISOString(), baseURL,
   method: 'The audio track is the application Web Audio master recorded in Chromium during this same interaction run. FFmpeg only restores timestamps and muxes that browser track with Playwright video; no replacement sound was added.',
+  musicStateOnArrival, musicStateAfterActivation, musicStateAfterMute,
   videoDuration, audioDuration, endAlignedOffset, output: path.basename(outputPath), heard, streams: JSON.parse(streamReport), consoleErrors, pageErrors,
 }, null, 2)}\n`)
 await browser.close()

@@ -44,7 +44,6 @@ test('project-path build loads the opening and keeps entrance links usable', asy
   await expect(page.getByRole('link', { name: 'Shop' }).last()).toHaveAttribute('href', '#shop')
   const resources = await page.evaluate(() => performance.getEntriesByType('resource').map((entry) => new URL(entry.name).pathname))
   expect(resources.every((path) => path.startsWith('/farm-stand/'))).toBe(true)
-  expect(resources.some((path) => path.includes('/audio/'))).toBe(false)
   await expect(page.getByText('Websites for growers and local businesses.')).toHaveCount(0)
   await expect(page.getByText('A fictional farm-shop experience demonstrating a real website service. No produce is sold here.')).toHaveCount(0)
   expect(failedResponses).toEqual([])
@@ -223,7 +222,7 @@ test('hidden-tab lifecycle settles and releases the hold', async ({ page }) => {
   })
 })
 
-test('shutter is monotonic, the apple roll is distance-coupled, and the frame stays permanent', async ({ page }) => {
+test('shutter is monotonic, the apple clears the complete assembly, and the frame stays permanent', async ({ page }) => {
   test.slow()
   await page.goto(projectPath)
   const stage = page.locator('.hero-stage')
@@ -252,6 +251,14 @@ test('shutter is monotonic, the apple roll is distance-coupled, and the frame st
   expect(roll.travel).toBeGreaterThan(initialTravel)
   expect(roll.rotation * roll.radius).toBeCloseTo(roll.travel, 3)
   expect(Number(await scene.getAttribute('data-apple-clearance'))).toBeGreaterThan(0)
+  expect(Number(await scene.getAttribute('data-shutter-clearance'))).toBeGreaterThan(0)
+  expect(Number(await scene.getAttribute('data-track-clearance'))).toBeGreaterThan(0)
+  expect(Number(await scene.getAttribute('data-fascia-clearance'))).toBeGreaterThan(0)
+  expect(Math.abs(Number(await scene.getAttribute('data-counter-penetration')))).toBeLessThan(.001)
+  expect(Number(await scene.getAttribute('data-assembly-min-clearance'))).toBeGreaterThan(0)
+  await expect(scene).toHaveAttribute('data-clearance-sweep-samples', '101')
+  expect(Number(await scene.getAttribute('data-clearance-sweep-min'))).toBeGreaterThan(0)
+  expect(Math.abs(Number(await scene.getAttribute('data-clearance-sweep-max-counter-penetration')))).toBeLessThan(.001)
   await expect(scene).toHaveAttribute('data-apple-collision-free', 'true')
   expect(Number(await scene.getAttribute('data-shutter-lift'))).toBeGreaterThan(.99)
   await page.keyboard.press('Escape')
@@ -353,7 +360,7 @@ test('farm-life scenes use matching posters and never play more than one large v
   await expect(page.locator('#product-eggs')).toBeFocused()
 })
 
-test('leaf handoff plays once after the opening and never reacquires the scroll gate', async ({ page }) => {
+test('leaf handoff owns one continuous hold through cover, commit, and reveal', async ({ page }) => {
   await page.goto(projectPath)
   const stage = page.locator('.hero-stage')
   const root = page.locator('body > #root > div')
@@ -365,12 +372,19 @@ test('leaf handoff plays once after the opening and never reacquires the scroll 
   await expect(page.locator('.floating-basket')).toBeHidden()
   await dispatchWheel(page, 120)
   await expect(root).toHaveAttribute('data-leaf-state', 'entering')
+  await expect(root).toHaveAttribute('data-scroll-gate-owner', 'leaf')
+  await expect(root).toHaveAttribute('data-scroll-hold', 'active')
+  const heldAt = await page.evaluate(() => Number.parseFloat(document.body.style.top || '0'))
+  await dispatchWheel(page, 500)
+  expect(await page.evaluate(() => Number.parseFloat(document.body.style.top || '0'))).toBe(heldAt)
   await expect(page.locator('.leaf-handoff')).toBeVisible()
   await expect(root).toHaveAttribute('data-leaf-state', 'covered', { timeout: 1000 })
+  await expect(root).toHaveAttribute('data-scroll-gate-owner', 'leaf')
   await expect(page.locator('.floating-basket')).toBeHidden()
   await expect(page).toHaveURL(/#shop$/)
   await expect(page.locator('.leaf-handoff__panel')).toHaveCount(4)
   await expect(root).toHaveAttribute('data-leaf-state', 'complete', { timeout: 3000 })
+  await expect(root).toHaveAttribute('data-scroll-gate-owner', 'none')
   await expect(page.locator('.floating-basket')).toBeVisible()
   await expect(page.locator('.leaf-handoff')).toHaveCount(0)
   await dispatchWheel(page, -300)
@@ -397,7 +411,37 @@ test('Escape fail-opens an interrupted leaf handoff and unlocks the existing bas
   await expect(root).toHaveAttribute('data-leaf-state', 'bypassed')
 })
 
-test('music is explicit opt-in while the shutter remains independent', async ({ page }) => {
+test('failed leaf art commits the shop directly without an empty cover or retained lock', async ({ page }) => {
+  await page.route('**/media/leaves/leaf-canopy.webp', (route) => route.abort())
+  await page.goto(projectPath)
+  const root = page.locator('body > #root > div')
+  await expect(root).toHaveAttribute('data-leaf-asset', 'failed')
+  await expect(page.locator('.hero-stage')).toHaveClass(/hero-stage--ready/)
+  await dispatchWheel(page, 24)
+  await page.keyboard.press('Escape')
+  await expect(root).toHaveAttribute('data-leaf-state', 'armed')
+  await page.getByRole('link', { name: 'Explore the demo' }).click()
+  await expect(page).toHaveURL(/#shop$/)
+  await expect(root).toHaveAttribute('data-leaf-state', 'bypassed')
+  await expect(root).toHaveAttribute('data-scroll-hold', 'released')
+  await expect(page.locator('.leaf-handoff')).toHaveCount(0)
+})
+
+test('scroll hint waits for eligible inactivity, emphasizes once, and stays absent while locked', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium')
+  await page.goto(projectPath)
+  await expect(page.locator('.hero-stage')).toHaveClass(/hero-stage--ready/)
+  await expect(page.locator('[data-scroll-hint]')).toHaveCount(0)
+  await page.waitForTimeout(5200)
+  await expect(page.locator('[data-scroll-hint="closed"]')).toBeVisible()
+  await dispatchWheel(page, 24)
+  await expect(page.locator('[data-scroll-hint]')).toHaveCount(0)
+  await expect(page.locator('.hero-stage')).toHaveAttribute('data-scroll-hold', 'active')
+  await page.waitForTimeout(5200)
+  await expect(page.locator('[data-scroll-hint]')).toHaveCount(0)
+})
+
+test('music requests honestly on arrival, persists mute, and keeps the shutter independent', async ({ page }) => {
   await page.addInitScript(() => {
     ;(window as typeof window & { __heardSounds?: string[] }).__heardSounds = []
     window.addEventListener('farmstandsound', ((event: CustomEvent<{ name: string }>) => {
@@ -405,22 +449,58 @@ test('music is explicit opt-in while the shutter remains independent', async ({ 
     }) as EventListener)
   })
   await page.goto(projectPath, { waitUntil: 'networkidle' })
-  const resourcesBefore = await page.evaluate(() => performance.getEntriesByType('resource').map((entry) => entry.name))
-  expect(resourcesBefore.some((url) => /\/audio\//.test(url))).toBe(false)
+  const music = page.locator('.music-toggle')
+  await expect(music).toHaveAttribute('data-music-state', /playing|blocked/, { timeout: 8000 })
+
   await page.mouse.click(8, 320)
-  await expect(page.getByRole('button', { name: 'Play background music' })).toHaveAttribute('aria-pressed', 'false')
   await expect(page.locator('.sound-controls')).toHaveAttribute('data-sound-status', /ready|partial/, { timeout: 8000 })
   expect(await page.evaluate(() => performance.getEntriesByType('resource').some((entry) => /\/audio\//.test(entry.name)))).toBe(true)
-
   await dispatchWheel(page, 24)
   await expect(page.locator('.hero-stage')).toHaveAttribute('data-opening-state', 'playing')
   await expect.poll(async () => page.evaluate(() => (window as typeof window & { __heardSounds?: string[] }).__heardSounds?.includes('shutter'))).toBe(true)
   await page.keyboard.press('Escape')
 
-  await page.getByRole('button', { name: 'Play background music' }).click()
-  await expect(page.getByRole('button', { name: 'Pause background music' })).toHaveAttribute('aria-pressed', 'true')
-  await page.getByRole('button', { name: 'Pause background music' }).click()
-  await expect(page.getByRole('button', { name: 'Play background music' })).toHaveAttribute('aria-pressed', 'false')
+  if (await music.getAttribute('data-music-state') === 'playing') await music.click()
+  await expect(music).toHaveAttribute('data-music-state', 'muted')
+  expect(await page.evaluate(() => sessionStorage.getItem('farm-stand-music-muted-v1'))).toBe('true')
+  await page.reload()
+  await expect(page.locator('.music-toggle')).toHaveAttribute('data-music-state', 'muted')
+})
+
+test('blocked autoplay is disclosed and the first eligible interaction retries it', async ({ page }) => {
+  await page.addInitScript(() => {
+    let calls = 0
+    const original = HTMLMediaElement.prototype.play
+    HTMLMediaElement.prototype.play = function () {
+      calls += 1
+      if (calls === 1) return Promise.reject(new DOMException('Blocked', 'NotAllowedError'))
+      return original.call(this)
+    }
+  })
+  await page.goto(projectPath)
+  const music = page.locator('.music-toggle')
+  await expect(music).toHaveAttribute('data-music-state', 'blocked', { timeout: 8000 })
+  await expect(music).toHaveAccessibleName(/browser permission is needed/)
+  await page.mouse.click(8, 320)
+  await expect(music).toHaveAttribute('data-music-state', 'playing', { timeout: 8000 })
+})
+
+test('mute cancels an unresolved music start and wins the late play race', async ({ page }) => {
+  await page.addInitScript(() => {
+    let release!: () => void
+    const pending = new Promise<void>((resolve) => { release = resolve })
+    ;(window as typeof window & { __releaseMusic?: () => void }).__releaseMusic = release
+    HTMLMediaElement.prototype.play = () => pending
+  })
+  await page.goto(projectPath)
+  const music = page.locator('.music-toggle')
+  await expect(music).toHaveAttribute('data-music-state', 'starting')
+  await expect(music).toHaveAccessibleName('Cancel background music request')
+  await music.click()
+  await expect(music).toHaveAttribute('data-music-state', 'muted')
+  await page.evaluate(() => (window as typeof window & { __releaseMusic?: () => void }).__releaseMusic?.())
+  await page.waitForTimeout(100)
+  await expect(music).toHaveAttribute('data-music-state', 'muted')
 })
 
 test('audio file failure degrades to partial sound without blocking navigation', async ({ page }) => {
@@ -458,6 +538,23 @@ test('commerce actions have distinct cues without a duplicate generic click', as
   expect(names.filter((name) => name === 'quantity')).toHaveLength(1)
   expect(names.filter((name) => name === 'remove')).toHaveLength(1)
   expect(names).not.toContain('ui')
+})
+
+test('basket transitions emit one semantic open or close cue without a mini-to-full close', async ({ page }) => {
+  await page.addInitScript(() => {
+    ;(window as typeof window & { __heardSounds?: string[] }).__heardSounds = []
+    window.addEventListener('farmstandsound', ((event: CustomEvent<{ name: string }>) => {
+      if (event.detail.name.startsWith('basket-')) (window as typeof window & { __heardSounds?: string[] }).__heardSounds?.push(event.detail.name)
+    }) as EventListener)
+  })
+  await openShop(page)
+  await page.mouse.click(8, 320)
+  await expect(page.locator('.sound-controls')).toHaveAttribute('data-sound-status', /ready|partial/, { timeout: 8000 })
+  await page.evaluate(() => { (window as typeof window & { __heardSounds?: string[] }).__heardSounds = [] })
+  await page.getByRole('button', { name: /Open basket preview/ }).click()
+  await page.getByRole('dialog', { name: 'At a glance' }).getByRole('button', { name: 'View full basket' }).click()
+  await page.getByRole('dialog', { name: /Your basket/ }).getByRole('button', { name: 'Close basket' }).click()
+  await expect.poll(async () => page.evaluate(() => (window as typeof window & { __heardSounds?: string[] }).__heardSounds)).toEqual(['basket-open', 'basket-open', 'basket-close'])
 })
 
 test('cattle cue uses the lowered gain', async ({ page }) => {

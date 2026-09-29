@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { evaluateMarketOpening } from '../scene/marketOpeningShot'
+import { marketView } from '../scene/marketView'
 
 type SceneState = 'loading' | 'ready' | 'fallback'
 
@@ -38,6 +39,8 @@ const APPLE_URL = publicAsset('models/food_apple_01/food_apple_01_1k.gltf')
 const WOOD_VARIANTS = ['a', 'b', 'c'] as const
 const COUNTER_TOP_Y = -1.9
 const APPLE_SUPPORT_SAMPLES = 72
+const SHUTTER_DEPTH_OFFSET = -0.8
+const TRACK_DEPTH_OFFSET = -0.86
 
 function prepareApple(model: THREE.Object3D): PreparedApple {
   const bounds = new THREE.Box3().setFromObject(model)
@@ -183,7 +186,7 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
     renderer.toneMapping = THREE.ACESFilmicToneMapping
     renderer.toneMappingExposure = 1.12
     renderer.shadowMap.enabled = true
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    renderer.shadowMap.type = THREE.PCFShadowMap
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
     renderer.domElement.className = 'farm-canvas'
     renderer.domElement.setAttribute('aria-hidden', 'true')
@@ -264,12 +267,14 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
     braceLeft.rotation.z = -0.025
     braceRight.rotation.z = 0.025
     shutter.add(braceLeft, braceRight)
+    shutter.position.z = SHUTTER_DEPTH_OFFSET
     scene.add(shutter)
 
     const trackHardware = new THREE.Group()
     trackHardware.name = 'shutter-track-hardware'
     trackHardware.add(makeBoard([0.1, 7.2, 0.12], iron, [-2.78, 0.1, 0.9], 0.018))
     trackHardware.add(makeBoard([0.1, 7.2, 0.12], iron, [2.78, 0.1, 0.9], 0.018))
+    trackHardware.position.z = TRACK_DEPTH_OFFSET
     scene.add(trackHardware)
 
     let apple: PreparedApple | undefined
@@ -277,6 +282,7 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
     let frame = 0
     let renderEnabled = true
     let heroVisible = true
+    let clearanceSweepCache: { appleScale: number; frameScaleX: number; minimum: number; maxCounterPenetration: number } | undefined
 
     function requestRender() {
       if (!renderEnabled || !heroVisible || document.hidden || !apple) return
@@ -307,7 +313,12 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
       const height = Math.max(sceneHost.clientHeight, 1)
       renderer.setSize(width, height, false)
       camera.aspect = width / height
+      const view = marketView(width, height, 1)
+      camera.fov = view.fov
       camera.updateProjectionMatrix()
+      document.documentElement.style.setProperty('--orchard-position-x', `${view.orchard.xPercent}%`)
+      document.documentElement.style.setProperty('--orchard-position-y', `${view.orchard.yPercent}%`)
+      document.documentElement.style.setProperty('--orchard-scale', String(view.orchard.scale))
       requestRender()
     }
     resize()
@@ -318,25 +329,32 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
     const travelDirection = new THREE.Vector3(-1, 0, 0)
     const rollingAxis = counterNormal.clone().cross(travelDirection).normalize()
     const rollingQuaternion = new THREE.Quaternion()
-    const debugClearance = import.meta.env.DEV && new URLSearchParams(location.search).has('debugAppleClearance')
+    const debugParameters = import.meta.env.DEV ? new URLSearchParams(location.search) : null
+    const debugClearance = debugParameters?.get('debugAppleClearance') ?? null
+    const debugProgressValue = debugParameters?.get('debugProgress')
+    const requestedDebugProgress = Number(debugProgressValue)
+    const debugProgress = debugProgressValue !== null && debugProgressValue !== undefined && Number.isFinite(requestedDebugProgress)
+      ? THREE.MathUtils.clamp(requestedDebugProgress, 0, 1)
+      : null
 
     function render() {
       frame = 0
       if (!apple || document.hidden || !heroVisible) return
-      const state = evaluateMarketOpening(progressRef.current ?? 0)
-      const portrait = sceneHost.clientWidth < 700
-      // Widen the physical opening on broad screens instead of allowing the
-      // same world-space posts to crowd an increasingly wide composition.
-      const frameScaleX = portrait ? 0.48 : THREE.MathUtils.clamp(camera.aspect / 1.48, 1, 1.22)
+      const state = evaluateMarketOpening(debugProgress ?? progressRef.current ?? 0)
+      const view = marketView(sceneHost.clientWidth, sceneHost.clientHeight, state.cameraPullback)
+      const { portrait, frameScaleX } = view
+      camera.fov = view.fov
+      camera.updateProjectionMatrix()
 
-      if (debugClearance) {
+      if (debugClearance === 'side') {
         camera.position.set(-7.8, -0.65, 0.78)
         camera.lookAt(-3.12, -1.55, 0.78)
+      } else if (debugClearance === 'top') {
+        camera.position.set(-2.3, 7.8, 0.72)
+        camera.lookAt(-2.3, -1.5, 0.72)
       } else {
-        camera.position.x = portrait ? 0.06 : THREE.MathUtils.lerp(0.18, 0, state.cameraPullback)
-        camera.position.y = portrait ? 0.3 : THREE.MathUtils.lerp(0.12, 0.26, state.cameraPullback)
-        camera.position.z = portrait ? THREE.MathUtils.lerp(8.85, 9.35, state.cameraPullback) : THREE.MathUtils.lerp(7.45, 8.05, state.cameraPullback)
-        camera.lookAt(portrait ? 0.03 : 0, -0.08, 0.5)
+        camera.position.set(view.camera.x, view.camera.y, view.camera.z)
+        camera.lookAt(view.target.x, view.target.y, view.target.z)
       }
 
       permanentFrame.scale.x = frameScaleX
@@ -354,8 +372,31 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
       const postRearZ = 1.36 - 0.72 / 2
       const appleLaneZ = Math.min(0.62, postRearZ - apple.halfExtentZ * appleScale - 0.09)
       const appleClearance = postRearZ - (appleLaneZ + apple.halfExtentZ * appleScale)
+      const appleFrontZ = appleLaneZ + apple.halfExtentZ * appleScale
+      const appleRearZ = appleLaneZ - apple.halfExtentZ * appleScale
+      const shutterFrontZ = SHUTTER_DEPTH_OFFSET + 0.74 + 0.32 / 2
+      const trackFrontZ = TRACK_DEPTH_OFFSET + 0.9 + 0.12 / 2
+      const fasciaRearZ = 1.66 - 0.54 / 2
+      const shutterClearance = appleRearZ - shutterFrontZ
+      const trackClearance = appleRearZ - trackFrontZ
+      const fasciaClearance = fasciaRearZ - appleFrontZ
+      const supportY = COUNTER_TOP_Y + apple.supportHeightAt(rollAngle) * appleScale
+      const counterPenetration = COUNTER_TOP_Y - (supportY - apple.supportHeightAt(rollAngle) * appleScale)
+      const assemblyClearance = Math.min(appleClearance, shutterClearance, trackClearance, fasciaClearance)
+      if (!clearanceSweepCache || clearanceSweepCache.appleScale !== appleScale || clearanceSweepCache.frameScaleX !== frameScaleX) {
+        let maxCounterPenetration = 0
+        for (let sample = 0; sample <= 100; sample += 1) {
+          const sampledState = evaluateMarketOpening(sample / 100)
+          const sampledX = THREE.MathUtils.lerp(appleStartX, appleEndX, sampledState.appleRoll)
+          const sampledDistance = appleStartX - sampledX
+          const sampledAngle = sampledDistance / (apple.effectiveRadius * appleScale)
+          const sampledSupport = COUNTER_TOP_Y + apple.supportHeightAt(sampledAngle) * appleScale
+          maxCounterPenetration = Math.max(maxCounterPenetration, Math.abs(COUNTER_TOP_Y - (sampledSupport - apple.supportHeightAt(sampledAngle) * appleScale)))
+        }
+        clearanceSweepCache = { appleScale, frameScaleX, minimum: assemblyClearance, maxCounterPenetration }
+      }
       apple.group.scale.setScalar(appleScale)
-      apple.group.position.set(appleX, COUNTER_TOP_Y + apple.supportHeightAt(rollAngle) * appleScale, appleLaneZ)
+      apple.group.position.set(appleX, supportY, appleLaneZ)
       apple.group.quaternion.copy(rollingQuaternion.setFromAxisAngle(rollingAxis, rollAngle))
 
       renderer.render(scene, camera)
@@ -375,9 +416,21 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
       sceneHost.dataset.appleHalfExtentZ = (apple.halfExtentZ * appleScale).toFixed(3)
       sceneHost.dataset.postRearZ = postRearZ.toFixed(3)
       sceneHost.dataset.appleClearance = appleClearance.toFixed(3)
-      sceneHost.dataset.appleCollisionFree = appleClearance > 0 ? 'true' : 'false'
+      sceneHost.dataset.shutterClearance = shutterClearance.toFixed(3)
+      sceneHost.dataset.trackClearance = trackClearance.toFixed(3)
+      sceneHost.dataset.fasciaClearance = fasciaClearance.toFixed(3)
+      sceneHost.dataset.counterPenetration = counterPenetration.toFixed(4)
+      sceneHost.dataset.assemblyMinClearance = assemblyClearance.toFixed(3)
+      sceneHost.dataset.clearanceSweepSamples = '101'
+      sceneHost.dataset.clearanceSweepMin = clearanceSweepCache.minimum.toFixed(3)
+      sceneHost.dataset.clearanceSweepMaxCounterPenetration = clearanceSweepCache.maxCounterPenetration.toFixed(4)
+      sceneHost.dataset.appleCollisionFree = assemblyClearance > 0 ? 'true' : 'false'
+      sceneHost.dataset.cameraFov = view.fov.toFixed(2)
+      sceneHost.dataset.cameraPosition = `${view.camera.x.toFixed(3)},${view.camera.y.toFixed(3)},${view.camera.z.toFixed(3)}`
+      sceneHost.dataset.cameraTarget = `${view.target.x.toFixed(3)},${view.target.y.toFixed(3)},${view.target.z.toFixed(3)}`
       sceneHost.dataset.counterY = COUNTER_TOP_Y.toFixed(3)
       sceneHost.dataset.frame = 'permanent'
+      if (debugProgress !== null) sceneHost.dataset.debugProgress = debugProgress.toFixed(4)
       sceneHost.dataset.rendering = 'active'
       onPresented(state.progress, state.shot)
     }

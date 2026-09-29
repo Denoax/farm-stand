@@ -20,12 +20,16 @@ type SceneState = 'loading' | 'ready' | 'fallback'
 type OpeningState = 'waiting' | 'playing' | 'open' | 'fallback'
 type OpeningContentState = 'initial' | 'opening' | 'settled' | 'reintroduced' | 'complete'
 type LeafState = 'idle' | 'armed' | LeafPhase | 'complete' | 'bypassed'
+type LeafAssetState = 'loading' | 'ready' | 'failed'
+type ScrollHintState = 'hidden' | 'closed' | 'market'
 
 const openingStorageKey = 'farm-stand-market-opening-v2'
 const openingDuration = 6500
 const contentReturnStart = 0.895
 const openingSettleStart = 0.75
 const openingWatchdog = 9000
+const leafWatchdog = 3600
+const scrollHintDelay = 5000
 
 function progressAtTime(milliseconds: number) {
   return Math.min(openingDuration, Math.max(0, milliseconds)) / openingDuration
@@ -52,13 +56,19 @@ export function App() {
   const [openingState, setOpeningState] = useState<OpeningState>(() => shouldBypassOpening() ? 'open' : 'waiting')
   const [openingContentState, setOpeningContentState] = useState<OpeningContentState>(() => shouldBypassOpening() ? 'complete' : 'initial')
   const [leafState, setLeafState] = useState<LeafState>(() => shouldBypassOpening() ? 'bypassed' : 'idle')
+  const [leafAssetState, setLeafAssetState] = useState<LeafAssetState>('loading')
+  const [scrollHint, setScrollHint] = useState<ScrollHintState>('hidden')
   const leafStateRef = useRef(leafState)
   const openingStateRef = useRef(openingState)
   const sceneStateRef = useRef(sceneState)
   const coverCommittedRef = useRef(false)
   const openingPlayedRef = useRef(false)
+  const shownHintsRef = useRef(new Set<Exclude<ScrollHintState, 'hidden'>>())
+  const [idleSequence, setIdleSequence] = useState(0)
   const elapsedRef = useRef(openingState === 'open' ? openingDuration : 0)
-  const { active: introHoldActive, activeRef: introHoldRef, begin: beginIntroHold, release: releaseIntroHold } = useOpeningScrollGate(openingWatchdog)
+  const scrollGate = useOpeningScrollGate(openingWatchdog)
+  const introHoldActive = scrollGate.owner === 'opening'
+  const introHoldRef = scrollGate.activeRef
   const soundscape = useSoundscape()
   const marketReady = leafState === 'complete' || leafState === 'bypassed'
   openingStateRef.current = openingState
@@ -74,7 +84,7 @@ export function App() {
   })
   const [shopFocusRequest, setShopFocusRequest] = useState<{ productId: ProductId; sequence: number }>()
   const settleOpening = useCallback((state: Extract<OpeningState, 'open' | 'fallback'> = 'open') => {
-    releaseIntroHold()
+    scrollGate.release('opening')
     elapsedRef.current = openingDuration
     progressRef.current = 1
     openingStateRef.current = state
@@ -85,7 +95,7 @@ export function App() {
     document.documentElement.style.setProperty('--stage-progress', '1.0000')
     window.dispatchEvent(new Event('farmstageprogress'))
     try { sessionStorage.setItem(openingStorageKey, 'complete') } catch { /* The visual still settles open when storage is unavailable. */ }
-  }, [releaseIntroHold])
+  }, [scrollGate.release])
   const onSceneState = useCallback((state: SceneState) => setSceneState((current) => current === 'fallback' ? current : state), [])
   const onPresented = useCallback((progress: number, shot: string) => {
     const stage = stageRef.current
@@ -127,9 +137,13 @@ export function App() {
   }, [sceneState, settleOpening])
 
   useEffect(() => {
-    const unlock = () => { void soundscape.unlock() }
+    const unlock = (event: Event) => {
+      const target = event.target instanceof Element ? event.target : null
+      if (target?.closest('.music-toggle')) return
+      void soundscape.handleEligibleInteraction()
+    }
     const unlockFromKey = (event: KeyboardEvent) => {
-      if (!event.altKey && !event.ctrlKey && !event.metaKey) unlock()
+      if (!event.altKey && !event.ctrlKey && !event.metaKey) unlock(event)
     }
     window.addEventListener('pointerdown', unlock, { capture: true, passive: true })
     window.addEventListener('keydown', unlockFromKey, { capture: true })
@@ -137,7 +151,7 @@ export function App() {
       window.removeEventListener('pointerdown', unlock, { capture: true })
       window.removeEventListener('keydown', unlockFromKey, { capture: true })
     }
-  }, [soundscape.unlock])
+  }, [soundscape.handleEligibleInteraction])
 
   useEffect(() => {
     if (openingState !== 'open' && openingState !== 'fallback') return
@@ -182,7 +196,7 @@ export function App() {
       if (focused instanceof Element && focused.closest('.hero-copy, .entrance-links')) return settleOpening()
       openingPlayedRef.current = true
       openingStateRef.current = 'playing'
-      beginIntroHold(() => settleOpening())
+      scrollGate.begin('opening', () => settleOpening())
       setOpeningContentState('opening')
       setOpeningState('playing')
     }
@@ -278,9 +292,9 @@ export function App() {
       document.removeEventListener('focusin', onFocusIn)
       document.removeEventListener('visibilitychange', onVisibility)
       reducedMotion.removeEventListener('change', onPreference)
-      releaseIntroHold(false)
+      scrollGate.release('opening', false)
     }
-  }, [beginIntroHold, releaseIntroHold, settleOpening])
+  }, [scrollGate.begin, scrollGate.release, settleOpening])
 
   useEffect(() => {
     if (openingState !== 'playing') return
@@ -322,28 +336,82 @@ export function App() {
     setLeafState('armed')
   }, [leafState, openingState])
 
+  useEffect(() => {
+    if (leafState === 'bypassed') return
+    const image = new Image()
+    image.src = publicAsset('media/leaves/leaf-canopy.webp')
+    let cancelled = false
+    const ready = () => { if (!cancelled) setLeafAssetState('ready') }
+    const failed = () => { if (!cancelled) setLeafAssetState('failed') }
+    image.addEventListener('load', ready, { once: true })
+    image.addEventListener('error', failed, { once: true })
+    void image.decode?.().then(ready).catch(() => { if (!image.complete) failed() })
+    return () => {
+      cancelled = true
+      image.removeEventListener('load', ready)
+      image.removeEventListener('error', failed)
+    }
+  }, [leafState])
+
   const bypassLeaf = useCallback(() => {
     if (leafStateRef.current === 'complete' || leafStateRef.current === 'bypassed') return
+    scrollGate.release('leaf')
     leafStateRef.current = 'bypassed'
     setLeafState('bypassed')
-  }, [])
+  }, [scrollGate.release])
+
+  const commitShopWithoutLeaves = useCallback(() => {
+    const target = document.getElementById('shop')
+    if (!target) return bypassLeaf()
+    if (scrollGate.activeRef.current === 'leaf') {
+      const currentY = Number.parseFloat(document.body.style.top || '0') * -1
+      const targetY = target.getBoundingClientRect().top + currentY
+      scrollGate.moveTo('leaf', 0, targetY)
+      scrollGate.release('leaf')
+    }
+    leafStateRef.current = 'bypassed'
+    setLeafState('bypassed')
+    history.pushState(null, '', '#shop')
+    if (scrollGate.activeRef.current !== 'leaf') target.scrollIntoView({ block: 'start' })
+  }, [bypassLeaf, scrollGate.activeRef, scrollGate.moveTo, scrollGate.release])
 
   const startLeaf = useCallback(() => {
     if (leafStateRef.current !== 'armed') return
+    if (leafAssetState !== 'ready') {
+      if (leafAssetState === 'failed') commitShopWithoutLeaves()
+      return
+    }
+    if (!scrollGate.begin('leaf', commitShopWithoutLeaves, leafWatchdog)) return
     leafStateRef.current = 'entering'
     coverCommittedRef.current = false
     soundscape.playLeaves()
     setLeafState('entering')
-  }, [soundscape.playLeaves])
+  }, [commitShopWithoutLeaves, leafAssetState, scrollGate.begin, soundscape.playLeaves])
 
   useEffect(() => {
     const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)')
     let touchY: number | null = null
-    const onWheel = (event: WheelEvent) => { if (event.deltaY > 0 && leafStateRef.current === 'armed') startLeaf() }
+    const onWheel = (event: WheelEvent) => {
+      if (['entering', 'covered', 'clearing'].includes(leafStateRef.current)) {
+        event.preventDefault()
+        return
+      }
+      if (event.deltaY > 0 && leafStateRef.current === 'armed') {
+        event.preventDefault()
+        startLeaf()
+      }
+    }
     const onTouchStart = (event: TouchEvent) => { touchY = event.touches[0]?.clientY ?? null }
     const onTouchMove = (event: TouchEvent) => {
       const y = event.touches[0]?.clientY
-      if (leafStateRef.current === 'armed' && touchY !== null && y !== undefined && touchY - y > 14) startLeaf()
+      if (['entering', 'covered', 'clearing'].includes(leafStateRef.current)) {
+        event.preventDefault()
+        return
+      }
+      if (leafStateRef.current === 'armed' && touchY !== null && y !== undefined && touchY - y > 14) {
+        event.preventDefault()
+        startLeaf()
+      }
     }
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && ['entering', 'covered', 'clearing'].includes(leafStateRef.current)) {
@@ -379,9 +447,9 @@ export function App() {
     }
     const onVisibility = () => { if (document.hidden) bypassLeaf() }
     const onPageHide = () => bypassLeaf()
-    addEventListener('wheel', onWheel, { passive: true })
+    addEventListener('wheel', onWheel, { passive: false })
     addEventListener('touchstart', onTouchStart, { passive: true })
-    addEventListener('touchmove', onTouchMove, { passive: true })
+    addEventListener('touchmove', onTouchMove, { passive: false })
     addEventListener('keydown', onKeyDown)
     addEventListener('pagehide', onPageHide)
     document.addEventListener('click', onClick, true)
@@ -399,12 +467,6 @@ export function App() {
     }
   }, [bypassLeaf, startLeaf])
 
-  useEffect(() => {
-    if (!['entering', 'covered', 'clearing'].includes(leafState)) return
-    const watchdog = window.setTimeout(bypassLeaf, 3600)
-    return () => window.clearTimeout(watchdog)
-  }, [bypassLeaf, leafState])
-
   const onLeafEntered = useCallback(() => {
     if (leafStateRef.current !== 'entering') return
     leafStateRef.current = 'covered'
@@ -417,23 +479,23 @@ export function App() {
     const target = document.getElementById('shop')
     if (!target) return bypassLeaf()
     history.pushState(null, '', '#shop')
-    const root = document.documentElement
-    const previousScrollBehavior = root.style.scrollBehavior
-    root.style.scrollBehavior = 'auto'
-    target.scrollIntoView({ block: 'start' })
-    root.style.scrollBehavior = previousScrollBehavior
+    const targetY = target.getBoundingClientRect().top + (scrollGate.activeRef.current === 'leaf'
+      ? Number.parseFloat(document.body.style.top || '0') * -1
+      : window.scrollY)
+    scrollGate.moveTo('leaf', 0, targetY)
     window.setTimeout(() => {
       if (leafStateRef.current !== 'covered') return
       leafStateRef.current = 'clearing'
       setLeafState('clearing')
     }, 1000)
-  }, [bypassLeaf])
+  }, [bypassLeaf, scrollGate.activeRef, scrollGate.moveTo])
 
   const onLeafCleared = useCallback(() => {
     if (leafStateRef.current !== 'clearing') return
+    scrollGate.release('leaf')
     leafStateRef.current = 'complete'
     setLeafState('complete')
-  }, [])
+  }, [scrollGate.release])
 
   useEffect(() => {
     let lastPointerMove = 0
@@ -475,31 +537,75 @@ export function App() {
     }
   }, [soundscape.playAnimal])
 
+  useEffect(() => {
+    const state: Exclude<ScrollHintState, 'hidden'> | null =
+      openingState === 'waiting' && sceneState === 'ready' && leafState === 'idle' ? 'closed'
+        : openingState === 'open' && openingContentState === 'complete' && leafState === 'armed' ? 'market'
+          : null
+    const blocked = scrollGate.owner !== null || document.hidden || Boolean(document.querySelector('dialog[open], .mini-basket'))
+    if (!state || blocked || shownHintsRef.current.has(state)) {
+      setScrollHint('hidden')
+      return
+    }
+    const timeout = window.setTimeout(() => {
+      if (document.hidden || document.querySelector('dialog[open], .mini-basket')) return
+      shownHintsRef.current.add(state)
+      setScrollHint(state)
+    }, scrollHintDelay)
+    return () => window.clearTimeout(timeout)
+  }, [idleSequence, leafState, openingContentState, openingState, sceneState, scrollGate.owner])
+
+  useEffect(() => {
+    let resetTimer: number | undefined
+    const activity = () => {
+      setScrollHint('hidden')
+      if (resetTimer !== undefined) window.clearTimeout(resetTimer)
+      resetTimer = window.setTimeout(() => setIdleSequence((value) => value + 1), 120)
+    }
+    const keyActivity = (event: KeyboardEvent) => {
+      if (!event.altKey && !event.ctrlKey && !event.metaKey) activity()
+    }
+    addEventListener('pointerdown', activity, { passive: true })
+    addEventListener('wheel', activity, { passive: true })
+    addEventListener('touchmove', activity, { passive: true })
+    addEventListener('keydown', keyActivity)
+    addEventListener('scroll', activity, { passive: true })
+    return () => {
+      if (resetTimer !== undefined) window.clearTimeout(resetTimer)
+      removeEventListener('pointerdown', activity)
+      removeEventListener('wheel', activity)
+      removeEventListener('touchmove', activity)
+      removeEventListener('keydown', keyActivity)
+      removeEventListener('scroll', activity)
+    }
+  }, [])
+
   return (
     <div
       data-opening-state={openingState}
       data-opening-content={openingContentState}
-      data-scroll-hold={introHoldActive ? 'active' : 'released'}
+      data-scroll-hold={scrollGate.active ? 'active' : 'released'}
+      data-scroll-gate-owner={scrollGate.owner ?? 'none'}
       data-scroll-hold-policy="presented-complete"
       data-scroll-hold-watchdog-ms={openingWatchdog}
       data-leaf-state={leafState}
+      data-leaf-asset={leafAssetState}
       data-sound-ready={soundscape.snapshot.audioReady ? 'true' : 'false'}
     >
       <a className="skip-link" href="#main">Skip to the main content</a>
       <header className="site-header">
-        <a className="wordmark" href="#top" aria-label="Farm stand website demonstration, home">
-          <Logo />
-        </a>
+        <div className="header-brand">
+          <a className="wordmark" href="#top" aria-label="Farm stand website demonstration, home">
+            <Logo />
+          </a>
+          <SoundControls snapshot={soundscape.snapshot} onToggle={soundscape.toggleMusic} />
+        </div>
         <nav aria-label="Main navigation">
           <a href="#shop">Shop</a>
           <a href="#farm-life">Around the farm</a>
           <a href="#website">Your website</a>
           <a className="nav-cta" href="#contact">Discuss a website</a>
         </nav>
-        <SoundControls
-          snapshot={soundscape.snapshot}
-          onToggle={soundscape.toggleMusic}
-        />
       </header>
 
       <main id="main" inert={['entering', 'covered', 'clearing'].includes(leafState) ? true : undefined}>
@@ -510,7 +616,8 @@ export function App() {
           aria-labelledby="hero-heading"
           data-opening-state={openingState}
           data-opening-content={openingContentState}
-          data-scroll-hold={introHoldActive ? 'active' : 'released'}
+          data-scroll-hold={scrollGate.active ? 'active' : 'released'}
+          data-scroll-gate-owner={scrollGate.owner ?? 'none'}
           data-scroll-hold-policy="presented-complete"
           data-scroll-hold-watchdog-ms={openingWatchdog}
         >
@@ -553,7 +660,7 @@ export function App() {
             <div className="market-opening__progress" aria-hidden="true">
               <span>Morning light</span><i /><span>Open stand</span>
             </div>
-            {openingState === 'waiting' && <div className="scroll-cue" aria-hidden="true"><span /> Scroll to open the stand</div>}
+            {scrollHint !== 'hidden' && <div className="scroll-cue" data-scroll-hint={scrollHint} aria-hidden="true"><span /> {scrollHint === 'closed' ? 'Scroll to open the stand' : 'Scroll into the market'}</div>}
           </div>
           <span className="demo-anchor" id="demo" aria-hidden="true" />
         </section>

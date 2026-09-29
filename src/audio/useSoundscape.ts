@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 export type AnimalSound = 'hens' | 'cattle' | 'sheep'
-export type CommerceSound = 'add' | 'details' | 'quantity' | 'remove'
+export type CommerceSound = 'add' | 'details' | 'quantity' | 'remove' | 'basket-open' | 'basket-close'
 type EffectName = AnimalSound | CommerceSound | 'shutter' | 'leaves'
 type SoundStatus = 'silent' | 'loading' | 'ready' | 'partial'
 
@@ -10,6 +10,8 @@ export interface SoundscapeSnapshot {
   musicRequested: boolean
   musicPlaying: boolean
   musicBlocked: boolean
+  musicMuted: boolean
+  musicStarting: boolean
   status: SoundStatus
   failedEffects: number
 }
@@ -30,15 +32,24 @@ const EFFECT_URLS: Record<EffectName, string> = {
   details: publicAsset('audio/details.mp3'),
   quantity: publicAsset('audio/quantity.mp3'),
   remove: publicAsset('audio/remove.mp3'),
+  'basket-open': publicAsset('audio/basket-open.mp3'),
+  'basket-close': publicAsset('audio/basket-close.mp3'),
 }
 const MUSIC_URL = publicAsset('audio/morning-bed.mp3')
+const MUSIC_MUTE_KEY = 'farm-stand-music-muted-v1'
 const MUSIC_GAIN = 0.061
 const DUCKED_MUSIC_GAIN = 0.023
+function initiallyMuted() {
+  try { return sessionStorage.getItem(MUSIC_MUTE_KEY) === 'true' } catch { return false }
+}
+
 const INITIAL_SNAPSHOT: SoundscapeSnapshot = {
   audioReady: false,
-  musicRequested: false,
+  musicRequested: !initiallyMuted(),
   musicPlaying: false,
   musicBlocked: false,
+  musicMuted: initiallyMuted(),
+  musicStarting: false,
   status: 'silent',
   failedEffects: 0,
 }
@@ -55,6 +66,8 @@ class SoundscapeController {
   private voices = new Set<Voice>()
   private animalVoice?: Voice
   private shutterVoice?: Voice
+  private basketVoice?: Voice
+  private musicAttempt = 0
   private loadPromise?: Promise<void>
   private lastAnimalAt = new Map<AnimalSound, number>()
   private lastCommerceAt = new Map<CommerceSound, number>()
@@ -125,29 +138,69 @@ class SoundscapeController {
   async unlock() {
     try {
       await this.ensureGraph()
-      await this.context?.resume()
-      this.publish({ audioReady: this.context?.state === 'running', musicBlocked: false })
+      const resumed = this.context?.state === 'running' || await Promise.race([
+        this.context?.resume().then(() => this.context?.state === 'running'),
+        new Promise<false>((resolve) => window.setTimeout(() => resolve(false), 450)),
+      ])
+      this.publish({ audioReady: Boolean(resumed) })
       void this.loadEffects()
     } catch {
       this.publish({ audioReady: false, status: 'partial' })
     }
   }
 
-  async toggleMusic() {
-    const nextRequested = !this.snapshot.musicRequested
-    this.publish({ musicRequested: nextRequested, musicBlocked: false })
-    if (!nextRequested) {
-      this.music?.pause()
-      this.publish({ musicPlaying: false })
-      return
+  private storeMuted(muted: boolean) {
+    try { sessionStorage.setItem(MUSIC_MUTE_KEY, String(muted)) } catch { /* The in-memory preference still applies. */ }
+  }
+
+  async requestMusic(automatic = false) {
+    if (this.snapshot.musicMuted) return false
+    const attempt = ++this.musicAttempt
+    this.publish({ musicRequested: true, musicBlocked: false, musicStarting: true })
+    try {
+      if (automatic) await this.ensureGraph()
+      else await this.unlock()
+    } catch {
+      if (attempt === this.musicAttempt && !this.snapshot.musicMuted) {
+        this.publish({ audioReady: false, musicPlaying: false, musicBlocked: true, musicStarting: false, status: 'partial' })
+      }
+      return false
     }
-    await this.unlock()
-    if (!this.music) return
+    if (!this.music || this.snapshot.musicMuted || attempt !== this.musicAttempt) return false
     try {
       await this.music.play()
-      this.publish({ musicPlaying: true, musicBlocked: false })
+      if (this.snapshot.musicMuted || attempt !== this.musicAttempt || this.context?.state !== 'running') {
+        this.music.pause()
+        if (attempt === this.musicAttempt && !this.snapshot.musicMuted) this.publish({ musicPlaying: false, musicBlocked: true, musicStarting: false })
+        return false
+      }
+      this.publish({ musicPlaying: true, musicBlocked: false, musicStarting: false })
+      return true
     } catch {
-      this.publish({ musicRequested: false, musicPlaying: false, musicBlocked: true })
+      if (attempt === this.musicAttempt && !this.snapshot.musicMuted) {
+        this.publish({ musicRequested: true, musicPlaying: false, musicBlocked: true, musicStarting: false })
+      }
+      return false
+    }
+  }
+
+  async toggleMusic() {
+    if (this.snapshot.musicPlaying || this.snapshot.musicStarting) {
+      this.musicAttempt += 1
+      this.music?.pause()
+      this.storeMuted(true)
+      this.publish({ musicRequested: false, musicPlaying: false, musicBlocked: false, musicMuted: true, musicStarting: false })
+      return
+    }
+    this.storeMuted(false)
+    this.publish({ musicMuted: false, musicRequested: true })
+    await this.requestMusic()
+  }
+
+  async handleEligibleInteraction() {
+    await this.unlock()
+    if (this.snapshot.musicRequested && !this.snapshot.musicMuted && !this.snapshot.musicPlaying) {
+      await this.requestMusic()
     }
   }
 
@@ -192,6 +245,11 @@ class SoundscapeController {
     const cooldown = kind === 'quantity' ? 70 : 120
     if (now - (this.lastCommerceAt.get(kind) ?? -Infinity) < cooldown) return false
     this.lastCommerceAt.set(kind, now)
+    if (kind === 'basket-open' || kind === 'basket-close') {
+      this.stopVoice(this.basketVoice, 0.025)
+      this.basketVoice = this.startVoice(kind, 'ui', 0.42)
+      return Boolean(this.basketVoice)
+    }
     return Boolean(this.startVoice(kind, 'ui', kind === 'remove' ? .54 : .48))
   }
 
@@ -233,17 +291,16 @@ class SoundscapeController {
   onVisibilityChange() {
     if (!this.context) return
     if (document.hidden) {
+      this.musicAttempt += 1
       this.stopAllVoices()
       this.music?.pause()
-      this.publish({ musicPlaying: false })
+      this.publish({ musicPlaying: false, musicStarting: false })
       void this.context.suspend()
       return
     }
     void this.context.resume().then(() => {
       this.publish({ audioReady: true })
-      if (this.snapshot.musicRequested) {
-        void this.music?.play().then(() => this.publish({ musicPlaying: true })).catch(() => this.publish({ musicRequested: false, musicPlaying: false, musicBlocked: true }))
-      }
+      if (this.snapshot.musicRequested && !this.snapshot.musicMuted) void this.requestMusic()
     }).catch(() => this.publish({ audioReady: false }))
   }
 
@@ -251,6 +308,7 @@ class SoundscapeController {
     for (const voice of [...this.voices]) this.stopVoice(voice, 0.025)
     this.animalVoice = undefined
     this.shutterVoice = undefined
+    this.basketVoice = undefined
   }
 
   dispose() {
@@ -266,24 +324,31 @@ class SoundscapeController {
 export function useSoundscape() {
   const [snapshot, setSnapshot] = useState<SoundscapeSnapshot>(INITIAL_SNAPSHOT)
   const controllerRef = useRef<SoundscapeController | undefined>(undefined)
+  const disposeTimerRef = useRef<number | undefined>(undefined)
   if (!controllerRef.current) controllerRef.current = new SoundscapeController(setSnapshot)
 
   useEffect(() => {
     const controller = controllerRef.current!
+    if (disposeTimerRef.current !== undefined) window.clearTimeout(disposeTimerRef.current)
+    disposeTimerRef.current = undefined
     const onVisibility = () => controller.onVisibilityChange()
     document.addEventListener('visibilitychange', onVisibility)
+    void controller.requestMusic(true)
     return () => {
       document.removeEventListener('visibilitychange', onVisibility)
-      controller.dispose()
+      // React development StrictMode performs an immediate cleanup/remount.
+      // Defer disposal by one task so that probe cannot close the reused graph.
+      disposeTimerRef.current = window.setTimeout(() => controller.dispose(), 0)
     }
   }, [])
 
   const unlock = useCallback(() => controllerRef.current!.unlock(), [])
+  const handleEligibleInteraction = useCallback(() => controllerRef.current!.handleEligibleInteraction(), [])
   const toggleMusic = useCallback(() => controllerRef.current!.toggleMusic(), [])
   const playCommerce = useCallback((kind: CommerceSound) => controllerRef.current!.playCommerce(kind), [])
   const playLeaves = useCallback(() => controllerRef.current!.playLeaves(), [])
   const playAnimal = useCallback((kind: AnimalSound) => controllerRef.current!.playAnimal(kind), [])
   const syncOpening = useCallback((shot: string, shutterLift: number) => controllerRef.current!.syncOpening(shot, shutterLift), [])
 
-  return { snapshot, unlock, toggleMusic, playCommerce, playLeaves, playAnimal, syncOpening }
+  return { snapshot, unlock, handleEligibleInteraction, toggleMusic, playCommerce, playLeaves, playAnimal, syncOpening }
 }

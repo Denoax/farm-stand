@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+export type ScrollGateOwner = 'opening' | 'leaf'
+
 interface StoredDocumentState {
   scrollX: number
   scrollY: number
@@ -16,16 +18,17 @@ interface StoredDocumentState {
 const scrollbarWidth = () => Math.max(0, window.innerWidth - document.documentElement.clientWidth)
 
 export function useOpeningScrollGate(watchdogMs: number) {
-  const [active, setActive] = useState(false)
-  const activeRef = useRef(false)
+  const [owner, setOwner] = useState<ScrollGateOwner | null>(null)
+  const ownerRef = useRef<ScrollGateOwner | null>(null)
   const storedRef = useRef<StoredDocumentState | undefined>(undefined)
   const watchdogRef = useRef<number | undefined>(undefined)
 
-  const release = useCallback((updateState = true) => {
+  const release = useCallback((expectedOwner?: ScrollGateOwner, updateState = true) => {
+    if (expectedOwner && ownerRef.current !== expectedOwner) return false
     if (watchdogRef.current !== undefined) window.clearTimeout(watchdogRef.current)
     watchdogRef.current = undefined
-    if (!activeRef.current) return
-    activeRef.current = false
+    if (!ownerRef.current) return false
+    ownerRef.current = null
 
     const stored = storedRef.current
     storedRef.current = undefined
@@ -42,11 +45,14 @@ export function useOpeningScrollGate(watchdogMs: number) {
       body.style.paddingRight = stored.bodyPaddingRight
       window.scrollTo(stored.scrollX, stored.scrollY)
     }
-    if (updateState) setActive(false)
+    delete document.documentElement.dataset.scrollGateOwner
+    if (updateState) setOwner(null)
+    return true
   }, [])
 
-  const begin = useCallback((onWatchdog: () => void) => {
-    if (activeRef.current) return
+  const begin = useCallback((nextOwner: ScrollGateOwner, onWatchdog: () => void, timeoutMs = watchdogMs) => {
+    if (ownerRef.current === nextOwner) return true
+    if (ownerRef.current) return false
     const root = document.documentElement
     const body = document.body
     const scrollX = window.scrollX
@@ -63,8 +69,9 @@ export function useOpeningScrollGate(watchdogMs: number) {
       bodyWidth: body.style.width,
       bodyPaddingRight: body.style.paddingRight,
     }
-    activeRef.current = true
-    setActive(true)
+    ownerRef.current = nextOwner
+    setOwner(nextOwner)
+    root.dataset.scrollGateOwner = nextOwner
     root.style.scrollBehavior = 'auto'
     root.style.overflow = 'hidden'
     body.style.position = 'fixed'
@@ -74,10 +81,20 @@ export function useOpeningScrollGate(watchdogMs: number) {
     body.style.width = 'auto'
     const compensation = scrollbarWidth()
     if (compensation) body.style.paddingRight = `${compensation}px`
-    watchdogRef.current = window.setTimeout(onWatchdog, watchdogMs)
+    watchdogRef.current = window.setTimeout(onWatchdog, timeoutMs)
+    return true
   }, [watchdogMs])
 
-  useEffect(() => () => release(false), [release])
+  const moveTo = useCallback((expectedOwner: ScrollGateOwner, scrollX: number, scrollY: number) => {
+    if (ownerRef.current !== expectedOwner || !storedRef.current) return false
+    storedRef.current.scrollX = scrollX
+    storedRef.current.scrollY = scrollY
+    document.body.style.top = `${-scrollY}px`
+    document.body.style.left = `${-scrollX}px`
+    return true
+  }, [])
 
-  return { active, activeRef, begin, release }
+  useEffect(() => () => { release(undefined, false) }, [release])
+
+  return { active: owner !== null, activeRef: ownerRef, owner, begin, moveTo, release }
 }
