@@ -449,6 +449,15 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
     const rollingAxis = counterNormal.clone().cross(travelDirection).normalize()
     const rollingQuaternion = new THREE.Quaternion()
     const birdBounds = new THREE.Box3()
+    const birdMeshBounds = new THREE.Box3()
+    const measureBirdMesh = () => {
+      birdBounds.makeEmpty()
+      bird?.traverse((object) => {
+        if (!(object instanceof THREE.Mesh)) return
+        birdMeshBounds.setFromObject(object, true)
+        birdBounds.union(birdMeshBounds)
+      })
+    }
     const debugParameters = import.meta.env.DEV ? new URLSearchParams(location.search) : null
     const debugClearance = debugParameters?.get('debugAppleClearance') ?? null
     const debugProgressValue = debugParameters?.get('debugProgress')
@@ -550,10 +559,10 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
         const idleTime = entrance < 1 ? 1.05 + entrance * 0.55 : idlePulse ? 1.35 + idlePulse * 0.62 : 1.35
         birdMixer?.setTime(reacting ? 0.36 + reactionPhase * 0.62 : idleTime)
         bird.updateMatrixWorld(true)
-        birdBounds.setFromObject(bird)
+        measureBirdMesh()
         bird.position.y += expectedFootY - birdBounds.min.y
         bird.updateMatrixWorld(true)
-        birdBounds.setFromObject(bird)
+        measureBirdMesh()
 
         const button = birdButtonRef.current
         if (button && bird.visible) {
