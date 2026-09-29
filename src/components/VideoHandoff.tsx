@@ -96,8 +96,15 @@ export function VideoHandoff({ clip, phase, onReady, onCovered, onRevealing, onE
   }, [clip.coverEnd, clip.coverStart, clip.kind, onCovered, onFailed, onMediaTime, onRevealing, phase])
 
   useEffect(() => {
-    if (phase === 'revealing') onSoundStop()
-  }, [onSoundStop, phase])
+    if (phase !== 'revealing') return
+    onSoundStop()
+    // Some throttled/headless browsers defer the muted video's final decoded
+    // frames and `ended` event after the destination is already committed.
+    // Preserve the visible reopening when it advances normally, but never let
+    // that tail retain the input gate indefinitely.
+    const revealFallback = window.setTimeout(onEnded, 1800)
+    return () => window.clearTimeout(revealFallback)
+  }, [onEnded, onSoundStop, phase])
 
   useEffect(() => onSoundStop, [onSoundStop])
 
