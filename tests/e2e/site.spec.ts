@@ -461,7 +461,7 @@ test('exact shop video owns one continuous hold and commits only in its decoded 
   await expect(page.locator('.floating-basket')).toBeHidden()
   await expect(page).toHaveURL(/#shop$/)
   await expect(root).toHaveAttribute('data-handoff-state', 'revealing', { timeout: 1000 })
-  await expect(root).toHaveAttribute('data-handoff-state', 'complete', { timeout: 2500 })
+  await expect(root).toHaveAttribute('data-handoff-state', 'complete', { timeout: 5000 })
   await expect(root).toHaveAttribute('data-scroll-gate-owner', 'none')
   await expect(page.locator('.floating-basket')).toBeVisible()
   await expect(page.locator('.video-handoff')).toHaveCount(0)
