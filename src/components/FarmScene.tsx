@@ -115,9 +115,10 @@ function makeBoard(
   material: THREE.Material | THREE.Material[],
   position: [number, number, number],
   radius = 0.035,
+  segments = 2,
 ) {
   const safeRadius = Math.min(radius, Math.min(...dimensions) * 0.22)
-  const board = new THREE.Mesh(new RoundedBoxGeometry(...dimensions, 2, safeRadius), material)
+  const board = new THREE.Mesh(new RoundedBoxGeometry(...dimensions, segments, safeRadius), material)
   board.position.set(...position)
   board.castShadow = true
   board.receiveShadow = true
@@ -153,7 +154,7 @@ function boardMaterials(
     map: cloneMap(maps.diffuse, axis, repeats),
     normalMap: cloneMap(maps.normal, axis, repeats),
     roughnessMap: cloneMap(maps.roughness, axis, repeats),
-    normalScale: new THREE.Vector2(0.14, 0.14),
+    normalScale: new THREE.Vector2(0.10, 0.10),
     color: tint,
     roughness: 0.96,
     metalness: 0,
@@ -187,7 +188,11 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
     renderer.toneMappingExposure = 1.12
     renderer.shadowMap.enabled = true
     renderer.shadowMap.type = THREE.PCFShadowMap
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+    // A measured 1.75 candidate sharpened static diagonals but regressed the
+    // software-rendered opening cadence materially. Keep the proven 1.5 cap;
+    // edge improvement comes from geometry and calmer normal response.
+    const pixelRatioCap = 1.5
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, pixelRatioCap))
     renderer.domElement.className = 'farm-canvas'
     renderer.domElement.setAttribute('aria-hidden', 'true')
     sceneHost.append(renderer.domElement)
@@ -242,11 +247,11 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
     const permanentFrame = new THREE.Group()
     permanentFrame.name = 'permanent-fruit-stand-frame'
     permanentFrame.add(
-      makeBoard([1.08, 8.2, 0.72], boardMaterials(mapsFor(1, 'vertical'), 'vertical', 8.2, 1.08, 0xf4ead9), [-3.16, 0.3, 1.36], 0.055),
-      makeBoard([1.08, 8.2, 0.72], boardMaterials(mapsFor(2, 'vertical'), 'vertical', 8.2, 1.08, 0xeee2cf), [3.16, 0.3, 1.36], 0.055),
-      makeBoard([7.02, 0.62, 0.72], boardMaterials(mapsFor(0, 'horizontal'), 'horizontal', 7.02, 0.62, 0xf6ecda), [0, 1.78, 1.36], 0.055),
-      makeBoard([7.55, 0.62, 0.54], boardMaterials(mapsFor(1, 'horizontal'), 'horizontal', 7.55, 0.62, 0xf1e5d2), [0, -2.28, 1.66], 0.045),
-      makeBoard([7.65, 0.2, 1.62], boardMaterials(mapsFor(1, 'horizontal'), 'horizontal', 7.65, 0.2, 0xf4ead8), [0, COUNTER_TOP_Y - 0.1, 0.96], 0.035),
+      makeBoard([1.08, 8.2, 0.72], boardMaterials(mapsFor(1, 'vertical'), 'vertical', 8.2, 1.08, 0xf4ead9), [-3.16, 0.3, 1.36], 0.055, 3),
+      makeBoard([1.08, 8.2, 0.72], boardMaterials(mapsFor(2, 'vertical'), 'vertical', 8.2, 1.08, 0xeee2cf), [3.16, 0.3, 1.36], 0.055, 3),
+      makeBoard([7.02, 0.62, 0.72], boardMaterials(mapsFor(0, 'horizontal'), 'horizontal', 7.02, 0.62, 0xf6ecda), [0, 1.78, 1.36], 0.055, 3),
+      makeBoard([7.55, 0.62, 0.54], boardMaterials(mapsFor(1, 'horizontal'), 'horizontal', 7.55, 0.62, 0xf1e5d2), [0, -2.28, 1.66], 0.045, 3),
+      makeBoard([7.65, 0.2, 1.62], boardMaterials(mapsFor(1, 'horizontal'), 'horizontal', 7.65, 0.2, 0xf4ead8), [0, COUNTER_TOP_Y - 0.1, 0.96], 0.035, 3),
     )
     scene.add(permanentFrame)
 
@@ -312,6 +317,13 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
       const width = Math.max(sceneHost.clientWidth, 1)
       const height = Math.max(sceneHost.clientHeight, 1)
       renderer.setSize(width, height, false)
+      const context = renderer.getContext()
+      const attributes = context.getContextAttributes()
+      sceneHost.dataset.contextAntialias = attributes?.antialias ? 'true' : 'false'
+      sceneHost.dataset.contextSamples = String(context.getParameter(context.SAMPLES) ?? 0)
+      sceneHost.dataset.pixelRatio = renderer.getPixelRatio().toFixed(2)
+      sceneHost.dataset.pixelRatioCap = pixelRatioCap.toFixed(2)
+      sceneHost.dataset.drawingBuffer = `${renderer.domElement.width}x${renderer.domElement.height}`
       camera.aspect = width / height
       const view = marketView(width, height, 1)
       camera.fov = view.fov

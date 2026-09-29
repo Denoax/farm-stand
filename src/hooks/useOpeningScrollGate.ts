@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-export type ScrollGateOwner = 'opening' | 'leaf'
+export type ScrollGateOwner = 'opening' | 'handoff'
 
 interface StoredDocumentState {
   scrollX: number

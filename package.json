@@ -15,9 +15,12 @@
     "capture:brighter": "node scripts/capture-brighter-stage.mjs",
     "capture:brighter-sound": "node scripts/capture-brighter-sound.mjs",
     "capture:notebook-sound": "node scripts/capture-notebook-sound.mjs",
+    "capture:video-bird": "node scripts/capture-video-bird-notebook.mjs",
+    "capture:video-bird-sound": "node scripts/capture-sound-pools.mjs",
     "capture:brighter-safeguards": "node scripts/capture-brighter-safeguards.mjs",
     "capture:frame-guides": "node scripts/capture-frame-guides.mjs",
     "capture:v24": "node scripts/capture-v24-evidence.mjs",
+    "measure:timber": "node scripts/compare-timber-sampling.mjs",
     "test:e2e": "playwright test",
     "test": "npm run build && npm run test:e2e"
   },

@@ -74,7 +74,7 @@ function FarmProfileScene({ profile, index, active, onActivate, onViewProduct }:
   }
 
   return (
-    <article className={`farm-profile farm-profile--${profile.id} farm-profile--${profile.variant}`} id={profile.id} ref={sceneRef} data-media-ready={mediaReady ? 'true' : 'false'} data-video-active={active ? 'true' : 'false'}>
+    <article className={`farm-profile farm-profile--${profile.id} farm-profile--${profile.variant}`} id={profile.id} ref={sceneRef} tabIndex={-1} data-media-ready={mediaReady ? 'true' : 'false'} data-video-active={active ? 'true' : 'false'}>
       <div className="farm-profile__sticky">
         <figure className="farm-profile__figure">
           <div className="farm-profile__placeholder" aria-hidden="true" />

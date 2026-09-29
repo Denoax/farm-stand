@@ -1,0 +1,111 @@
+import { useEffect, useRef, type CSSProperties } from 'react'
+
+export type HandoffPhase = 'preparing' | 'covering' | 'covered' | 'revealing'
+export type HandoffKind = 'shop' | 'animals'
+
+export interface HandoffClip {
+  kind: HandoffKind
+  src: string
+  coverStart: number
+  coverEnd: number
+  scale: number
+}
+
+interface VideoHandoffProps {
+  clip: HandoffClip
+  phase: HandoffPhase
+  onReady: () => void
+  onCovered: () => void
+  onRevealing: () => void
+  onEnded: () => void
+  onFailed: () => void
+}
+
+export function VideoHandoff({ clip, phase, onReady, onCovered, onRevealing, onEnded, onFailed }: VideoHandoffProps) {
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const readyRef = useRef(false)
+  const coveredRef = useRef(false)
+  const revealingRef = useRef(false)
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    readyRef.current = false
+    coveredRef.current = false
+    revealingRef.current = false
+    video.load()
+  }, [clip.src])
+
+  useEffect(() => {
+    if (phase !== 'covering') return
+    const video = videoRef.current
+    if (!video) return
+    coveredRef.current = false
+    revealingRef.current = false
+    video.currentTime = 0
+    void video.play().catch(onFailed)
+  }, [onFailed, phase])
+
+  useEffect(() => {
+    if (phase !== 'covering' && phase !== 'covered' && phase !== 'revealing') return
+    const video = videoRef.current
+    if (!video) return
+    let frameHandle = 0
+    let animationFrame = 0
+
+    const inspect = (mediaTime: number) => {
+      if (wrapperRef.current) wrapperRef.current.dataset.mediaTime = mediaTime.toFixed(4)
+      if (!coveredRef.current && mediaTime >= clip.coverStart && mediaTime <= clip.coverEnd) {
+        coveredRef.current = true
+        onCovered()
+      }
+      if (coveredRef.current && !revealingRef.current && mediaTime > clip.coverEnd) {
+        revealingRef.current = true
+        onRevealing()
+      }
+      if (!coveredRef.current && mediaTime > clip.coverEnd) onFailed()
+    }
+
+    const callbackVideo = video as HTMLVideoElement & {
+      requestVideoFrameCallback?: (callback: VideoFrameRequestCallback) => number
+      cancelVideoFrameCallback?: (handle: number) => void
+    }
+    if (callbackVideo.requestVideoFrameCallback) {
+      const callback = (_now: DOMHighResTimeStamp, metadata: VideoFrameCallbackMetadata) => {
+        inspect(metadata.mediaTime)
+        if (!video.ended) frameHandle = callbackVideo.requestVideoFrameCallback!(callback)
+      }
+      frameHandle = callbackVideo.requestVideoFrameCallback(callback)
+      return () => callbackVideo.cancelVideoFrameCallback?.(frameHandle)
+    }
+
+    const tick = () => {
+      inspect(video.currentTime)
+      if (!video.ended) animationFrame = requestAnimationFrame(tick)
+    }
+    animationFrame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(animationFrame)
+  }, [clip.coverEnd, clip.coverStart, onCovered, onFailed, onRevealing, phase])
+
+  const style = { '--handoff-scale': clip.scale } as CSSProperties
+
+  return (
+    <div ref={wrapperRef} className="video-handoff" data-handoff-kind={clip.kind} data-handoff-phase={phase} style={style} aria-hidden="true">
+      <video
+        ref={videoRef}
+        src={clip.src}
+        muted
+        playsInline
+        preload="auto"
+        onCanPlay={() => {
+          if (readyRef.current) return
+          readyRef.current = true
+          onReady()
+        }}
+        onEnded={onEnded}
+        onError={onFailed}
+      />
+    </div>
+  )
+}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { ShuffleBag } from './shuffleBag'
 
 export type AnimalSound = 'hens' | 'cattle' | 'sheep'
 export type CommerceSound = 'add' | 'quantity' | 'details-open' | 'details-close' | 'filter' | 'remove' | 'clear' | 'basket-open' | 'basket-close' | 'confirm'
@@ -22,22 +23,23 @@ interface Voice {
 }
 
 const publicAsset = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`
-const EFFECT_URLS: Record<EffectName, string> = {
-  shutter: publicAsset('audio/shutter-open.mp3'),
-  leaves: publicAsset('audio/leaf-rustle.mp3'),
-  hens: publicAsset('audio/hens-cluck.mp3'),
-  cattle: publicAsset('audio/cattle-low.mp3'),
-  sheep: publicAsset('audio/sheep-bleat.mp3'),
-  add: publicAsset('audio/add.mp3'),
-  quantity: publicAsset('audio/quantity.mp3'),
-  'details-open': publicAsset('audio/details.mp3'),
-  'details-close': publicAsset('audio/details-close.mp3'),
-  filter: publicAsset('audio/filter.mp3'),
-  remove: publicAsset('audio/remove.mp3'),
-  clear: publicAsset('audio/clear.mp3'),
-  'basket-open': publicAsset('audio/basket-open.mp3'),
-  'basket-close': publicAsset('audio/basket-close.mp3'),
-  confirm: publicAsset('audio/confirm.mp3'),
+const variants = (stem: string) => [publicAsset(`audio/${stem}.mp3`), publicAsset(`audio/${stem}-2.mp3`), publicAsset(`audio/${stem}-3.mp3`)]
+const EFFECT_POOLS: Record<EffectName, string[]> = {
+  shutter: [publicAsset('audio/shutter-open.mp3')],
+  leaves: [publicAsset('audio/leaf-rustle.mp3')],
+  hens: [publicAsset('audio/hens-cluck.mp3')],
+  cattle: [publicAsset('audio/cattle-low.mp3')],
+  sheep: [publicAsset('audio/sheep-bleat.mp3')],
+  add: variants('add'),
+  quantity: variants('quantity'),
+  'details-open': variants('details'),
+  'details-close': variants('details-close'),
+  filter: variants('filter'),
+  remove: variants('remove'),
+  clear: variants('clear'),
+  'basket-open': variants('basket-open'),
+  'basket-close': variants('basket-close'),
+  confirm: variants('confirm'),
 }
 const INTERFACE_GAINS: Record<CommerceSound, number> = {
   add: .58,
@@ -78,7 +80,8 @@ class SoundscapeController {
   private uiGain?: GainNode
   private music?: HTMLAudioElement
   private musicSource?: MediaElementAudioSourceNode
-  private buffers = new Map<EffectName, AudioBuffer>()
+  private buffers = new Map<string, AudioBuffer>()
+  private bags = new Map<EffectName, ShuffleBag<string>>()
   private voices = new Set<Voice>()
   private animalVoice?: Voice
   private shutterVoice?: Voice
@@ -91,7 +94,11 @@ class SoundscapeController {
   private shutterLift = 0
   private snapshot = INITIAL_SNAPSHOT
 
-  constructor(private readonly onChange: (snapshot: SoundscapeSnapshot) => void) {}
+  constructor(private readonly onChange: (snapshot: SoundscapeSnapshot) => void) {
+    const injected = (window as typeof window & { __farmStandSoundRandom?: () => number }).__farmStandSoundRandom
+    const random = typeof injected === 'function' ? injected : Math.random
+    for (const name of Object.keys(EFFECT_POOLS) as EffectName[]) this.bags.set(name, new ShuffleBag(random))
+  }
 
   private publish(patch: Partial<SoundscapeSnapshot>) {
     this.snapshot = { ...this.snapshot, ...patch }
@@ -131,12 +138,13 @@ class SoundscapeController {
   private loadEffects() {
     if (this.loadPromise || !this.context) return this.loadPromise
     this.publish({ status: 'loading' })
-    this.loadPromise = Promise.all(Object.entries(EFFECT_URLS).map(async ([name, url]) => {
+    const urls = [...new Set(Object.values(EFFECT_POOLS).flat())]
+    this.loadPromise = Promise.all(urls.map(async (url) => {
       try {
         const response = await fetch(url)
         if (!response.ok) throw new Error(`${response.status} ${url}`)
         const buffer = await response.arrayBuffer()
-        this.buffers.set(name as EffectName, await this.context!.decodeAudioData(buffer))
+        this.buffers.set(url, await this.context!.decodeAudioData(buffer))
         return true
       } catch {
         return false
@@ -239,7 +247,9 @@ class SoundscapeController {
 
   private startVoice(name: EffectName, category: 'effect' | 'ui', gainValue: number, offset = 0) {
     if (!this.context || this.context.state !== 'running') return
-    const buffer = this.buffers.get(name)
+    const available = EFFECT_POOLS[name].filter((url) => this.buffers.has(url))
+    const variant = this.bags.get(name)?.next(available)
+    const buffer = variant ? this.buffers.get(variant) : undefined
     const output = category === 'ui' ? this.uiGain : this.effectsGain
     if (!buffer || !output || offset >= buffer.duration) return
     const source = this.context.createBufferSource()
@@ -252,7 +262,7 @@ class SoundscapeController {
     this.voices.add(voice)
     source.addEventListener('ended', () => this.voices.delete(voice), { once: true })
     source.start(0, Math.max(0, offset))
-    window.dispatchEvent(new CustomEvent('farmstandsound', { detail: { name, gain: gainValue, offset } }))
+    window.dispatchEvent(new CustomEvent('farmstandsound', { detail: { name, gain: gainValue, offset, variant: variant?.split('/').pop() } }))
     return voice
   }
 
@@ -283,7 +293,7 @@ class SoundscapeController {
   }
 
   private playShutterAtLift(lift: number) {
-    const buffer = this.buffers.get('shutter')
+    const buffer = this.buffers.get(EFFECT_POOLS.shutter[0])
     if (!buffer || lift >= .995) return
     this.duckMusic(2900)
     const offset = Math.min(buffer.duration - .03, buffer.duration * Math.max(0, lift))

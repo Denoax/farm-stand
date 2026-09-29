@@ -291,7 +291,7 @@ export function ShopSection({ basket, dispatch, focusRequest, marketReady, onCom
   }
 
   return (
-    <section className="catalogue" id="shop" aria-labelledby="shop-heading">
+    <section className="catalogue" id="shop" tabIndex={-1} aria-labelledby="shop-heading">
       <div className="market-notebook">
         <svg className="market-notebook__binding" aria-hidden="true" width="52" height="100%">
           <defs>

@@ -972,7 +972,10 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
 }
 
 /* One continuous spiral-bound workbook surface for the market. */
-.catalogue { background: #d8d1bd; }
+.catalogue {
+  padding: clamp(2.75rem, 4vw, 4.5rem) max(1.25rem, env(safe-area-inset-right)) clamp(4rem, 6vw, 6.5rem) max(1.25rem, env(safe-area-inset-left));
+  background: #d8d1bd;
+}
 .market-notebook {
   position: relative;
   isolation: isolate;
@@ -1107,37 +1110,27 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
 .sound-controls button[aria-pressed="true"] { color: #fff3bd; }
 .sound-controls svg { display: block; transform: translateY(.02rem); }
 
-.leaf-handoff {
+.video-handoff {
   position: fixed;
-  z-index: 16;
+  z-index: 30;
   inset: 0;
   overflow: hidden;
   pointer-events: none;
+  background: transparent;
 }
-.leaf-handoff[data-leaf-phase="covered"] { background: #203514 url('/media/leaves/leaf-canopy.webp') center / cover no-repeat; }
-.leaf-handoff__panel { position: absolute; inset: -2px; overflow: hidden; background: #203514; will-change: transform; }
-.leaf-handoff__panel img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
-.leaf-handoff__panel--top { clip-path: polygon(0 0, 100% 0, 100% 54%, 0 49%); }
-.leaf-handoff__panel--right { clip-path: polygon(48% 0, 100% 0, 100% 100%, 54% 100%); }
-.leaf-handoff__panel--bottom { clip-path: polygon(0 47%, 100% 52%, 100% 100%, 0 100%); }
-.leaf-handoff__panel--left { clip-path: polygon(0 0, 52% 0, 48% 100%, 0 100%); }
-.leaf-handoff[data-leaf-phase="entering"] .leaf-handoff__panel--top { animation: leaf-panel-top-in .6s cubic-bezier(.2,.72,.18,1) both; }
-.leaf-handoff[data-leaf-phase="entering"] .leaf-handoff__panel--right { animation: leaf-panel-right-in .6s cubic-bezier(.2,.72,.18,1) both; }
-.leaf-handoff[data-leaf-phase="entering"] .leaf-handoff__panel--bottom { animation: leaf-panel-bottom-in .6s cubic-bezier(.2,.72,.18,1) both; }
-.leaf-handoff[data-leaf-phase="entering"] .leaf-handoff__panel--left { animation: leaf-panel-left-in .6s cubic-bezier(.2,.72,.18,1) both; }
-.leaf-handoff[data-leaf-phase="covered"] .leaf-handoff__panel { transform: translate(0); }
-.leaf-handoff[data-leaf-phase="clearing"] .leaf-handoff__panel--top { animation: leaf-panel-top-out .8s cubic-bezier(.44,.02,.76,.42) both; }
-.leaf-handoff[data-leaf-phase="clearing"] .leaf-handoff__panel--right { animation: leaf-panel-right-out .8s cubic-bezier(.44,.02,.76,.42) both; }
-.leaf-handoff[data-leaf-phase="clearing"] .leaf-handoff__panel--bottom { animation: leaf-panel-bottom-out .8s cubic-bezier(.44,.02,.76,.42) both; }
-.leaf-handoff[data-leaf-phase="clearing"] .leaf-handoff__panel--left { animation: leaf-panel-left-out .8s cubic-bezier(.44,.02,.76,.42) both; }
-@keyframes leaf-panel-top-in { from { transform: translateY(-108%); } to { transform: translateY(0); } }
-@keyframes leaf-panel-right-in { from { transform: translateX(108%); } to { transform: translateX(0); } }
-@keyframes leaf-panel-bottom-in { from { transform: translateY(108%); } to { transform: translateY(0); } }
-@keyframes leaf-panel-left-in { from { transform: translateX(-108%); } to { transform: translateX(0); } }
-@keyframes leaf-panel-top-out { from { transform: translate(0); } to { transform: translate(-10%, 116%); } }
-@keyframes leaf-panel-right-out { from { transform: translate(0); } to { transform: translate(18%, 116%); } }
-@keyframes leaf-panel-bottom-out { from { transform: translate(0); } to { transform: translate(-5%, 116%); } }
-@keyframes leaf-panel-left-out { from { transform: translate(0); } to { transform: translate(-20%, 116%); } }
+.video-handoff[data-handoff-phase="preparing"] { visibility: hidden; }
+.video-handoff video {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: translate(-50%, -50%) scale(var(--handoff-scale, 1));
+  transform-origin: center;
+  will-change: transform;
+}
 
 @media (max-width: 760px) {
   .header-brand { gap: .45rem; }
@@ -1155,12 +1148,16 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
   .market-notebook__wood-tab { bottom: -.42rem; width: 2.2rem; height: .72rem; }
   .market-notebook__wood-tab--left { left: 9%; }
   .market-notebook__wood-tab--right { right: 7%; }
-  .catalogue { padding-inline: .55rem; }
+  .catalogue {
+    padding-top: 2.25rem;
+    padding-right: max(.55rem, env(safe-area-inset-right));
+    padding-left: max(.55rem, env(safe-area-inset-left));
+  }
   .mini-basket { right: .75rem; bottom: calc(max(.75rem, env(safe-area-inset-bottom)) + 4.2rem); width: calc(100vw - 1.5rem); }
   .floating-basket { right: max(.75rem, env(safe-area-inset-right)); bottom: max(.75rem, env(safe-area-inset-bottom)); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .leaf-handoff { display: none; }
+  .video-handoff { display: none; }
   .scroll-cue { animation: none; }
 }

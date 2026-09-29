@@ -70,6 +70,14 @@ test('market is one normal-flow spiral notebook and the speaker rests as an alig
   expect(notebook.ruled).toBe(true)
   expect(notebook.tabs[0].right).toBeLessThan(notebook.tabs[1].left)
   expect(notebook.tabs.every((tab) => tab.top < notebook.bottom && tab.bottom > notebook.bottom - 12)).toBe(true)
+  const outer = await page.locator('.market-notebook').evaluate((element) => {
+    const rect = element.getBoundingClientRect()
+    return { left: rect.left, right: innerWidth - rect.right, width: rect.width, viewport: innerWidth }
+  })
+  const maximumGutter = outer.viewport <= 760 ? 10 : 24
+  expect(outer.left).toBeLessThanOrEqual(maximumGutter)
+  expect(outer.right).toBeLessThanOrEqual(maximumGutter)
+  expect(outer.width).toBeGreaterThanOrEqual(outer.viewport - maximumGutter * 2)
 
   await page.evaluate(() => scrollTo(0, 0))
   const header = await page.locator('.header-brand').evaluate((element) => {
@@ -151,7 +159,7 @@ test('opening starts on meaningful downward intent, fades during the hold, escap
   await expect(stage).toHaveAttribute('data-scroll-hold', 'released')
 })
 
-test('single scroll hold lasts through presented completion, preserves position, and never repeats', async ({ page }, testInfo) => {
+test('initial scroll hold lasts through presented completion and never reacquires', async ({ page }) => {
   test.slow()
   await page.goto(projectPath)
   const stage = page.locator('.hero-stage')
@@ -171,12 +179,16 @@ test('single scroll hold lasts through presented completion, preserves position,
   await expect(stage).toHaveAttribute('data-opening-state', 'open', { timeout: 8000 })
   await expect(stage).toHaveAttribute('data-presented-progress', '1.0000')
   await expect(stage).toHaveAttribute('data-scroll-hold', 'released')
-  if (testInfo.project.name === 'portrait-chromium') await page.evaluate(() => scrollBy(0, 800))
-  else await page.mouse.wheel(0, 800)
+  await page.mouse.wheel(0, 800)
+  await expect(page.locator('body > #root > div')).toHaveAttribute('data-handoff-state', 'covering')
+  await page.keyboard.press('Escape')
+  await expect(page.locator('body > #root > div')).toHaveAttribute('data-handoff-state', 'bypassed')
   await expect.poll(async () => page.evaluate(() => scrollY)).toBeGreaterThan(0)
   await page.evaluate(() => scrollTo(0, 0))
-  await dispatchWheel(page, 40)
+  await page.mouse.wheel(0, 800)
+  await expect.poll(async () => page.evaluate(() => scrollY)).toBeGreaterThan(0)
   await expect(stage).toHaveAttribute('data-scroll-hold', 'released')
+  await expect(stage).toHaveAttribute('data-opening-state', 'open')
 })
 
 test('non-root position bypasses the opening gate', async ({ page }) => {
@@ -220,6 +232,7 @@ test('keyboard intent ignores controls and header navigation settles the opening
   }
   await page.getByRole('link', { name: 'Shop' }).first().click()
   await expect(stage).toHaveAttribute('data-opening-state', 'open')
+  await expect(page.locator('body > #root > div')).toHaveAttribute('data-handoff-state', /complete|bypassed/, { timeout: 6500 })
   await expect(stage).toHaveAttribute('data-scroll-hold', 'released')
   await expect(page.getByRole('heading', { name: 'Shop the stand.' })).toBeVisible()
 })
@@ -313,6 +326,10 @@ test('shutter is monotonic, the apple clears the complete assembly, and the fram
   expect(Number(await scene.getAttribute('data-clearance-sweep-min'))).toBeGreaterThan(0)
   expect(Math.abs(Number(await scene.getAttribute('data-clearance-sweep-max-counter-penetration')))).toBeLessThan(.001)
   await expect(scene).toHaveAttribute('data-apple-collision-free', 'true')
+  await expect(scene).toHaveAttribute('data-context-antialias', 'true')
+  expect(Number(await scene.getAttribute('data-context-samples'))).toBeGreaterThan(0)
+  expect(Number(await scene.getAttribute('data-pixel-ratio-cap'))).toBe(1.5)
+  expect(await scene.getAttribute('data-drawing-buffer')).toMatch(/^\d+x\d+$/)
   expect(Number(await scene.getAttribute('data-shutter-lift'))).toBeGreaterThan(.99)
   await page.keyboard.press('Escape')
   await expect(stage).toHaveAttribute('data-opening-state', 'open')
@@ -413,7 +430,8 @@ test('farm-life scenes use matching posters and never play more than one large v
   await expect(page.locator('#product-eggs')).toBeFocused()
 })
 
-test('leaf handoff owns one continuous hold through cover, commit, and reveal', async ({ page }) => {
+test('exact shop video owns one continuous hold and commits only in its decoded cover', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium')
   await page.goto(projectPath)
   const stage = page.locator('.hero-stage')
   const root = page.locator('body > #root > div')
@@ -421,63 +439,103 @@ test('leaf handoff owns one continuous hold through cover, commit, and reveal', 
   await dispatchWheel(page, 24)
   await expect(stage).toHaveAttribute('data-opening-state', 'playing')
   await page.keyboard.press('Escape')
-  await expect(root).toHaveAttribute('data-leaf-state', 'armed')
+  await expect(root).toHaveAttribute('data-handoff-state', 'armed')
   await expect(page.locator('.floating-basket')).toBeHidden()
   await dispatchWheel(page, 120)
-  await expect(root).toHaveAttribute('data-leaf-state', 'entering')
-  await expect(root).toHaveAttribute('data-scroll-gate-owner', 'leaf')
+  await expect(root).toHaveAttribute('data-handoff-state', 'covering')
+  await expect(root).toHaveAttribute('data-handoff-kind', 'shop')
+  await expect(root).toHaveAttribute('data-transition-asset', /leaves-shop-01-alpha\.webm$/)
+  await expect(root).toHaveAttribute('data-scroll-gate-owner', 'handoff')
   await expect(root).toHaveAttribute('data-scroll-hold', 'active')
   const heldAt = await page.evaluate(() => Number.parseFloat(document.body.style.top || '0'))
   await dispatchWheel(page, 500)
   expect(await page.evaluate(() => Number.parseFloat(document.body.style.top || '0'))).toBe(heldAt)
-  await expect(page.locator('.leaf-handoff')).toBeVisible()
-  await expect(root).toHaveAttribute('data-leaf-state', 'covered', { timeout: 1000 })
-  await expect(root).toHaveAttribute('data-scroll-gate-owner', 'leaf')
+  await expect(page.locator('.video-handoff')).toBeVisible()
+  await page.waitForTimeout(2200)
+  await expect(page).not.toHaveURL(/#shop$/)
+  await expect(root).toHaveAttribute('data-handoff-state', 'covered', { timeout: 2500 })
+  const coverTime = Number(await page.locator('.video-handoff').getAttribute('data-media-time'))
+  expect(coverTime).toBeGreaterThanOrEqual(3.2)
+  expect(coverTime).toBeLessThanOrEqual(3.8)
+  await expect(root).toHaveAttribute('data-scroll-gate-owner', 'handoff')
   await expect(page.locator('.floating-basket')).toBeHidden()
   await expect(page).toHaveURL(/#shop$/)
-  await expect(page.locator('.leaf-handoff__panel')).toHaveCount(4)
-  await expect(root).toHaveAttribute('data-leaf-state', 'complete', { timeout: 3000 })
+  await expect(root).toHaveAttribute('data-handoff-state', 'revealing', { timeout: 1000 })
+  await expect(root).toHaveAttribute('data-handoff-state', 'complete', { timeout: 2500 })
   await expect(root).toHaveAttribute('data-scroll-gate-owner', 'none')
   await expect(page.locator('.floating-basket')).toBeVisible()
-  await expect(page.locator('.leaf-handoff')).toHaveCount(0)
+  await expect(page.locator('.video-handoff')).toHaveCount(0)
   await dispatchWheel(page, -300)
   await dispatchWheel(page, 300)
-  await expect(root).toHaveAttribute('data-leaf-state', 'complete')
+  await expect(root).toHaveAttribute('data-handoff-state', 'complete')
   await expect(stage).toHaveAttribute('data-scroll-hold', 'released')
 })
 
-test('Escape fail-opens an interrupted leaf handoff and unlocks the existing basket', async ({ page }) => {
+test('Escape fail-opens an interrupted video handoff and unlocks the existing basket', async ({ page }) => {
   await page.goto(projectPath)
   const root = page.locator('body > #root > div')
   await expect(page.locator('.hero-stage')).toHaveClass(/hero-stage--ready/)
   await dispatchWheel(page, 24)
   await expect(page.locator('.hero-stage')).toHaveAttribute('data-opening-state', 'playing')
   await page.keyboard.press('Escape')
-  await expect(root).toHaveAttribute('data-leaf-state', 'armed')
+  await expect(root).toHaveAttribute('data-handoff-state', 'armed')
   await dispatchWheel(page, 120)
-  await expect(root).toHaveAttribute('data-leaf-state', 'entering')
+  await expect(root).toHaveAttribute('data-handoff-state', 'covering')
   await page.keyboard.press('Escape')
-  await expect(root).toHaveAttribute('data-leaf-state', 'bypassed')
-  await expect(page.locator('.leaf-handoff')).toHaveCount(0)
+  await expect(root).toHaveAttribute('data-handoff-state', 'bypassed')
+  await expect(page.locator('.video-handoff')).toHaveCount(0)
   await expect(page.getByRole('button', { name: /Open basket preview/ })).toBeVisible()
   await dispatchWheel(page, 120)
-  await expect(root).toHaveAttribute('data-leaf-state', 'bypassed')
+  await expect(root).toHaveAttribute('data-handoff-state', 'bypassed')
 })
 
-test('failed leaf art commits the shop directly without an empty cover or retained lock', async ({ page }) => {
-  await page.route('**/media/leaves/leaf-canopy.webp', (route) => route.abort())
+test('failed transition video commits the shop directly without an empty cover or retained lock', async ({ page }) => {
+  await page.route('**/media/transitions/leaves-shop-01-alpha.webm', (route) => route.abort())
   await page.goto(projectPath)
   const root = page.locator('body > #root > div')
-  await expect(root).toHaveAttribute('data-leaf-asset', 'failed')
   await expect(page.locator('.hero-stage')).toHaveClass(/hero-stage--ready/)
   await dispatchWheel(page, 24)
   await page.keyboard.press('Escape')
-  await expect(root).toHaveAttribute('data-leaf-state', 'armed')
+  await expect(root).toHaveAttribute('data-handoff-state', 'armed')
   await page.getByRole('link', { name: 'Explore the demo' }).click()
   await expect(page).toHaveURL(/#shop$/)
-  await expect(root).toHaveAttribute('data-leaf-state', 'bypassed')
+  await expect(root).toHaveAttribute('data-handoff-state', 'bypassed')
   await expect(root).toHaveAttribute('data-scroll-hold', 'released')
-  await expect(page.locator('.leaf-handoff')).toHaveCount(0)
+  await expect(page.locator('.video-handoff')).toHaveCount(0)
+})
+
+test('animal Polaroids use exact transition 02 without replaying on ordinary farm navigation', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium')
+  await page.goto(`${projectPath}#top`, { waitUntil: 'networkidle' })
+  const root = page.locator('body > #root > div')
+  await page.locator('.entrance-links [data-animal-sound="hens"]').click()
+  await expect(root).toHaveAttribute('data-handoff-kind', 'animals')
+  await expect(root).toHaveAttribute('data-transition-asset', /leaves-animals-02-alpha\.webm$/)
+  await page.waitForTimeout(900)
+  await expect(page).toHaveURL(/#top$/)
+  await expect(root).toHaveAttribute('data-handoff-state', 'covered', { timeout: 1800 })
+  const coverTime = Number(await page.locator('.video-handoff').getAttribute('data-media-time'))
+  expect(coverTime).toBeGreaterThanOrEqual(1.9)
+  expect(coverTime).toBeLessThanOrEqual(2)
+  await expect(root).toHaveAttribute('data-handoff-state', 'idle', { timeout: 2500 })
+  await expect(page).toHaveURL(/#hens$/)
+  await expect(page.locator('#hens')).toBeFocused()
+  await page.getByRole('navigation', { name: 'Farm-life scenes', exact: true }).getByRole('link', { name: 'Cattle' }).click()
+  await expect(page).toHaveURL(/#cattle$/)
+  await expect(page.locator('.video-handoff')).toHaveCount(0)
+})
+
+test('rapid explicit navigation aborts the active animal overlay without trapping input', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium')
+  await page.goto(`${projectPath}#top`, { waitUntil: 'networkidle' })
+  const root = page.locator('body > #root > div')
+  await page.locator('.entrance-links [data-animal-sound="hens"]').click()
+  await expect(root).toHaveAttribute('data-handoff-state', 'covering')
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Around the farm' }).click()
+  await expect(page).toHaveURL(/#farm-life$/)
+  await expect(page.locator('.video-handoff')).toHaveCount(0)
+  await expect(root).toHaveAttribute('data-scroll-gate-owner', 'none')
+  await expect(root).toHaveAttribute('data-scroll-hold', 'released')
 })
 
 test('scroll hint waits for eligible inactivity, emphasizes once, and stays absent while locked', async ({ page }, testInfo) => {
@@ -596,6 +654,34 @@ test('interface actions have distinct pen and paper cues without a duplicate gen
   expect(names).not.toContain('ui')
 })
 
+test('decoded sound pools vary without adjacent repeats and exclude a failed variant', async ({ page }) => {
+  await page.route('**/audio/quantity-2.mp3', (route) => route.abort())
+  await page.addInitScript(() => {
+    ;(window as typeof window & { __farmStandSoundRandom?: () => number }).__farmStandSoundRandom = () => 0.37
+    ;(window as typeof window & { __soundVariants?: string[] }).__soundVariants = []
+    window.addEventListener('farmstandsound', ((event: CustomEvent<{ name: string; variant?: string }>) => {
+      if (event.detail.name === 'quantity' && event.detail.variant) {
+        ;(window as typeof window & { __soundVariants?: string[] }).__soundVariants?.push(event.detail.variant)
+      }
+    }) as EventListener)
+  })
+  await openShop(page)
+  await page.mouse.click(8, 320)
+  await expect(page.locator('.sound-controls')).toHaveAttribute('data-sound-status', 'partial', { timeout: 8000 })
+  await addProduct(page, 'apple')
+  const drawer = await openFullBasket(page, 1)
+  const increase = drawer.getByRole('button', { name: 'Increase Orchard apples quantity' })
+  for (let index = 0; index < 5; index += 1) {
+    await increase.click()
+    await page.waitForTimeout(85)
+  }
+  const variants = await page.evaluate(() => (window as typeof window & { __soundVariants?: string[] }).__soundVariants ?? [])
+  expect(variants).toHaveLength(5)
+  expect(variants).not.toContain('quantity-2.mp3')
+  expect(variants.every((variant, index) => index === 0 || variant !== variants[index - 1])).toBe(true)
+  expect(new Set(variants)).toEqual(new Set(['quantity.mp3', 'quantity-3.mp3']))
+})
+
 test('failed actions stay silent while confirmed clear and copy use their own cues', async ({ page }) => {
   await page.addInitScript(() => {
     ;(window as typeof window & { __heardSounds?: string[] }).__heardSounds = []
@@ -668,7 +754,7 @@ test('reduced motion presents complete still states and keeps manual video contr
   await expect(page.locator('.hero-stage')).toHaveAttribute('data-opening-state', 'open')
   await expect(page.getByTestId('scene-host')).toBeHidden()
   await expect(page.locator('.market-opening__plate')).toBeVisible()
-  await expect(page.locator('body > #root > div')).toHaveAttribute('data-leaf-state', 'bypassed')
+  await expect(page.locator('body > #root > div')).toHaveAttribute('data-handoff-state', 'bypassed')
   await expect(page.getByRole('button', { name: /Open basket preview/ })).toBeVisible()
   await page.goto(`${projectPath}#sheep`)
   await expect(page.locator('#sheep').getByRole('button', { name: 'Play scene' })).toBeVisible()
