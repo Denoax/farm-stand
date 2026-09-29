@@ -801,6 +801,32 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
 .scene-visual { z-index: 2; background: transparent; }
 .scene-host { z-index: 2; opacity: 0; transition: none; }
 .hero-stage--ready .scene-host { display: block; opacity: 1; }
+.bird-hit {
+  position: absolute;
+  z-index: 6;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: 48% 52% 44% 56%;
+  color: transparent;
+  background: transparent;
+  cursor: pointer;
+}
+.bird-hit[hidden] { display: none; }
+.bird-hit:focus-visible { outline: 3px solid #fff6c8; outline-offset: 3px; background: rgb(23 60 50 / .16); }
+.bird-hit img { display: none; }
+.scene-host[data-bird-state="static"] + .bird-hit {
+  display: block;
+  top: auto !important;
+  right: 16%;
+  bottom: 21%;
+  left: auto !important;
+  width: clamp(3.2rem, 10vw, 5.2rem) !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1.25;
+}
+.scene-host[data-bird-state="static"] + .bird-hit img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .fallback-poster { z-index: 1; display: block; visibility: visible; opacity: 1; background: #293a2d; }
 .fallback-poster img { display: block; object-position: 50% 50%; }
 .settled-poster { position: absolute; z-index: 1; inset: 0; display: none; overflow: hidden; background: #293a2d; }
@@ -998,7 +1024,7 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
   position: relative;
   z-index: 1;
   min-height: 30rem;
-  padding: clamp(3.2rem, 4.5vw, 4.4rem) clamp(1rem, 4.1vw, 4.1rem) clamp(2.7rem, 4.8vw, 4.5rem);
+  padding: clamp(2.35rem, 3.5vw, 3.35rem) clamp(1rem, 4.1vw, 4.1rem) clamp(2rem, 3.5vw, 3.2rem);
   background:
     linear-gradient(90deg, rgb(182 96 73 / .13) 0 1px, transparent 1px) 2rem 0 / 100% 100% no-repeat,
     repeating-linear-gradient(180deg, transparent 0 2.05rem, rgb(81 124 129 / .075) 2.05rem calc(2.05rem + 1px)),
@@ -1138,7 +1164,7 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
   .market-notebook { padding: .22rem .38rem .62rem 1.55rem; }
   .market-notebook::after { inset: .45rem .14rem .3rem 1.72rem; }
   .market-notebook__paper {
-    padding: 2.8rem .72rem 2.25rem;
+    padding: 2.05rem .72rem 1.7rem;
     background:
       linear-gradient(90deg, rgb(182 96 73 / .11) 0 1px, transparent 1px) 1rem 0 / 100% 100% no-repeat,
       repeating-linear-gradient(180deg, transparent 0 2rem, rgb(81 124 129 / .07) 2rem calc(2rem + 1px)),
@@ -1160,4 +1186,6 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
 @media (prefers-reduced-motion: reduce) {
   .video-handoff { display: none; }
   .scroll-cue { animation: none; }
+  .scene-visual .bird-hit { display: block; top: auto !important; right: 16%; bottom: 21%; left: auto !important; width: clamp(3.2rem, 10vw, 5.2rem) !important; height: auto !important; aspect-ratio: 1 / 1.25; }
+  .bird-hit img { display: block; width: 100%; height: 100%; object-fit: contain; }
 }

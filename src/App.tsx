@@ -29,7 +29,7 @@ const contentReturnStart = 0.895
 const openingSettleStart = 0.75
 const openingWatchdog = 9000
 const handoffWatchdog = 7500
-const scrollHintDelay = 5000
+const scrollHintDelay = 3000
 const HANDOFF_CLIPS: Record<HandoffKind, HandoffClip> = {
   shop: {
     kind: 'shop',
@@ -378,6 +378,7 @@ export function App() {
   const finishHandoff = useCallback((failed = false) => {
     const request = handoffRequestRef.current
     if (!request) return
+    soundscape.stopLeafTransition()
     const wasLocked = scrollGate.activeRef.current === 'handoff'
     if (!coverCommittedRef.current) {
       history.pushState(null, '', `#${request.targetId}`)
@@ -413,7 +414,7 @@ export function App() {
         setHandoffRun((run) => run + 1)
       }, 0)
     }
-  }, [moveToTarget, scrollGate.activeRef, scrollGate.release])
+  }, [moveToTarget, scrollGate.activeRef, scrollGate.release, soundscape.stopLeafTransition])
 
   const startHandoff = useCallback((request: HandoffRequest) => {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -450,8 +451,7 @@ export function App() {
     if (!scrollGate.begin('handoff', () => finishHandoff(true), handoffWatchdog)) return finishHandoff(true)
     handoffPhaseRef.current = 'covering'
     setHandoffPhase('covering')
-    soundscape.playLeaves()
-  }, [finishHandoff, scrollGate.begin, soundscape.playLeaves])
+  }, [finishHandoff, scrollGate.begin])
 
   const commitCoveredHandoff = useCallback(() => {
     const request = handoffRequestRef.current
@@ -696,7 +696,7 @@ export function App() {
                 <img src={publicAsset('media/market-opening-settled-desktop.avif')} alt="" />
               </picture>
               <Suspense fallback={null}>
-                <FarmScene progressRef={progressRef} onStateChange={onSceneState} onPresented={onPresented} />
+                <FarmScene progressRef={progressRef} onStateChange={onSceneState} onPresented={onPresented} onBirdActivate={soundscape.playBird} />
               </Suspense>
               <div className="scene-vignette" aria-hidden="true" />
               <p className="scene-status" aria-live="polite">
@@ -764,6 +764,8 @@ export function App() {
           onRevealing={revealHandoff}
           onEnded={() => finishHandoff(false)}
           onFailed={() => finishHandoff(true)}
+          onMediaTime={soundscape.syncLeafTransition}
+          onSoundStop={soundscape.stopLeafTransition}
         />
       )}
 

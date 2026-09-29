@@ -6,7 +6,7 @@ import { promisify } from 'node:util'
 
 const run = promisify(execFile)
 const baseURL = process.env.BASE_URL ?? 'http://127.0.0.1:4173/farm-stand/'
-const evidenceDir = path.resolve('evidence/video-bird/review')
+const evidenceDir = path.resolve(process.env.EVIDENCE_ROOT ?? 'evidence/video-bird/review')
 const rawVideoDir = path.join(evidenceDir, 'motion/raw')
 await fs.mkdir(rawVideoDir, { recursive: true })
 await fs.mkdir(path.join(evidenceDir, 'layout'), { recursive: true })
@@ -98,9 +98,9 @@ for (const [width, height] of [[1440, 900], [1920, 1080], [2560, 1440], [390, 84
   await context.close()
 }
 
-await captureTransition({ kind: 'shop', viewport: { width: 1440, height: 900 }, label: 'desktop-shop', targets: [.7, 1.7, 3.4, 4.2] })
-await captureTransition({ kind: 'shop', viewport: { width: 390, height: 844 }, label: 'portrait-shop', targets: [.7, 1.7, 3.4, 4.2] })
-await captureTransition({ kind: 'animals', viewport: { width: 1440, height: 900 }, label: 'desktop-animals', targets: [.45, 1.35, 1.9, 2.55] })
+await captureTransition({ kind: 'shop', viewport: { width: 1440, height: 900 }, label: 'desktop-shop', targets: [.7, 1.7, 3.4, 3.65] })
+await captureTransition({ kind: 'shop', viewport: { width: 390, height: 844 }, label: 'portrait-shop', targets: [.7, 1.7, 3.4, 3.65] })
+await captureTransition({ kind: 'animals', viewport: { width: 1440, height: 900 }, label: 'desktop-animals', targets: [.45, 1.35, 1.9, 1.95] })
 
 const timberContext = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 })
 const timberPage = await timberContext.newPage()

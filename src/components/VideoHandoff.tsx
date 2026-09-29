@@ -19,9 +19,11 @@ interface VideoHandoffProps {
   onRevealing: () => void
   onEnded: () => void
   onFailed: () => void
+  onMediaTime: (kind: HandoffKind, mediaTime: number) => void
+  onSoundStop: () => void
 }
 
-export function VideoHandoff({ clip, phase, onReady, onCovered, onRevealing, onEnded, onFailed }: VideoHandoffProps) {
+export function VideoHandoff({ clip, phase, onReady, onCovered, onRevealing, onEnded, onFailed, onMediaTime, onSoundStop }: VideoHandoffProps) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const readyRef = useRef(false)
@@ -48,7 +50,10 @@ export function VideoHandoff({ clip, phase, onReady, onCovered, onRevealing, onE
   }, [onFailed, phase])
 
   useEffect(() => {
-    if (phase !== 'covering' && phase !== 'covered' && phase !== 'revealing') return
+    // Once reveal begins the destination is already committed and the leaf
+    // voice has been stopped. Do not resume media-time callbacks from the
+    // revealing phase or they can create a second, stale rustle bed.
+    if (phase !== 'covering' && phase !== 'covered') return
     const video = videoRef.current
     if (!video) return
     let frameHandle = 0
@@ -56,6 +61,7 @@ export function VideoHandoff({ clip, phase, onReady, onCovered, onRevealing, onE
 
     const inspect = (mediaTime: number) => {
       if (wrapperRef.current) wrapperRef.current.dataset.mediaTime = mediaTime.toFixed(4)
+      onMediaTime(clip.kind, mediaTime)
       if (!coveredRef.current && mediaTime >= clip.coverStart && mediaTime <= clip.coverEnd) {
         coveredRef.current = true
         if (wrapperRef.current) wrapperRef.current.dataset.coverTime = mediaTime.toFixed(4)
@@ -87,7 +93,13 @@ export function VideoHandoff({ clip, phase, onReady, onCovered, onRevealing, onE
     }
     animationFrame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(animationFrame)
-  }, [clip.coverEnd, clip.coverStart, onCovered, onFailed, onRevealing, phase])
+  }, [clip.coverEnd, clip.coverStart, clip.kind, onCovered, onFailed, onMediaTime, onRevealing, phase])
+
+  useEffect(() => {
+    if (phase === 'revealing') onSoundStop()
+  }, [onSoundStop, phase])
+
+  useEffect(() => onSoundStop, [onSoundStop])
 
   const style = { '--handoff-scale': clip.scale } as CSSProperties
 
@@ -104,8 +116,8 @@ export function VideoHandoff({ clip, phase, onReady, onCovered, onRevealing, onE
           readyRef.current = true
           onReady()
         }}
-        onEnded={onEnded}
-        onError={onFailed}
+        onEnded={() => { onSoundStop(); onEnded() }}
+        onError={() => { onSoundStop(); onFailed() }}
       />
     </div>
   )

@@ -11,6 +11,7 @@ interface FarmSceneProps {
   progressRef: React.RefObject<number>
   onStateChange: (state: SceneState) => void
   onPresented: (progress: number, shot: string) => void
+  onBirdActivate: () => void
 }
 
 interface PreparedApple {
@@ -36,6 +37,8 @@ type BoardAxis = 'horizontal' | 'vertical'
 
 const publicAsset = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`
 const APPLE_URL = publicAsset('models/food_apple_01/food_apple_01_1k.gltf')
+const BIRD_URL = publicAsset('models/bird-orange/bird-orange.glb')
+const BIRD_TEXTURE_URL = publicAsset('models/bird-orange/bird-orange-base-color.webp')
 const WOOD_VARIANTS = ['a', 'b', 'c'] as const
 const COUNTER_TOP_Y = -1.9
 const APPLE_SUPPORT_SAMPLES = 72
@@ -166,8 +169,9 @@ function boardMaterials(
   return longGrain
 }
 
-export function FarmScene({ progressRef, onStateChange, onPresented }: FarmSceneProps) {
+export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActivate }: FarmSceneProps) {
   const hostRef = useRef<HTMLDivElement>(null)
+  const birdButtonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     const host = hostRef.current
@@ -178,6 +182,8 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
     try {
       renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'high-performance' })
     } catch {
+      sceneHost.dataset.birdState = 'static'
+      if (birdButtonRef.current) birdButtonRef.current.hidden = false
       onStateChange('fallback')
       onPresented(1, 'rest')
       return
@@ -283,8 +289,17 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
     scene.add(trackHardware)
 
     let apple: PreparedApple | undefined
+    let bird: THREE.Group | undefined
+    let birdShadow: THREE.Mesh | undefined
+    let birdMixer: THREE.AnimationMixer | undefined
+    let birdReactionUntil = 0
+    let birdIdlePulseStart = 0
+    let birdIdlePulseUntil = 0
+    let nextBirdIdleAt = performance.now() + 4200
+    let birdIdleCount = 0
     let disposed = false
     let frame = 0
+    let idleTimer = 0
     let renderEnabled = true
     let heroVisible = true
     let clearanceSweepCache: { appleScale: number; frameScaleX: number; minimum: number; maxCounterPenetration: number } | undefined
@@ -293,6 +308,26 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
       if (!renderEnabled || !heroVisible || document.hidden || !apple) return
       if (!frame) frame = requestAnimationFrame(render)
     }
+
+    function scheduleIdleRender(delay = 110) {
+      window.clearTimeout(idleTimer)
+      if (!renderEnabled || !heroVisible || document.hidden || !bird) return
+      const now = performance.now()
+      if (now >= nextBirdIdleAt && now >= birdIdlePulseUntil) {
+        birdIdlePulseStart = now
+        birdIdlePulseUntil = now + 680
+        birdIdleCount += 1
+        nextBirdIdleAt = birdIdlePulseUntil + (birdIdleCount % 2 ? 4700 : 5600)
+      }
+      const wait = now < birdIdlePulseUntil ? delay : Math.max(80, nextBirdIdleAt - now)
+      idleTimer = window.setTimeout(requestRender, wait)
+    }
+
+    const onBirdReaction = () => {
+      birdReactionUntil = performance.now() + 720
+      requestRender()
+    }
+    sceneHost.addEventListener('farmbirdreaction', onBirdReaction)
 
     const loader = new GLTFLoader()
     loader.load(
@@ -310,6 +345,78 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
           onStateChange('fallback')
           onPresented(1, 'rest')
         }
+      },
+    )
+
+    loader.load(
+      BIRD_URL,
+      (gltf) => {
+        if (disposed) return
+        const model = gltf.scene
+        const bounds = new THREE.Box3().setFromObject(model)
+        const size = bounds.getSize(new THREE.Vector3())
+        const center = bounds.getCenter(new THREE.Vector3())
+        const scale = 0.76 / Math.max(size.y, 0.001)
+        model.scale.setScalar(scale)
+        model.position.set(-center.x * scale, -bounds.min.y * scale, -center.z * scale)
+        const birdTexture = textureLoader.load(BIRD_TEXTURE_URL, requestRender)
+        birdTexture.colorSpace = THREE.SRGBColorSpace
+        birdTexture.anisotropy = anisotropy
+        model.traverse((child) => {
+          if (!(child instanceof THREE.Mesh)) return
+          child.castShadow = false
+          child.receiveShadow = true
+          child.frustumCulled = false
+          const material = new THREE.MeshStandardMaterial({
+            map: birdTexture,
+            color: 0xffffff,
+            roughness: 0.86,
+            metalness: 0,
+            envMapIntensity: 0.16,
+            side: THREE.FrontSide,
+          })
+          child.material = material
+        })
+        bird = new THREE.Group()
+        bird.name = 'supported-bird'
+        bird.add(model)
+        scene.add(bird)
+        const shadowCanvas = document.createElement('canvas')
+        shadowCanvas.width = 128
+        shadowCanvas.height = 64
+        const shadowContext = shadowCanvas.getContext('2d')
+        const shadowGradient = shadowContext?.createRadialGradient(64, 32, 3, 64, 32, 58)
+        shadowGradient?.addColorStop(0, 'rgba(20, 16, 10, .34)')
+        shadowGradient?.addColorStop(.48, 'rgba(20, 16, 10, .2)')
+        shadowGradient?.addColorStop(1, 'rgba(20, 16, 10, 0)')
+        if (shadowContext && shadowGradient) {
+          shadowContext.fillStyle = shadowGradient
+          shadowContext.fillRect(0, 0, 128, 64)
+        }
+        const shadowTexture = new THREE.CanvasTexture(shadowCanvas)
+        birdShadow = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.92, 0.48),
+          new THREE.MeshBasicMaterial({ map: shadowTexture, transparent: true, depthTest: false, depthWrite: false, toneMapped: false }),
+        )
+        birdShadow.rotation.x = -Math.PI / 2
+        birdShadow.renderOrder = 4
+        scene.add(birdShadow)
+        if (gltf.animations[0]) {
+          birdMixer = new THREE.AnimationMixer(model)
+          const action = birdMixer.clipAction(gltf.animations[0])
+          action.play()
+        }
+        sceneHost.dataset.birdState = 'ready'
+        sceneHost.dataset.birdSource = 'bird-orange.glb'
+        sceneHost.dataset.birdTake = gltf.animations[0]?.name ?? 'none'
+        requestRender()
+      },
+      undefined,
+      () => {
+        if (disposed) return
+        sceneHost.dataset.birdState = 'static'
+        if (birdButtonRef.current) birdButtonRef.current.hidden = false
+        requestRender()
       },
     )
 
@@ -341,6 +448,7 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
     const travelDirection = new THREE.Vector3(-1, 0, 0)
     const rollingAxis = counterNormal.clone().cross(travelDirection).normalize()
     const rollingQuaternion = new THREE.Quaternion()
+    const birdBounds = new THREE.Box3()
     const debugParameters = import.meta.env.DEV ? new URLSearchParams(location.search) : null
     const debugClearance = debugParameters?.get('debugAppleClearance') ?? null
     const debugProgressValue = debugParameters?.get('debugProgress')
@@ -411,6 +519,79 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
       apple.group.position.set(appleX, supportY, appleLaneZ)
       apple.group.quaternion.copy(rollingQuaternion.setFromAxisAngle(rollingAxis, rollAngle))
 
+      if (bird) {
+        const entrance = THREE.MathUtils.smoothstep(state.progress, 0.43, 0.86)
+        const hopPosition = entrance * 3
+        const hopIndex = Math.min(2, Math.floor(hopPosition))
+        const hopLocal = entrance >= 1 ? 1 : hopPosition - hopIndex
+        const hopArc = entrance > 0 && entrance < 1 ? Math.sin(hopLocal * Math.PI) * (0.2 - hopIndex * 0.025) : 0
+        const birdEntryX = portrait ? 1.88 : 3.92 * frameScaleX
+        // Portrait's photo cluster fills the right side of the counter. Let the
+        // same right-origin entrance cross to an unobstructed left-hand perch
+        // instead of placing the bird under a link's hit area.
+        const birdPerchX = portrait ? -0.57 : 1.92 * frameScaleX
+        const birdX = THREE.MathUtils.lerp(birdEntryX, birdPerchX, entrance)
+        const reacting = performance.now() < birdReactionUntil
+        const reactionPhase = reacting ? 1 - Math.max(0, birdReactionUntil - performance.now()) / 720 : 0
+        const reactionLift = reacting ? Math.sin(reactionPhase * Math.PI) * 0.09 : 0
+        bird.visible = entrance > 0.012
+        if (birdShadow) {
+          birdShadow.visible = bird.visible
+          birdShadow.position.set(birdX, COUNTER_TOP_Y + 0.032, 1.19)
+          const shadowScale = 1 - Math.min(0.46, (hopArc + reactionLift) * 1.45)
+          birdShadow.scale.setScalar(shadowScale)
+        }
+        const expectedFootY = COUNTER_TOP_Y + hopArc + reactionLift
+        bird.position.set(birdX, expectedFootY, 1.19)
+        bird.rotation.set(0.13, entrance < 1 ? -0.22 : -0.52, reacting ? Math.sin(reactionPhase * Math.PI * 2) * 0.055 : 0)
+        const idlePulse = performance.now() < birdIdlePulseUntil
+          ? (performance.now() - birdIdlePulseStart) / 680
+          : 0
+        const idleTime = entrance < 1 ? 1.05 + entrance * 0.55 : idlePulse ? 1.35 + idlePulse * 0.62 : 1.35
+        birdMixer?.setTime(reacting ? 0.36 + reactionPhase * 0.62 : idleTime)
+        bird.updateMatrixWorld(true)
+        birdBounds.setFromObject(bird)
+        bird.position.y += expectedFootY - birdBounds.min.y
+        bird.updateMatrixWorld(true)
+        birdBounds.setFromObject(bird)
+
+        const button = birdButtonRef.current
+        if (button && bird.visible) {
+          let minimumX = Number.POSITIVE_INFINITY
+          let maximumX = Number.NEGATIVE_INFINITY
+          let minimumY = Number.POSITIVE_INFINITY
+          let maximumY = Number.NEGATIVE_INFINITY
+          const corner = new THREE.Vector3()
+          for (const x of [birdBounds.min.x, birdBounds.max.x]) {
+            for (const y of [birdBounds.min.y, birdBounds.max.y]) {
+              for (const z of [birdBounds.min.z, birdBounds.max.z]) {
+                corner.set(x, y, z).project(camera)
+                const screenX = (corner.x * 0.5 + 0.5) * sceneHost.clientWidth
+                const screenY = (-corner.y * 0.5 + 0.5) * sceneHost.clientHeight
+                minimumX = Math.min(minimumX, screenX)
+                maximumX = Math.max(maximumX, screenX)
+                minimumY = Math.min(minimumY, screenY)
+                maximumY = Math.max(maximumY, screenY)
+              }
+            }
+          }
+          const padding = 6
+          button.style.left = `${minimumX - padding}px`
+          button.style.top = `${minimumY - padding}px`
+          button.style.width = `${Math.max(44, maximumX - minimumX + padding * 2)}px`
+          button.style.height = `${Math.max(44, maximumY - minimumY + padding * 2)}px`
+          button.hidden = entrance < 0.96
+        }
+        const footError = Math.abs(birdBounds.min.y - expectedFootY)
+        sceneHost.dataset.birdPhase = entrance >= 1 ? (reacting ? 'reacting' : 'perched') : entrance > 0 ? `hop-${hopIndex + 1}` : 'waiting'
+        sceneHost.dataset.birdEntrance = entrance.toFixed(4)
+        sceneHost.dataset.birdX = birdX.toFixed(3)
+        sceneHost.dataset.birdSupportY = COUNTER_TOP_Y.toFixed(3)
+        sceneHost.dataset.birdFootY = birdBounds.min.y.toFixed(4)
+        sceneHost.dataset.birdFootContactError = footError.toFixed(4)
+        sceneHost.dataset.birdAffectsApple = 'false'
+      }
+
       renderer.render(scene, camera)
       sceneHost.dataset.scene = state.shot
       sceneHost.dataset.requestedProgress = state.progress.toFixed(4)
@@ -445,11 +626,19 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
       if (debugProgress !== null) sceneHost.dataset.debugProgress = debugProgress.toFixed(4)
       sceneHost.dataset.rendering = 'active'
       onPresented(state.progress, state.shot)
+      if (bird && state.progress >= 1) {
+        if (performance.now() < birdReactionUntil || performance.now() < birdIdlePulseUntil) {
+          frame = requestAnimationFrame(render)
+        } else {
+          scheduleIdleRender()
+        }
+      }
     }
 
     const onVisibility = () => {
       if (document.hidden) {
         cancelAnimationFrame(frame)
+        window.clearTimeout(idleTimer)
         frame = 0
       } else requestRender()
     }
@@ -471,6 +660,7 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
       if (heroVisible) requestRender()
       else {
         cancelAnimationFrame(frame)
+        window.clearTimeout(idleTimer)
         frame = 0
       }
     }, { rootMargin: '80px 0px' })
@@ -480,9 +670,11 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
       disposed = true
       renderEnabled = false
       cancelAnimationFrame(frame)
+      window.clearTimeout(idleTimer)
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('farmstageprogress', onProgress)
       renderer.domElement.removeEventListener('webglcontextlost', onContextLost)
+      sceneHost.removeEventListener('farmbirdreaction', onBirdReaction)
       intersectionObserver.disconnect()
       resizeObserver.disconnect()
       const disposedGeometries = new Set<THREE.BufferGeometry>()
@@ -509,5 +701,22 @@ export function FarmScene({ progressRef, onStateChange, onPresented }: FarmScene
     }
   }, [onPresented, onStateChange, progressRef])
 
-  return <div ref={hostRef} className="scene-host" data-testid="scene-host" />
+  return (
+    <>
+      <div ref={hostRef} className="scene-host" data-testid="scene-host" />
+      <button
+        ref={birdButtonRef}
+        className="bird-hit"
+        type="button"
+        hidden
+        aria-label="Hear the bird chirp"
+        onClick={() => {
+          hostRef.current?.dispatchEvent(new Event('farmbirdreaction'))
+          onBirdActivate()
+        }}
+      >
+        <img src={publicAsset('media/bird-orange-perch.webp')} alt="" />
+      </button>
+    </>
+  )
 }

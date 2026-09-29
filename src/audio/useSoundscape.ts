@@ -3,7 +3,8 @@ import { ShuffleBag } from './shuffleBag'
 
 export type AnimalSound = 'hens' | 'cattle' | 'sheep'
 export type CommerceSound = 'add' | 'quantity' | 'details-open' | 'details-close' | 'filter' | 'remove' | 'clear' | 'basket-open' | 'basket-close' | 'confirm'
-type EffectName = AnimalSound | CommerceSound | 'shutter' | 'leaves'
+type EffectName = AnimalSound | CommerceSound | 'shutter' | 'bird' | 'leaves-shop' | 'leaves-animals' | 'leaf-accent'
+type LeafTransition = 'shop' | 'animals'
 type SoundStatus = 'silent' | 'loading' | 'ready' | 'partial'
 
 export interface SoundscapeSnapshot {
@@ -23,10 +24,13 @@ interface Voice {
 }
 
 const publicAsset = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`
-const variants = (stem: string) => [publicAsset(`audio/${stem}.mp3`), publicAsset(`audio/${stem}-2.mp3`), publicAsset(`audio/${stem}-3.mp3`)]
+const variants = (stem: string) => [1, 2, 3, 4].map((variant) => publicAsset(`audio/${stem}${variant === 1 ? '' : `-${variant}`}.mp3`))
 const EFFECT_POOLS: Record<EffectName, string[]> = {
   shutter: [publicAsset('audio/shutter-open.mp3')],
-  leaves: [publicAsset('audio/leaf-rustle.mp3')],
+  bird: [publicAsset('audio/bird-chirp.mp3'), publicAsset('audio/bird-chirp-2.mp3'), publicAsset('audio/bird-chirp-3.mp3')],
+  'leaves-shop': [publicAsset('audio/leaves-shop-bed.mp3')],
+  'leaves-animals': [publicAsset('audio/leaves-animals-bed.mp3')],
+  'leaf-accent': [publicAsset('audio/leaf-accent-1.mp3'), publicAsset('audio/leaf-accent-2.mp3'), publicAsset('audio/leaf-accent-3.mp3')],
   hens: [publicAsset('audio/hens-cluck.mp3')],
   cattle: [publicAsset('audio/cattle-low.mp3')],
   sheep: [publicAsset('audio/sheep-bleat.mp3')],
@@ -85,10 +89,16 @@ class SoundscapeController {
   private voices = new Set<Voice>()
   private animalVoice?: Voice
   private shutterVoice?: Voice
+  private birdVoice?: Voice
+  private leafVoice?: Voice
   private interfaceVoice?: Voice
   private musicAttempt = 0
   private loadPromise?: Promise<void>
   private lastAnimalAt = new Map<AnimalSound, number>()
+  private lastBirdAt = -Infinity
+  private leafKind?: LeafTransition
+  private leafMediaTime = -1
+  private leafCues = new Set<number>()
   private lastCommerceAt = new Map<CommerceSound, number>()
   private openingShot = 'light'
   private shutterLift = 0
@@ -276,9 +286,41 @@ class SoundscapeController {
     return Boolean(this.interfaceVoice)
   }
 
-  playLeaves() {
-    this.duckMusic(2400)
-    this.startVoice('leaves', 'effect', 0.42)
+  syncLeafTransition(kind: LeafTransition, mediaTime: number) {
+    if (this.leafKind !== kind) {
+      this.stopLeafTransition()
+      this.leafKind = kind
+      this.leafMediaTime = -1
+      this.leafCues.clear()
+      this.duckMusic(kind === 'shop' ? 4300 : 3000)
+      this.leafVoice = this.startVoice(kind === 'shop' ? 'leaves-shop' : 'leaves-animals', 'effect', 0.31, mediaTime)
+    }
+    const cueTimes = kind === 'shop' ? [0.58, 1.66, 2.94] : [0.38, 1.12, 1.72]
+    cueTimes.forEach((cueTime, index) => {
+      if (!this.leafCues.has(index) && mediaTime >= cueTime && this.leafMediaTime < cueTime) {
+        this.leafCues.add(index)
+        this.startVoice('leaf-accent', 'effect', 0.24)
+      }
+    })
+    this.leafMediaTime = Math.max(this.leafMediaTime, mediaTime)
+  }
+
+  stopLeafTransition() {
+    this.stopVoice(this.leafVoice, 0.09)
+    this.leafVoice = undefined
+    this.leafKind = undefined
+    this.leafMediaTime = -1
+    this.leafCues.clear()
+  }
+
+  playBird() {
+    const now = performance.now()
+    if (now - this.lastBirdAt < 650) return false
+    this.lastBirdAt = now
+    this.stopVoice(this.birdVoice, 0.035)
+    this.duckMusic(850)
+    this.birdVoice = this.startVoice('bird', 'effect', 0.28)
+    return Boolean(this.birdVoice)
   }
 
   playAnimal(kind: AnimalSound) {
@@ -332,6 +374,9 @@ class SoundscapeController {
     this.animalVoice = undefined
     this.shutterVoice = undefined
     this.interfaceVoice = undefined
+    this.birdVoice = undefined
+    this.leafVoice = undefined
+    this.leafKind = undefined
   }
 
   dispose() {
@@ -369,9 +414,11 @@ export function useSoundscape() {
   const handleEligibleInteraction = useCallback(() => controllerRef.current!.handleEligibleInteraction(), [])
   const toggleMusic = useCallback(() => controllerRef.current!.toggleMusic(), [])
   const playCommerce = useCallback((kind: CommerceSound) => controllerRef.current!.playCommerce(kind), [])
-  const playLeaves = useCallback(() => controllerRef.current!.playLeaves(), [])
+  const syncLeafTransition = useCallback((kind: LeafTransition, mediaTime: number) => controllerRef.current!.syncLeafTransition(kind, mediaTime), [])
+  const stopLeafTransition = useCallback(() => controllerRef.current!.stopLeafTransition(), [])
+  const playBird = useCallback(() => controllerRef.current!.playBird(), [])
   const playAnimal = useCallback((kind: AnimalSound) => controllerRef.current!.playAnimal(kind), [])
   const syncOpening = useCallback((shot: string, shutterLift: number) => controllerRef.current!.syncOpening(shot, shutterLift), [])
 
-  return { snapshot, unlock, handleEligibleInteraction, toggleMusic, playCommerce, playLeaves, playAnimal, syncOpening }
+  return { snapshot, unlock, handleEligibleInteraction, toggleMusic, playCommerce, syncLeafTransition, stopLeafTransition, playBird, playAnimal, syncOpening }
 }

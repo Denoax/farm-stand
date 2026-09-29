@@ -489,6 +489,33 @@ test('Escape fail-opens an interrupted video handoff and unlocks the existing ba
   await expect(root).toHaveAttribute('data-handoff-state', 'bypassed')
 })
 
+test('decoded leaf sound follows video time and stops on interruption', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium')
+  await page.addInitScript(() => {
+    ;(window as typeof window & { __leafSounds?: string[] }).__leafSounds = []
+    window.addEventListener('farmstandsound', ((event: CustomEvent<{ name: string }>) => {
+      if (event.detail.name.startsWith('leaf')) {
+        ;(window as typeof window & { __leafSounds?: string[] }).__leafSounds?.push(event.detail.name)
+      }
+    }) as EventListener)
+  })
+  await page.goto(projectPath, { waitUntil: 'networkidle' })
+  await page.mouse.click(8, 320)
+  await expect(page.locator('.sound-controls')).toHaveAttribute('data-sound-status', /ready|partial/, { timeout: 8000 })
+  await dispatchWheel(page, 24)
+  await expect(page.locator('.hero-stage')).toHaveAttribute('data-opening-state', 'playing')
+  await page.keyboard.press('Escape')
+  await dispatchWheel(page, 120)
+  await expect(page.locator('body > #root > div')).toHaveAttribute('data-handoff-state', 'covering')
+  await expect.poll(async () => page.evaluate(() => (window as typeof window & { __leafSounds?: string[] }).__leafSounds?.filter((name) => name === 'leaf-accent').length ?? 0)).toBeGreaterThanOrEqual(1)
+  const mediaTime = Number(await page.locator('.video-handoff').getAttribute('data-media-time'))
+  expect(mediaTime).toBeGreaterThanOrEqual(0.58)
+  await page.keyboard.press('Escape')
+  const soundsAtInterruption = await page.evaluate(() => (window as typeof window & { __leafSounds?: string[] }).__leafSounds?.length ?? 0)
+  await page.waitForTimeout(1700)
+  expect(await page.evaluate(() => (window as typeof window & { __leafSounds?: string[] }).__leafSounds?.length ?? 0)).toBe(soundsAtInterruption)
+})
+
 test('failed transition video commits the shop directly without an empty cover or retained lock', async ({ page }) => {
   await page.route('**/media/transitions/leaves-shop-01-alpha.webm', (route) => route.abort())
   await page.goto(projectPath)
@@ -543,12 +570,12 @@ test('scroll hint waits for eligible inactivity, emphasizes once, and stays abse
   await page.goto(projectPath)
   await expect(page.locator('.hero-stage')).toHaveClass(/hero-stage--ready/)
   await expect(page.locator('[data-scroll-hint]')).toHaveCount(0)
-  await page.waitForTimeout(5200)
+  await page.waitForTimeout(3200)
   await expect(page.locator('[data-scroll-hint="closed"]')).toBeVisible()
   await dispatchWheel(page, 24)
   await expect(page.locator('[data-scroll-hint]')).toHaveCount(0)
   await expect(page.locator('.hero-stage')).toHaveAttribute('data-scroll-hold', 'active')
-  await page.waitForTimeout(5200)
+  await page.waitForTimeout(3200)
   await expect(page.locator('[data-scroll-hint]')).toHaveCount(0)
 })
 
@@ -679,7 +706,68 @@ test('decoded sound pools vary without adjacent repeats and exclude a failed var
   expect(variants).toHaveLength(5)
   expect(variants).not.toContain('quantity-2.mp3')
   expect(variants.every((variant, index) => index === 0 || variant !== variants[index - 1])).toBe(true)
-  expect(new Set(variants)).toEqual(new Set(['quantity.mp3', 'quantity-3.mp3']))
+  expect(new Set(variants)).toEqual(new Set(['quantity.mp3', 'quantity-3.mp3', 'quantity-4.mp3']))
+})
+
+test('bird uses the inspected take on supported timber and reacts through one accurate control', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium')
+  await page.addInitScript(() => {
+    ;(window as typeof window & { __birdSounds?: string[] }).__birdSounds = []
+    window.addEventListener('farmstandsound', ((event: CustomEvent<{ name: string }>) => {
+      if (event.detail.name === 'bird') (window as typeof window & { __birdSounds?: string[] }).__birdSounds?.push(event.detail.name)
+    }) as EventListener)
+  })
+  await page.goto(projectPath, { waitUntil: 'networkidle' })
+  const scene = page.locator('.scene-host')
+  const bird = page.getByRole('button', { name: 'Hear the bird chirp' })
+  await expect(scene).toHaveAttribute('data-bird-state', 'ready')
+  await expect(scene).toHaveAttribute('data-bird-take', 'Take 001')
+  await dispatchWheel(page, 24)
+  await expect(page.locator('.hero-stage')).toHaveAttribute('data-opening-state', 'playing')
+  await page.keyboard.press('Escape')
+  await expect(scene).toHaveAttribute('data-bird-phase', 'perched')
+  await expect(scene).toHaveAttribute('data-bird-affects-apple', 'false')
+  expect(Number(await scene.getAttribute('data-bird-foot-contact-error'))).toBeLessThanOrEqual(0.001)
+  await expect(bird).toBeVisible()
+  const appleX = await scene.getAttribute('data-apple-x')
+  await page.mouse.click(8, 320)
+  await expect(page.locator('.sound-controls')).toHaveAttribute('data-sound-status', /ready|partial/, { timeout: 8000 })
+  await bird.click()
+  await expect(scene).toHaveAttribute('data-bird-phase', 'reacting')
+  await expect.poll(async () => page.evaluate(() => (window as typeof window & { __birdSounds?: string[] }).__birdSounds?.length)).toBe(1)
+  await expect(scene).toHaveAttribute('data-bird-phase', 'perched', { timeout: 1400 })
+  expect(await scene.getAttribute('data-apple-x')).toBe(appleX)
+  await page.waitForTimeout(700)
+  await bird.focus()
+  await page.keyboard.press('Enter')
+  await expect(scene).toHaveAttribute('data-bird-phase', 'reacting')
+})
+
+test('reduced motion keeps a stable keyboard-operable bird perch', async ({ browser }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium')
+  const context = await browser.newContext({ reducedMotion: 'reduce', viewport: { width: 390, height: 844 } })
+  const page = await context.newPage()
+  await page.goto(projectPath, { waitUntil: 'networkidle' })
+  const bird = page.getByRole('button', { name: 'Hear the bird chirp' })
+  await expect(bird).toBeVisible()
+  await expect(bird.locator('img')).toBeVisible()
+  await bird.focus()
+  await expect(bird).toBeFocused()
+  await context.close()
+})
+
+test('bird model failure keeps the static perch and accessible chirp control', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium')
+  await page.route('**/models/bird-orange/bird-orange.glb', (route) => route.abort())
+  await page.goto(projectPath, { waitUntil: 'networkidle' })
+  const scene = page.locator('.scene-host')
+  const bird = page.getByRole('button', { name: 'Hear the bird chirp' })
+  await expect(page.locator('.hero-stage')).toHaveClass(/hero-stage--ready/)
+  await expect(scene).toHaveAttribute('data-bird-state', 'static')
+  await expect(bird).toBeVisible()
+  await expect(bird.locator('img')).toBeVisible()
+  await bird.focus()
+  await expect(bird).toBeFocused()
 })
 
 test('failed actions stay silent while confirmed clear and copy use their own cues', async ({ page }) => {

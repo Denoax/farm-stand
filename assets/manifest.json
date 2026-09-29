@@ -97,17 +97,39 @@
         "public/media/transitions/leaves-animals-02-alpha.webm"
       ],
       "derivative_sha256": [
-        "6ca6c7120c42dcd06d57800413f2abe4d25752829d191e02956dd46137528ec0",
-        "d3cb7f96326c3162c253c0d6d8be7917daf293b7414d3f27194b52adab7e5b2e"
+        "6604211994391a7d08b4af7a81e7d5ea426c4dd86f84ea0b078e00ae415ccda6",
+        "b86f75338e57d33e0b64cdd2f0d68a1739e57cf407931d1c33f9da8e9bb3f7f5"
       ],
-      "transformation": "The inspected 1280x720 H.264 black-backed originals were decoded without their source audio, keyed with FFmpeg colorkey black similarity 0.10/blend 0.035, and VP9 alpha-encoded at 1280x720/30 fps. The key strength was selected after native-size light/dark composites to reduce the black edge without punching transparent holes in the verified cover. Transition 01 keeps native framing and commits during its verified fully opaque 3.20-3.80 s interval. Transition 02 uses a centered 1.9x aspect-preserving runtime crop; four consecutive decoded delivery frames from 1.900-2.000 s have minimum alpha 255 after final scaling/crop. The unused supplied Transition 03 master remains outside public delivery."
+      "transformation": "The inspected 1280x720 H.264 black-backed originals were decoded without source audio, keyed with FFmpeg colorkey black similarity 0.15/blend 0.045, given a one-pixel alpha-edge erosion to remove the remaining black matte rim, and VP9 alpha-encoded at 1280x720/30 fps. Native-size composites over cream, dark green and saturated blue were checked at multiple motion phases; this preserves the verified dark leaf interiors. Transition 01 keeps native framing and the 3.20-3.80 s commit window. Transition 02 retains its centered 1.9x runtime crop and 1.900-2.000 s commit window. The unused supplied Transition 03 master remains outside public delivery."
+    },
+    {
+      "id": "user_cleared_bird_orange",
+      "source": "User-supplied bird-orange.zip; USER-PROVIDED CLEARANCE. The archive contains no licence document, so no named public licence is claimed.",
+      "source_sha256": "515ce8cb21e6204196092ac2c19c2c379af4991b43f87cb510cca4022e6b23f9",
+      "source_files_sha256": [
+        "905f8848588f916f9cdb96842d1fa42e84e95bd46259f0713f8926b8cba1f87c",
+        "73edee3aa412c6fee970e28396f49b5e08ad262df29896874701ef9b5aec5035"
+      ],
+      "derivative_path": [
+        "public/models/bird-orange/bird-orange.glb",
+        "public/models/bird-orange/bird-orange-base-color.webp",
+        "public/media/bird-orange-perch.webp"
+      ],
+      "derivative_sha256": [
+        "7e4ad00149b0089531d8b027ea4fc546784c1d484f0eba009e03da45f9517e8e",
+        "6f602871ea448c0f54d0f1355da8a6e8f37f842777f62fdeb80b6b7a61aad80c",
+        "41c1c74f21686007fc127935e5de645fe0660e9ae13b6f49f161c4feeb6f6851"
+      ],
+      "transformation": "Pinned Three.js parsed the supplied FBX. The 40 exported skin bones and 86-track Take 001 were retained; one visible rig-control line was neutralized and five flat rear-feather components were omitted from the public camera derivative while the original FBX stayed untouched. The supplied RGB base colour was resized to 1024px WebP and explicitly remapped. Runtime authors only the missing world-space hop path and reuses Take 001 for restrained pose/head/jaw motion."
     },
     {
       "id": "pen_paper_sound_pool_variants",
-      "source": "Previously retained CC0 sources: clgood 688618 for pen strokes and OwlStorm 151220 for paper movements.",
+      "source": "Previously retained CC0 sources clgood 688618 and OwlStorm 151220, plus CC0 MrPugles 621965 pencil scratches and BenjaminNelan 353125 paper rustle for materially different fourth takes.",
       "source_sha256": [
         "79477ac60ffe65e65d2cb6aaeb3b657aff2a87dbbc80e1bcea40a9fa5391f7da",
-        "41f51725007894483999812091faf74d0d341092c0a24c55c0778fe245ea45f4"
+        "41f51725007894483999812091faf74d0d341092c0a24c55c0778fe245ea45f4",
+        "a89742db527bd06430cf41169f8895453db258f9df053bd5e5c03833a77f49ad",
+        "fbf05bd9ba67a9df8eff656e813881c7f1a754d7473388785b228b0ed62dc564"
       ],
       "variant_trim_seconds": {
         "add": ["3.776-3.936", "6.107-6.348"],
@@ -121,8 +143,18 @@
         "basket-close": ["0.250-0.550", "0.300-0.620"],
         "clear": ["0.000-0.400", "0.180-0.620"]
       },
-      "derivative_path_pattern": "public/audio/{action}-2.mp3 and public/audio/{action}-3.mp3; original named derivatives remain variant 1",
-      "transformation": "Each clean event was independently trimmed, band-limited to its established semantic family, edge-faded, mono 44.1 kHz and 96 kbps MP3 encoded, then level-matched within one action pool against its accepted first variant. Final per-file mean levels are within 1.8 dB inside each pool and no new derivative peaks above -1.0 dBFS. Runtime selection uses a per-action shuffled bag, prevents immediate repeats across refills, and excludes failed decodes. Exact derivative hashes and levels are retained in the local review evidence."
+      "derivative_path_pattern": "public/audio/{action}.mp3 through public/audio/{action}-4.mp3",
+      "transformation": "The established three-file pools remain intact and each role gains one non-overlapping fourth take from a second matching material source. Pen roles use discrete pencil gestures; paper roles use a separate natural sheet rustle, with settling roles reversed only where that matches the physical action. Runtime still uses the existing per-action shuffle bag, prevents immediate repeats across refills, and excludes failed decodes."
+    },
+    {
+      "id": "bird_and_leaf_motion_audio",
+      "source": "CC0 Freesound recordings: se2001 510314 Happy Bird Chirp and TRP 575223 Dry leaf.",
+      "source_sha256": [
+        "26486542835310395435656bf1c5c3d2eaad1d600e99cdaa8109e0fa9788c1e4",
+        "62899ab35a505d6511c9c71e1cdb1efd5680271c9de2e5b6f0f4b62c63377170"
+      ],
+      "derivative_path": "public/audio/bird-chirp*.mp3, public/audio/leaves-*-bed.mp3 and public/audio/leaf-accent-*.mp3",
+      "transformation": "Three short non-species-labelled chirps are non-overlapping trims with edge fades and restrained loudness. Each exact leaf video has a quiet filtered rustle bed plus a three-file dry overlap-accent pool. Playback crosses cue times from decoded video mediaTime, once per run, and fades/stops on reveal, interruption, failure, hidden tab or unmount."
     },
     {
       "id": "market_opening_open_stand_plates",

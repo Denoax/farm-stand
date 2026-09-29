@@ -6,7 +6,7 @@ import { promisify } from 'node:util'
 
 const run = promisify(execFile)
 const baseURL = process.env.BASE_URL ?? 'http://127.0.0.1:4173/farm-stand/'
-const evidenceDir = path.resolve('evidence/video-bird/review/audio')
+const evidenceDir = path.resolve(process.env.EVIDENCE_ROOT ?? 'evidence/video-bird/review/audio')
 const rawDir = path.join(evidenceDir, 'raw')
 await fs.mkdir(rawDir, { recursive: true })
 
