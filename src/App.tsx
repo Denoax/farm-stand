@@ -691,7 +691,7 @@ export function App() {
           <TryUpdate />
         </section>
 
-        <ContactPreview />
+        <ContactPreview onInterfaceSound={soundscape.playCommerce} />
       </main>
 
       {(['entering', 'covered', 'clearing'] as LeafPhase[]).includes(leafState as LeafPhase) && (

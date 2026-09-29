@@ -88,22 +88,22 @@ function BasketDialog({ basket, dispatch, open, onClose, onSound, returnFocus }:
                 </li>
               ))}
             </ul>
-            {!collectionOpen ? <button className="text-button" type="button" onClick={() => setCollectionOpen(true)}>Choose an example collection time</button> : (
+            {!collectionOpen ? <button className="text-button" type="button" onClick={() => { setCollectionOpen(true); onSound('details-open') }}>Choose an example collection time</button> : (
               <div className="collection-preview" data-testid="collection-preview">
                 <p className="eyebrow">Example collection choices</p>
-                <fieldset><legend>Choose an illustrative period</legend><label><input type="radio" name="collection" defaultChecked /> Weekday stand · example 3–6 pm</label><label><input type="radio" name="collection" /> Saturday pickup · example 9 am–1 pm</label></fieldset>
+                <fieldset><legend>Choose an illustrative period</legend><label><input type="radio" name="collection" defaultChecked onChange={() => onSound('filter')} /> Weekday stand · example 3–6 pm</label><label><input type="radio" name="collection" onChange={() => onSound('filter')} /> Saturday pickup · example 9 am–1 pm</label></fieldset>
                 <p className="collection-basket-note">Changing this preview never removes, substitutes, or reprices basket items. A real shop would re-check availability and ask before changing a basket.</p>
-                <button className="button button--ink" type="button" onClick={() => setCollectionPreview(true)}>Save this preview</button>
+                <button className="button button--ink" type="button" onClick={() => { if (!collectionPreview) onSound('confirm'); setCollectionPreview(true) }}>Save this preview</button>
                 {collectionPreview && <p className="collection-result" role="status"><strong>Preview only.</strong> Nothing was sent, and no stock or collection time was reserved.</p>}
               </div>
             )}
-            <div className="reset-basket">{!confirmReset ? <button className="text-button text-button--danger" type="button" onClick={() => setConfirmReset(true)}>Clear demonstration basket</button> : <div role="group" aria-label="Confirm clearing the basket"><span>Remove every item?</span><button type="button" onClick={() => { dispatch({ type: 'reset' }); setRemovedLine(null); setConfirmReset(false); onSound('remove') }}>Yes, clear it</button><button type="button" onClick={() => setConfirmReset(false)}>Keep items</button></div>}</div>
+            <div className="reset-basket">{!confirmReset ? <button className="text-button text-button--danger" type="button" onClick={() => setConfirmReset(true)}>Clear demonstration basket</button> : <div role="group" aria-label="Confirm clearing the basket"><span>Remove every item?</span><button type="button" onClick={() => { dispatch({ type: 'reset' }); setRemovedLine(null); setConfirmReset(false); onSound('clear') }}>Yes, clear it</button><button type="button" onClick={() => setConfirmReset(false)}>Keep items</button></div>}</div>
           </>
         )}
       </div>
       <div className="basket-drawer__footer">
         <div className="basket-total"><span>Illustrative subtotal · CAD</span><strong>{formatSampleCad(basketSubtotal(basket))}</strong></div>
-        <button className="button button--sun" type="button" disabled={!lines.length} onClick={() => setCollectionOpen(true)}>Preview collection</button>
+        <button className="button button--sun" type="button" disabled={!lines.length} onClick={() => { if (!collectionOpen) onSound('details-open'); setCollectionOpen(true) }}>Preview collection</button>
       </div>
     </dialog>
   )
@@ -225,8 +225,16 @@ export function ShopSection({ basket, dispatch, focusRequest, marketReady, onCom
   }, [])
 
   const selectFilter = (next: BrowseFilter) => {
+    if (next === filter && produceGroup === 'all') return
     setFilter(next)
     setProduceGroup('all')
+    onCommerceSound('filter')
+  }
+
+  const selectProduceGroup = (next: 'all' | ProduceGroup) => {
+    if (next === produceGroup) return
+    setProduceGroup(next)
+    onCommerceSound('filter')
   }
 
   const selectedVariant = (product: Product, preferred?: string) => preferred ?? cardVariants[product.id] ?? product.variants?.[0]?.id
@@ -253,11 +261,17 @@ export function ShopSection({ basket, dispatch, focusRequest, marketReady, onCom
     setDetailVariant(selectedVariant(product))
     setDetailProduct(product)
     setBasketPreviewOpen(false)
-    onCommerceSound('details')
+    onCommerceSound('details-open')
   }
 
   const closeDetails = () => detailDialogRef.current?.close()
-  const clearBrowse = () => { setFilter('featured'); setProduceGroup('all'); setQuery('') }
+  const clearBrowse = () => {
+    if (filter === 'featured' && produceGroup === 'all' && !query) return
+    setFilter('featured')
+    setProduceGroup('all')
+    setQuery('')
+    onCommerceSound('filter')
+  }
   const toggleBasketPreview = () => {
     setBasketFeedback(null)
     setBasketPreviewOpen(!basketPreviewOpen)
@@ -278,9 +292,29 @@ export function ShopSection({ basket, dispatch, focusRequest, marketReady, onCom
 
   return (
     <section className="catalogue" id="shop" aria-labelledby="shop-heading">
-      <div className="market-clipboard">
-        <span className="market-clipboard__clip" aria-hidden="true"><i /></span>
-        <div className="market-clipboard__paper">
+      <div className="market-notebook">
+        <svg className="market-notebook__binding" aria-hidden="true" width="52" height="100%">
+          <defs>
+            <linearGradient id="notebook-metal" x1="0" x2="1">
+              <stop offset="0" stopColor="#555b57" />
+              <stop offset=".28" stopColor="#e4e5de" />
+              <stop offset=".56" stopColor="#8f9691" />
+              <stop offset=".78" stopColor="#f4f2e9" />
+              <stop offset="1" stopColor="#5d625e" />
+            </linearGradient>
+            <pattern id="notebook-loop-pattern" width="52" height="88" patternUnits="userSpaceOnUse">
+              <ellipse cx="39" cy="21" rx="4.6" ry="3.1" fill="#665f50" opacity=".62" />
+              <ellipse cx="39" cy="39" rx="4.6" ry="3.1" fill="#665f50" opacity=".62" />
+              <ellipse cx="39" cy="55" rx="4.6" ry="3.1" fill="#665f50" opacity=".62" />
+              <ellipse cx="39" cy="73" rx="4.6" ry="3.1" fill="#665f50" opacity=".62" />
+              <path d="M40 21C9 20 8 40 40 39M40 55C9 54 8 74 40 73" fill="none" stroke="#3e423f" strokeWidth="5.6" strokeLinecap="round" opacity=".42" transform="translate(1 1.6)" />
+              <path d="M40 21C9 20 8 40 40 39M40 55C9 54 8 74 40 73" fill="none" stroke="url(#notebook-metal)" strokeWidth="3.2" strokeLinecap="round" />
+              <path d="M39 20.6C13 20 12 37 39 38.6M39 54.6C13 54 12 71 39 72.6" fill="none" stroke="rgb(255 255 255 / .62)" strokeWidth=".72" strokeLinecap="round" />
+            </pattern>
+          </defs>
+          <rect width="52" height="100%" fill="url(#notebook-loop-pattern)" />
+        </svg>
+        <div className="market-notebook__paper">
       <div className="section-intro catalogue-intro">
         <div><p className="eyebrow">Demonstration market</p><h2 id="shop-heading">Shop the stand.</h2></div>
         <div className="catalogue-summary"><p>Browse 48 photographed examples across the market. Prices and availability are illustrative; nothing can be ordered here.</p></div>
@@ -294,7 +328,7 @@ export function ShopSection({ basket, dispatch, focusRequest, marketReady, onCom
             return <button key={category.id} type="button" aria-pressed={filter === category.id} onClick={() => selectFilter(category.id)}><span>{category.label}</span><small>{count}</small></button>
           })}
         </div>
-        {filter === 'fruit-and-veg' && <div className="produce-groups" aria-label="Filter fruit and vegetables"><button type="button" aria-pressed={produceGroup === 'all'} onClick={() => setProduceGroup('all')}>All 28</button><button type="button" aria-pressed={produceGroup === 'fruit'} onClick={() => setProduceGroup('fruit')}>Fruit 16</button><button type="button" aria-pressed={produceGroup === 'vegetable'} onClick={() => setProduceGroup('vegetable')}>Vegetables 12</button></div>}
+        {filter === 'fruit-and-veg' && <div className="produce-groups" aria-label="Filter fruit and vegetables"><button type="button" aria-pressed={produceGroup === 'all'} onClick={() => selectProduceGroup('all')}>All 28</button><button type="button" aria-pressed={produceGroup === 'fruit'} onClick={() => selectProduceGroup('fruit')}>Fruit 16</button><button type="button" aria-pressed={produceGroup === 'vegetable'} onClick={() => selectProduceGroup('vegetable')}>Vegetables 12</button></div>}
         <div className="market-results"><p role="status"><strong>{visibleProducts.length}</strong> {visibleProducts.length === 1 ? 'item' : 'items'} shown</p>{(filter !== 'featured' || produceGroup !== 'all' || query) && <button className="text-button" type="button" onClick={clearBrowse}>Clear and show market picks</button>}</div>
       </div>
 
@@ -308,7 +342,7 @@ export function ShopSection({ basket, dispatch, focusRequest, marketReady, onCom
                 <div className="product-card__heading"><div><p className="product-unit">{product.unit}</p><h3>{product.name}</h3></div><strong>{formatSampleCad(product.samplePriceMinor)} <small>CAD sample</small></strong></div>
                 <p>{product.shortDescription}</p><span className="availability" data-available={product.available}>{product.availability}</span>
                 {product.boxContents && <p className="box-contents"><strong>Shown in this box:</strong> {product.boxContents.join(', ')}.</p>}
-                <VariantSelect product={product} value={variant} onChange={(value) => setCardVariants((current) => ({ ...current, [product.id]: value }))} suffix="card" />
+                <VariantSelect product={product} value={variant} onChange={(value) => { setCardVariants((current) => ({ ...current, [product.id]: value })); onCommerceSound('filter') }} suffix="card" />
                 <div className="product-actions"><button className="text-button" type="button" onClick={(event) => openDetails(product, event.currentTarget)}>View details</button><button className="button button--ink" type="button" disabled={!product.available} onClick={() => add(product, variant)}>{product.available ? 'Add to basket' : 'Unavailable example'}</button></div>
               </div>
             </article>
@@ -316,6 +350,8 @@ export function ShopSection({ basket, dispatch, focusRequest, marketReady, onCom
         })}
       </div> : <div className="market-empty" role="status"><h3>No market items match.</h3><p>Try a shorter search or reset the browse controls.</p><button className="button button--ink" type="button" onClick={clearBrowse}>Show market picks</button></div>}
         </div>
+        <span className="market-notebook__wood-tab market-notebook__wood-tab--left" aria-hidden="true" />
+        <span className="market-notebook__wood-tab market-notebook__wood-tab--right" aria-hidden="true" />
       </div>
 
       <button
@@ -351,8 +387,8 @@ export function ShopSection({ basket, dispatch, focusRequest, marketReady, onCom
       <p className="visually-hidden" aria-live="polite">{announcement}</p>
       {basketFeedback && !basketOpen && !basketPreviewOpen && !detailProduct && <div className="basket-feedback" aria-label="Basket update"><p><strong>{basketFeedback.product.name}{basketFeedback.variantLabel ? ` · ${basketFeedback.variantLabel}` : ''}</strong> {basketFeedback.message}</p><div><button className="text-button" type="button" onClick={openFullBasket}>View basket</button><button className="icon-button" type="button" aria-label="Dismiss basket update" onClick={() => setBasketFeedback(null)}>×</button></div></div>}
 
-      <dialog className="product-dialog" ref={detailDialogRef} aria-labelledby={detailProduct ? `detail-${detailProduct.id}` : undefined} onClose={() => { setDetailProduct(null); detailTriggerRef.current?.focus() }}>
-        {detailProduct && <><button className="icon-button dialog-close" type="button" onClick={closeDetails} aria-label="Close product details">×</button><ProductPicture product={detailProduct} eager /><div className="product-dialog__copy"><p className="eyebrow">{detailProduct.unit}</p><h2 id={`detail-${detailProduct.id}`}>{detailProduct.name}</h2><p>{detailProduct.detail}</p><p><strong>{detailProduct.availability}</strong></p>{detailProduct.boxContents && <p><strong>Shown in this box:</strong> {detailProduct.boxContents.join(', ')}.</p>}<VariantSelect product={detailProduct} value={detailVariant} onChange={setDetailVariant} suffix="detail" />{basketFeedback?.product.id === detailProduct.id && <p className="product-add-note" role="status"><strong>{basketFeedback.variantLabel ? `${basketFeedback.variantLabel}: ` : ''}</strong>{basketFeedback.message}</p>}<div className="product-dialog__footer"><span>{formatSampleCad(detailProduct.samplePriceMinor)} CAD · illustrative sample price</span><div className="product-dialog__actions"><button className="button button--ink" type="button" disabled={!detailProduct.available} onClick={() => add(detailProduct, detailVariant)}>{detailProduct.available ? 'Add to demonstration basket' : 'Unavailable example'}</button></div></div></div></>}
+      <dialog className="product-dialog" ref={detailDialogRef} aria-labelledby={detailProduct ? `detail-${detailProduct.id}` : undefined} onClose={() => { if (detailProduct) onCommerceSound('details-close'); setDetailProduct(null); detailTriggerRef.current?.focus() }}>
+        {detailProduct && <><button className="icon-button dialog-close" type="button" onClick={closeDetails} aria-label="Close product details">×</button><ProductPicture product={detailProduct} eager /><div className="product-dialog__copy"><p className="eyebrow">{detailProduct.unit}</p><h2 id={`detail-${detailProduct.id}`}>{detailProduct.name}</h2><p>{detailProduct.detail}</p><p><strong>{detailProduct.availability}</strong></p>{detailProduct.boxContents && <p><strong>Shown in this box:</strong> {detailProduct.boxContents.join(', ')}.</p>}<VariantSelect product={detailProduct} value={detailVariant} onChange={(value) => { setDetailVariant(value); onCommerceSound('filter') }} suffix="detail" />{basketFeedback?.product.id === detailProduct.id && <p className="product-add-note" role="status"><strong>{basketFeedback.variantLabel ? `${basketFeedback.variantLabel}: ` : ''}</strong>{basketFeedback.message}</p>}<div className="product-dialog__footer"><span>{formatSampleCad(detailProduct.samplePriceMinor)} CAD · illustrative sample price</span><div className="product-dialog__actions"><button className="button button--ink" type="button" disabled={!detailProduct.available} onClick={() => add(detailProduct, detailVariant)}>{detailProduct.available ? 'Add to demonstration basket' : 'Unavailable example'}</button></div></div></div></>}
       </dialog>
 
       <BasketDialog basket={basket} dispatch={dispatch} open={basketOpen} onClose={() => { setBasketOpen(false); onCommerceSound('basket-close') }} onSound={onCommerceSound} returnFocus={basketTriggerRef} />

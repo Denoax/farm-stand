@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
+import type { CommerceSound } from '../audio/useSoundscape'
 
-export function ContactPreview() {
+export function ContactPreview({ onInterfaceSound }: { onInterfaceSound: (kind: CommerceSound) => boolean }) {
   const [brief, setBrief] = useState('')
   const [copied, setCopied] = useState(false)
   const summaryRef = useRef<HTMLPreElement>(null)
@@ -13,6 +14,7 @@ export function ContactPreview() {
     try {
       await navigator.clipboard.writeText(summary)
       setCopied(true)
+      onInterfaceSound('confirm')
     } catch {
       const selection = window.getSelection()
       const range = document.createRange()

@@ -971,43 +971,63 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
   .farm-profile__image { transform: none !important; }
 }
 
-/* One continuous clipboard surface for the market. */
+/* One continuous spiral-bound workbook surface for the market. */
 .catalogue { background: #d8d1bd; }
-.market-clipboard {
+.market-notebook {
   position: relative;
-  padding: clamp(.55rem, 1vw, .8rem);
-  border: 1px solid rgb(55 31 15 / .5);
-  border-radius: .42rem;
-  background: #70452b url('/media/materials/rough-wood-b-diff.jpg') center / 34rem auto repeat;
-  box-shadow: inset .18rem .16rem .28rem rgb(255 225 177 / .14), 0 1.2rem 3rem rgb(38 39 25 / .2);
+  isolation: isolate;
+  padding: .28rem .58rem .72rem 2.35rem;
+  border-radius: .2rem .42rem .48rem .2rem;
+  background: #b9935e;
+  box-shadow: 0 1.2rem 3rem rgb(38 39 25 / .18), .2rem .35rem 0 #927044;
 }
-.market-clipboard__paper {
+.market-notebook::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  inset: .52rem .22rem .36rem 2.55rem;
+  border-right: 1px solid rgb(105 82 50 / .24);
+  border-bottom: 1px solid rgb(105 82 50 / .28);
+  box-shadow: .18rem .2rem 0 #eee5d1, .34rem .38rem 0 #d9cbb1;
+  pointer-events: none;
+}
+.market-notebook__paper {
   position: relative;
+  z-index: 1;
   min-height: 30rem;
-  padding: clamp(3.3rem, 5vw, 5rem) clamp(1rem, 4.3vw, 4.3rem) clamp(2.5rem, 5vw, 4.8rem);
-  background: #fffaf0;
-  box-shadow: inset 0 0 0 1px rgb(119 104 77 / .12), inset 0 0 4rem rgb(111 91 55 / .035);
+  padding: clamp(3.2rem, 4.5vw, 4.4rem) clamp(1rem, 4.1vw, 4.1rem) clamp(2.7rem, 4.8vw, 4.5rem);
+  background:
+    linear-gradient(90deg, rgb(182 96 73 / .13) 0 1px, transparent 1px) 2rem 0 / 100% 100% no-repeat,
+    repeating-linear-gradient(180deg, transparent 0 2.05rem, rgb(81 124 129 / .075) 2.05rem calc(2.05rem + 1px)),
+    #fffaf0;
+  box-shadow: inset 0 0 0 1px rgb(119 104 77 / .11), inset 0 0 4rem rgb(111 91 55 / .032);
 }
-.market-clipboard__clip {
+.market-notebook__binding {
   position: absolute;
   z-index: 3;
-  top: -.42rem;
-  left: 50%;
-  width: clamp(5.6rem, 8vw, 7.2rem);
-  height: 2.15rem;
-  border: 1px solid #5f625e;
-  border-radius: .55rem .55rem .28rem .28rem;
-  background: linear-gradient(180deg, #d9dbd4, #8d928d 48%, #5d625f 51%, #a9ada7);
-  box-shadow: inset 0 .12rem .18rem rgb(255 255 255 / .55), 0 .25rem .45rem rgb(32 30 24 / .28);
-  transform: translateX(-50%);
+  top: 1.2rem;
+  bottom: 1rem;
+  left: -.14rem;
+  width: 3.25rem;
+  height: calc(100% - 2.2rem);
+  overflow: visible;
+  filter: drop-shadow(.12rem .16rem .1rem rgb(44 42 34 / .24));
+  pointer-events: none;
 }
-.market-clipboard__clip i {
+.market-notebook__wood-tab {
   position: absolute;
-  inset: .48rem 1.05rem .34rem;
-  border: 1px solid #666a66;
-  border-radius: .2rem;
-  background: linear-gradient(180deg, #b8bcb6, #707570);
+  z-index: 0;
+  bottom: -.48rem;
+  width: clamp(2.5rem, 4vw, 3.7rem);
+  height: .84rem;
+  clip-path: polygon(4% 0, 96% 5%, 89% 88%, 68% 100%, 9% 82%, 0 24%);
+  background: linear-gradient(rgb(143 91 49 / .42), rgb(98 58 30 / .62)), url('/media/materials/rough-wood-b-diff.jpg') center / 11rem auto;
+  background-blend-mode: color, normal;
+  box-shadow: 0 .24rem .34rem rgb(48 35 21 / .2);
+  pointer-events: none;
 }
+.market-notebook__wood-tab--left { left: 8%; transform: rotate(1.6deg); }
+.market-notebook__wood-tab--right { right: 7%; transform: rotate(-1.3deg); }
 .floating-basket {
   position: fixed;
   z-index: 19;
@@ -1068,11 +1088,7 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
   width: 2.75rem;
   height: 2.75rem;
   padding: 0;
-  border: 1px solid rgb(255 255 255 / .32);
-  border-radius: 50%;
   color: #fffdf7;
-  background: var(--action);
-  box-shadow: 0 .35rem 1rem rgb(8 24 17 / .18);
 }
 .sound-controls button {
   display: grid;
@@ -1081,13 +1097,15 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
   height: 2.75rem;
   padding: 0;
   border: 0;
-  border-radius: 999px;
+  border-radius: .32rem;
   color: inherit;
   background: transparent;
   cursor: pointer;
 }
-.sound-controls button:hover { background: var(--action-hover); }
+.sound-controls button:hover { color: #fee59a; background: transparent; }
+.sound-controls button:focus-visible { outline: 2px solid #fffdf7; outline-offset: -3px; }
 .sound-controls button[aria-pressed="true"] { color: #fff3bd; }
+.sound-controls svg { display: block; transform: translateY(.02rem); }
 
 .leaf-handoff {
   position: fixed;
@@ -1124,7 +1142,19 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
 @media (max-width: 760px) {
   .header-brand { gap: .45rem; }
   .sound-controls, .sound-controls button { width: 2.65rem; height: 2.65rem; }
-  .market-clipboard__paper { padding: 3rem .72rem 2rem; }
+  .market-notebook { padding: .22rem .38rem .62rem 1.55rem; }
+  .market-notebook::after { inset: .45rem .14rem .3rem 1.72rem; }
+  .market-notebook__paper {
+    padding: 2.8rem .72rem 2.25rem;
+    background:
+      linear-gradient(90deg, rgb(182 96 73 / .11) 0 1px, transparent 1px) 1rem 0 / 100% 100% no-repeat,
+      repeating-linear-gradient(180deg, transparent 0 2rem, rgb(81 124 129 / .07) 2rem calc(2rem + 1px)),
+      #fffaf0;
+  }
+  .market-notebook__binding { left: -.6rem; }
+  .market-notebook__wood-tab { bottom: -.42rem; width: 2.2rem; height: .72rem; }
+  .market-notebook__wood-tab--left { left: 9%; }
+  .market-notebook__wood-tab--right { right: 7%; }
   .catalogue { padding-inline: .55rem; }
   .mini-basket { right: .75rem; bottom: calc(max(.75rem, env(safe-area-inset-bottom)) + 4.2rem); width: calc(100vw - 1.5rem); }
   .floating-basket { right: max(.75rem, env(safe-area-inset-right)); bottom: max(.75rem, env(safe-area-inset-bottom)); }

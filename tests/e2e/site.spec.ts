@@ -49,6 +49,59 @@ test('project-path build loads the opening and keeps entrance links usable', asy
   expect(failedResponses).toEqual([])
 })
 
+test('market is one normal-flow spiral notebook and the speaker rests as an aligned glyph', async ({ page }) => {
+  await page.goto(`${projectPath}#shop`, { waitUntil: 'networkidle' })
+  await expect(page.locator('.market-notebook')).toHaveCount(1)
+  await expect(page.locator('.market-notebook__binding')).toHaveCount(1)
+  await expect(page.locator('.market-notebook__wood-tab')).toHaveCount(2)
+  await expect(page.locator('.market-clipboard, .market-clipboard__clip')).toHaveCount(0)
+  const notebook = await page.locator('.market-notebook').evaluate((element) => {
+    const rect = element.getBoundingClientRect()
+    const paper = element.querySelector('.market-notebook__paper') as HTMLElement
+    const tabs = [...element.querySelectorAll('.market-notebook__wood-tab')].map((tab) => tab.getBoundingClientRect())
+    return {
+      overflow: getComputedStyle(element).overflowY,
+      ruled: getComputedStyle(paper).backgroundImage.includes('repeating-linear-gradient'),
+      tabs: tabs.map((tab) => ({ left: tab.left, right: tab.right, top: tab.top, bottom: tab.bottom })),
+      bottom: rect.bottom,
+    }
+  })
+  expect(notebook.overflow).not.toBe('scroll')
+  expect(notebook.ruled).toBe(true)
+  expect(notebook.tabs[0].right).toBeLessThan(notebook.tabs[1].left)
+  expect(notebook.tabs.every((tab) => tab.top < notebook.bottom && tab.bottom > notebook.bottom - 12)).toBe(true)
+
+  await page.evaluate(() => scrollTo(0, 0))
+  const header = await page.locator('.header-brand').evaluate((element) => {
+    const logo = element.querySelector('.wordmark')!.getBoundingClientRect()
+    const control = element.querySelector('.sound-controls') as HTMLElement
+    const button = control.querySelector('button') as HTMLElement
+    const buttonRect = button.getBoundingClientRect()
+    const controlStyle = getComputedStyle(control)
+    const buttonStyle = getComputedStyle(button)
+    return {
+      centerDelta: Math.abs((logo.top + logo.height / 2) - (buttonRect.top + buttonRect.height / 2)),
+      width: buttonRect.width,
+      height: buttonRect.height,
+      controlBackground: controlStyle.backgroundColor,
+      controlBorder: controlStyle.borderTopWidth,
+      buttonBackground: buttonStyle.backgroundColor,
+      buttonBorder: buttonStyle.borderTopWidth,
+      buttonShadow: buttonStyle.boxShadow,
+    }
+  })
+  expect(header.centerDelta).toBeLessThanOrEqual(1)
+  expect(header.width).toBeGreaterThanOrEqual(42)
+  expect(header.height).toBeGreaterThanOrEqual(42)
+  expect(header.controlBackground).toBe('rgba(0, 0, 0, 0)')
+  expect(header.controlBorder).toBe('0px')
+  expect(header.buttonBackground).toBe('rgba(0, 0, 0, 0)')
+  expect(header.buttonBorder).toBe('0px')
+  expect(header.buttonShadow).toBe('none')
+  await page.locator('.music-toggle').focus()
+  expect(await page.locator('.music-toggle').evaluate((button) => getComputedStyle(button).outlineStyle)).not.toBe('none')
+})
+
 test('opening starts on meaningful downward intent, fades during the hold, escapes, and stays complete', async ({ page }) => {
   await page.goto(projectPath)
   const stage = page.locator('.hero-stage')
@@ -512,7 +565,7 @@ test('audio file failure degrades to partial sound without blocking navigation',
   await expect(page.getByRole('heading', { name: 'Shop the stand.' })).toBeVisible()
 })
 
-test('commerce actions have distinct cues without a duplicate generic click', async ({ page }) => {
+test('interface actions have distinct pen and paper cues without a duplicate generic click', async ({ page }) => {
   await page.addInitScript(() => {
     ;(window as typeof window & { __heardSounds?: Array<{ name: string; gain: number }> }).__heardSounds = []
     window.addEventListener('farmstandsound', ((event: CustomEvent<{ name: string; gain: number }>) => {
@@ -524,6 +577,7 @@ test('commerce actions have distinct cues without a duplicate generic click', as
   await expect(page.locator('.sound-controls')).toHaveAttribute('data-sound-status', /ready|partial/, { timeout: 8000 })
   await page.evaluate(() => { (window as typeof window & { __heardSounds?: unknown[] }).__heardSounds = [] })
 
+  await page.getByRole('button', { name: /^Fruit & veg 28/ }).click()
   const apple = page.locator('#product-apple')
   await apple.getByRole('button', { name: 'View details' }).click()
   await page.getByRole('dialog', { name: /Orchard apples/ }).getByRole('button', { name: 'Close product details' }).click()
@@ -533,11 +587,45 @@ test('commerce actions have distinct cues without a duplicate generic click', as
   await drawer.getByRole('button', { name: 'Remove' }).click()
 
   const names = await page.evaluate(() => ((window as typeof window & { __heardSounds?: Array<{ name: string }> }).__heardSounds ?? []).map(({ name }) => name))
-  expect(names.filter((name) => name === 'details')).toHaveLength(1)
+  expect(names.filter((name) => name === 'filter')).toHaveLength(1)
+  expect(names.filter((name) => name === 'details-open')).toHaveLength(1)
+  expect(names.filter((name) => name === 'details-close')).toHaveLength(1)
   expect(names.filter((name) => name === 'add')).toHaveLength(1)
   expect(names.filter((name) => name === 'quantity')).toHaveLength(1)
   expect(names.filter((name) => name === 'remove')).toHaveLength(1)
   expect(names).not.toContain('ui')
+})
+
+test('failed actions stay silent while confirmed clear and copy use their own cues', async ({ page }) => {
+  await page.addInitScript(() => {
+    ;(window as typeof window & { __heardSounds?: string[] }).__heardSounds = []
+    window.addEventListener('farmstandsound', ((event: CustomEvent<{ name: string }>) => {
+      ;(window as typeof window & { __heardSounds?: string[] }).__heardSounds?.push(event.detail.name)
+    }) as EventListener)
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => undefined } })
+  })
+  await page.goto(`${projectPath}#shop`)
+  await page.evaluate(() => sessionStorage.setItem('farm-stand-demo-basket-v2', JSON.stringify({ version: 2, lines: { apple: 12 } })))
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.mouse.click(8, 320)
+  await expect(page.locator('.sound-controls')).toHaveAttribute('data-sound-status', /ready|partial/, { timeout: 8000 })
+  await page.evaluate(() => { (window as typeof window & { __heardSounds?: string[] }).__heardSounds = [] })
+
+  await page.locator('#product-apple').getByRole('button', { name: 'Add to basket' }).click()
+  await page.getByRole('button', { name: /^Market picks 12/ }).click()
+  expect(await page.evaluate(() => (window as typeof window & { __heardSounds?: string[] }).__heardSounds)).toEqual([])
+
+  const drawer = await openFullBasket(page, 12)
+  await drawer.getByRole('button', { name: 'Clear demonstration basket' }).click()
+  expect(await page.evaluate(() => (window as typeof window & { __heardSounds?: string[] }).__heardSounds?.filter((name) => name === 'clear'))).toEqual([])
+  await drawer.getByRole('button', { name: 'Yes, clear it' }).click()
+  await expect.poll(async () => page.evaluate(() => (window as typeof window & { __heardSounds?: string[] }).__heardSounds?.filter((name) => name === 'clear'))).toEqual(['clear'])
+  await drawer.getByRole('button', { name: 'Continue browsing' }).click()
+
+  await page.locator('#contact').scrollIntoViewIfNeeded()
+  await page.getByRole('button', { name: 'Copy website brief' }).click()
+  await expect(page.getByRole('button', { name: 'Brief copied' })).toBeVisible()
+  await expect.poll(async () => page.evaluate(() => (window as typeof window & { __heardSounds?: string[] }).__heardSounds?.filter((name) => name === 'confirm'))).toEqual(['confirm'])
 })
 
 test('basket transitions emit one semantic open or close cue without a mini-to-full close', async ({ page }) => {

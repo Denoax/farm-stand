@@ -14,6 +14,7 @@
     "capture:finish": "node scripts/capture-permanent-frame.mjs",
     "capture:brighter": "node scripts/capture-brighter-stage.mjs",
     "capture:brighter-sound": "node scripts/capture-brighter-sound.mjs",
+    "capture:notebook-sound": "node scripts/capture-notebook-sound.mjs",
     "capture:brighter-safeguards": "node scripts/capture-brighter-safeguards.mjs",
     "capture:frame-guides": "node scripts/capture-frame-guides.mjs",
     "capture:v24": "node scripts/capture-v24-evidence.mjs",

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 export type AnimalSound = 'hens' | 'cattle' | 'sheep'
-export type CommerceSound = 'add' | 'details' | 'quantity' | 'remove' | 'basket-open' | 'basket-close'
+export type CommerceSound = 'add' | 'quantity' | 'details-open' | 'details-close' | 'filter' | 'remove' | 'clear' | 'basket-open' | 'basket-close' | 'confirm'
 type EffectName = AnimalSound | CommerceSound | 'shutter' | 'leaves'
 type SoundStatus = 'silent' | 'loading' | 'ready' | 'partial'
 
@@ -29,11 +29,27 @@ const EFFECT_URLS: Record<EffectName, string> = {
   cattle: publicAsset('audio/cattle-low.mp3'),
   sheep: publicAsset('audio/sheep-bleat.mp3'),
   add: publicAsset('audio/add.mp3'),
-  details: publicAsset('audio/details.mp3'),
   quantity: publicAsset('audio/quantity.mp3'),
+  'details-open': publicAsset('audio/details.mp3'),
+  'details-close': publicAsset('audio/details-close.mp3'),
+  filter: publicAsset('audio/filter.mp3'),
   remove: publicAsset('audio/remove.mp3'),
+  clear: publicAsset('audio/clear.mp3'),
   'basket-open': publicAsset('audio/basket-open.mp3'),
   'basket-close': publicAsset('audio/basket-close.mp3'),
+  confirm: publicAsset('audio/confirm.mp3'),
+}
+const INTERFACE_GAINS: Record<CommerceSound, number> = {
+  add: .58,
+  quantity: .44,
+  'details-open': .5,
+  'details-close': .46,
+  filter: .42,
+  remove: .54,
+  clear: .5,
+  'basket-open': .56,
+  'basket-close': .48,
+  confirm: .46,
 }
 const MUSIC_URL = publicAsset('audio/morning-bed.mp3')
 const MUSIC_MUTE_KEY = 'farm-stand-music-muted-v1'
@@ -66,7 +82,7 @@ class SoundscapeController {
   private voices = new Set<Voice>()
   private animalVoice?: Voice
   private shutterVoice?: Voice
-  private basketVoice?: Voice
+  private interfaceVoice?: Voice
   private musicAttempt = 0
   private loadPromise?: Promise<void>
   private lastAnimalAt = new Map<AnimalSound, number>()
@@ -92,7 +108,7 @@ class SoundscapeController {
     this.master.gain.value = 0.82
     this.musicGain.gain.value = MUSIC_GAIN
     this.effectsGain.gain.value = 0.62
-    this.uiGain.gain.value = 0.34
+    this.uiGain.gain.value = 0.58
     this.musicGain.connect(this.master)
     this.effectsGain.connect(this.master)
     this.uiGain.connect(this.master)
@@ -242,15 +258,12 @@ class SoundscapeController {
 
   playCommerce(kind: CommerceSound) {
     const now = performance.now()
-    const cooldown = kind === 'quantity' ? 70 : 120
+    const cooldown = kind === 'quantity' ? 70 : kind === 'filter' ? 100 : 120
     if (now - (this.lastCommerceAt.get(kind) ?? -Infinity) < cooldown) return false
     this.lastCommerceAt.set(kind, now)
-    if (kind === 'basket-open' || kind === 'basket-close') {
-      this.stopVoice(this.basketVoice, 0.025)
-      this.basketVoice = this.startVoice(kind, 'ui', 0.42)
-      return Boolean(this.basketVoice)
-    }
-    return Boolean(this.startVoice(kind, 'ui', kind === 'remove' ? .54 : .48))
+    this.stopVoice(this.interfaceVoice, kind === 'quantity' ? .012 : .022)
+    this.interfaceVoice = this.startVoice(kind, 'ui', INTERFACE_GAINS[kind])
+    return Boolean(this.interfaceVoice)
   }
 
   playLeaves() {
@@ -308,7 +321,7 @@ class SoundscapeController {
     for (const voice of [...this.voices]) this.stopVoice(voice, 0.025)
     this.animalVoice = undefined
     this.shutterVoice = undefined
-    this.basketVoice = undefined
+    this.interfaceVoice = undefined
   }
 
   dispose() {
