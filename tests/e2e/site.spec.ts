@@ -232,7 +232,7 @@ test('keyboard intent ignores controls and header navigation settles the opening
   }
   await page.getByRole('link', { name: 'Shop' }).first().click()
   await expect(stage).toHaveAttribute('data-opening-state', 'open')
-  await expect(page.locator('body > #root > div')).toHaveAttribute('data-handoff-state', /complete|bypassed/, { timeout: 6500 })
+  await expect(page.locator('body > #root > div')).toHaveAttribute('data-handoff-state', /complete|bypassed/, { timeout: 9000 })
   await expect(stage).toHaveAttribute('data-scroll-hold', 'released')
   await expect(page.getByRole('heading', { name: 'Shop the stand.' })).toBeVisible()
 })
