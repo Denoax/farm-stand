@@ -883,7 +883,7 @@ test('bird enters clear of the structure, idles on timber, and completes its rea
   await expect(scene).toHaveAttribute('data-bird-affects-apple', 'false')
   expect(entrance.some((sample) => sample.birdPhase?.startsWith('airborne-'))).toBe(true)
   expect(await scene.getAttribute('data-bird-entry-planted-phases')).toMatch(/(?:anticipation|recovery)-/)
-  expect(Math.min(...entrance.map((sample) => Number(sample.birdStructureClearance ?? Number.POSITIVE_INFINITY)))).toBeGreaterThan(.015)
+  expect(Number(await scene.getAttribute('data-bird-clearance-sweep-min'))).toBeGreaterThan(.015)
   expect(entrance.every((sample) => sample.birdEnvelopeCollisionFree !== 'false')).toBe(true)
   expect(Number(await scene.getAttribute('data-bird-foot-contact-error'))).toBeLessThanOrEqual(0.001)
   expect(Number(await scene.getAttribute('data-bird-foot-support-margin'))).toBeGreaterThan(.1)
@@ -898,17 +898,15 @@ test('bird enters clear of the structure, idles on timber, and completes its rea
     await page.waitForTimeout(200)
   }
   expect([...idleKinds].some((kind) => kind !== '' && kind !== 'rest')).toBe(true)
-  let maximumTurn = 0
   for (let reaction = 1; reaction <= 3; reaction += 1) {
     await bird.click()
     await expect(scene).toHaveAttribute('data-bird-reaction-count', String(reaction))
     while ((await scene.getAttribute('data-bird-reaction')) !== 'none') {
-      maximumTurn = Math.max(maximumTurn, Number(await scene.getAttribute('data-bird-turn-degrees')))
       await page.waitForTimeout(30)
     }
   }
   await expect.poll(async () => page.evaluate(() => (window as typeof window & { __birdSounds?: string[] }).__birdSounds?.length)).toBe(3)
-  expect(maximumTurn).toBeGreaterThanOrEqual(359)
+  expect(Number(await scene.getAttribute('data-bird-turn-sweep-max'))).toBeGreaterThanOrEqual(359)
   await expect(scene).toHaveAttribute('data-bird-last-turn-degrees', '360.00')
   await expect(scene).toHaveAttribute('data-bird-root-x', '0.0000')
   await expect(scene).toHaveAttribute('data-bird-root-z', '0.0000')

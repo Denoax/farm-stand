@@ -309,9 +309,11 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
     let birdReactionKind: BirdReactionKind | undefined
     let birdReactionStart = 0
     let birdReactionUntil = 0
+    let birdFinalTurnHoldUntil = 0
     let birdReactionQueued = false
     let birdReactionCount = 0
     let birdLastTurnDegrees = 0
+    let birdTurnSweepMax = 0
     let birdIdleKind: BirdIdleKind | undefined
     let birdIdleStart = 0
     let birdIdleUntil = 0
@@ -344,6 +346,10 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
       birdReactionCount += 1
       birdReactionStart = now
       birdReactionUntil = now + BIRD_REACTION_DURATIONS[birdReactionKind]
+      if (birdReactionKind === 'full-turn') {
+        birdFinalTurnHoldUntil = 0
+        birdTurnSweepMax = 0
+      }
       nextBirdIdleAt = birdReactionUntil + 2200
       requestRender()
     }
@@ -592,11 +598,20 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
           nextBirdIdleAt = now + 1500
         }
         if (birdReactionKind && now >= birdReactionUntil) {
-          if (birdReactionKind === 'full-turn') birdLastTurnDegrees = 360
-          birdReactionKind = undefined
-          if (birdReactionQueued) {
-            birdReactionQueued = false
-            startBirdReaction(now)
+          if (birdReactionKind === 'full-turn' && !birdFinalTurnHoldUntil) {
+            // A throttled renderer can jump across the nominal final hold.
+            // Render and retain one explicit planted 360-degree pose before
+            // the reaction is allowed to return to neutral.
+            birdFinalTurnHoldUntil = now + 220
+            birdReactionUntil = birdFinalTurnHoldUntil
+          } else {
+            if (birdReactionKind === 'full-turn') birdLastTurnDegrees = 360
+            birdReactionKind = undefined
+            birdFinalTurnHoldUntil = 0
+            if (birdReactionQueued) {
+              birdReactionQueued = false
+              startBirdReaction(now)
+            }
           }
         }
         if (birdIdleKind && now >= birdIdleUntil) {
@@ -617,6 +632,7 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
         const birdX = entrance.x + performancePose.rootX
         const birdZ = entrance.z + performancePose.rootZ
         const totalLift = entrance.lift + performancePose.lift
+        birdTurnSweepMax = Math.max(birdTurnSweepMax, performancePose.turnDegrees)
         // The first anticipation happens outside the counter. Reveal only as
         // the bird lifts into its first hop; every visible planted phase then
         // lands on measured timber rather than hovering off the edge.
@@ -688,15 +704,17 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
           : -1
         const rightPostMinX = (3.16 - 1.08 / 2) * frameScaleX
         const rightPostMaxX = (3.16 + 1.08 / 2) * frameScaleX
-        const overlapsRightPostX = birdBounds.max.x > rightPostMinX && birdBounds.min.x < rightPostMaxX
-        const rightPostClearance = overlapsRightPostX
-          ? postRearZ - birdBounds.max.z
-          : Math.max(rightPostMinX - birdBounds.max.x, birdBounds.min.x - rightPostMaxX)
+        const axisGap = (minimumA: number, maximumA: number, minimumB: number, maximumB: number) => Math.max(minimumB - maximumA, minimumA - maximumB, 0)
+        const rightPostGapX = axisGap(birdBounds.min.x, birdBounds.max.x, rightPostMinX, rightPostMaxX)
+        const rightPostGapZ = axisGap(birdBounds.min.z, birdBounds.max.z, postRearZ, 1.36 + 0.72 / 2)
+        // The route passes around the post corner. Measuring only whichever
+        // axis happens to overlap creates a discontinuity at that corner and
+        // can report a near-zero miss despite separation on the other axis.
+        const rightPostClearance = Math.hypot(rightPostGapX, rightPostGapZ)
         const birdShutterClearance = birdBounds.min.z - shutterFrontZ
         const birdTrackClearance = birdBounds.min.z - trackFrontZ
         const birdFasciaClearance = fasciaRearZ - birdBounds.max.z
         appleBounds.setFromObject(apple.group, true)
-        const axisGap = (minimumA: number, maximumA: number, minimumB: number, maximumB: number) => Math.max(minimumB - maximumA, minimumA - maximumB, 0)
         const appleGapX = axisGap(birdBounds.min.x, birdBounds.max.x, appleBounds.min.x, appleBounds.max.x)
         const appleGapY = axisGap(birdBounds.min.y, birdBounds.max.y, appleBounds.min.y, appleBounds.max.y)
         const appleGapZ = axisGap(birdBounds.min.z, birdBounds.max.z, appleBounds.min.z, appleBounds.max.z)
@@ -726,6 +744,7 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
         sceneHost.dataset.birdYawDegrees = THREE.MathUtils.radToDeg(performancePose.bodyYaw).toFixed(2)
         sceneHost.dataset.birdTurnDegrees = performancePose.turnDegrees.toFixed(2)
         sceneHost.dataset.birdLastTurnDegrees = birdLastTurnDegrees.toFixed(2)
+        sceneHost.dataset.birdTurnSweepMax = birdTurnSweepMax.toFixed(2)
         sceneHost.dataset.birdReaction = birdReactionKind ?? 'none'
         sceneHost.dataset.birdReactionProgress = reactionProgress.toFixed(4)
         sceneHost.dataset.birdReactionCount = String(birdReactionCount)
@@ -739,6 +758,8 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
         sceneHost.dataset.birdFootContactError = footError.toFixed(4)
         sceneHost.dataset.birdFootSupportMargin = footSupportMargin.toFixed(4)
         sceneHost.dataset.birdPostClearance = rightPostClearance.toFixed(4)
+        sceneHost.dataset.birdPostGapX = rightPostGapX.toFixed(4)
+        sceneHost.dataset.birdPostGapZ = rightPostGapZ.toFixed(4)
         sceneHost.dataset.birdShutterClearance = birdShutterClearance.toFixed(4)
         sceneHost.dataset.birdTrackClearance = birdTrackClearance.toFixed(4)
         sceneHost.dataset.birdFasciaClearance = birdFasciaClearance.toFixed(4)

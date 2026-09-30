@@ -36,7 +36,9 @@ review workspace and in the separately delivered review ZIP.
 - Portrait bird route: cumulative minimum structure clearance `0.0212`, apple
   clearance `0.3185`, and planted support margin `0.0726` scene units.
 - Both runs end planted at root offset `(0, 0)` after a recorded `360.00` degree
-  turn. The desktop recording observes five idle actions across 15.96 seconds.
+  turn. The final planted orientation must render and remain visible for 220 ms
+  before the controller returns to neutral, including under a throttled frame
+  cadence. The desktop recording observes five idle actions across 15.96 seconds.
 - The desktop normal-speed WebM contains VP8 video and an Opus browser-audio
   track. Its same-run event record includes shutter, apple-roll, three bird
   reactions and leaf cues.
@@ -45,6 +47,9 @@ review workspace and in the separately delivered review ZIP.
 - Native-size matte frames and alpha measurements are supplied over cream and
   dark-green backgrounds. The opaque holds were inspected at the actual commit
   frames for both routes.
+- Post clearance uses the Euclidean separation of the skinned bird and timber
+  AABBs at the corner rather than switching discontinuously between projected
+  X and Z gaps.
 
 ## Validation
 
