@@ -31,9 +31,9 @@ The capture script is `scripts/capture-bird-performance-review.mjs`. Its report
 and review media are under `evidence/bird-performance/review/` in the local
 review workspace and in the separately delivered review ZIP.
 
-- Desktop bird route: cumulative minimum structure clearance `0.0479`, apple
-  clearance `3.8677`, and planted support margin `0.0976` scene units.
-- Portrait bird route: cumulative minimum structure clearance `0.0212`, apple
+- Desktop bird route: cumulative minimum structure clearance `0.0579`, apple
+  clearance `3.8641`, and planted support margin `0.0976` scene units.
+- Portrait bird route: cumulative minimum structure clearance `0.0329`, apple
   clearance `0.3185`, and planted support margin `0.0726` scene units.
 - Both runs end planted at root offset `(0, 0)` after a recorded `360.00` degree
   turn. The final planted orientation must render and remain visible for 220 ms

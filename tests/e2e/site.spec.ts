@@ -851,6 +851,10 @@ test('decoded sound pools vary without adjacent repeats and exclude a failed var
 
 test('bird enters clear of the structure, idles on timber, and completes its reaction sequence', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop-chromium')
+  // The authored sequence deliberately observes idle motion before five
+  // reactions. Software WebGL on the release runner can take over 30 seconds
+  // without changing application-time behavior.
+  test.setTimeout(60_000)
   await page.addInitScript(() => {
     ;(window as typeof window & { __birdSounds?: string[]; __appleSounds?: string[] }).__birdSounds = []
     ;(window as typeof window & { __appleSounds?: string[] }).__appleSounds = []
@@ -923,7 +927,7 @@ test('bird enters clear of the structure, idles on timber, and completes its rea
   })
   await expect(scene).toHaveAttribute('data-bird-reaction-queued', 'true')
   await expect(scene).toHaveAttribute('data-bird-reaction-count', '5', { timeout: 3000 })
-  await expect(scene).toHaveAttribute('data-bird-reaction', 'none', { timeout: 3000 })
+  await expect(scene).toHaveAttribute('data-bird-reaction', 'none', { timeout: 6000 })
   await page.waitForTimeout(200)
   await expect(scene).toHaveAttribute('data-bird-reaction-count', '5')
 })
