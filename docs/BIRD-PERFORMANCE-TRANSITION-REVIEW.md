@@ -48,14 +48,15 @@ review workspace and in the separately delivered review ZIP.
 
 ## Validation
 
-`CI=1 npm test` completed with 77 passing and 13 deliberately skipped tests.
+`CI=1 npm test` completed on the final local tree with 77 passing and 13
+deliberately skipped tests.
 The suite covers the stressed handoff lifecycle, shop and animal routes,
 visibility and media failures, leaf-sound cancellation, apple-roll audio stop
 paths, bird input/queueing/contact diagnostics, portrait support, reduced
 motion, all 48 products, direct links and basket persistence/arithmetic. The
-final perch-depth adjustment then passed its four focused desktop/portrait bird
-tests (four inapplicable project cases skipped), and the production build
-passed. Vite continues to report its pre-existing generic
+two timing-sensitive event/phase observations also passed three focused repeat
+runs apiece, and the production build passed. Vite continues to report its
+pre-existing generic
 warning for the lazy Three.js chunk (about 645 kB uncompressed).
 
 ## Review boundaries

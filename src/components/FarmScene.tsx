@@ -318,6 +318,7 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
     let nextBirdIdleAt = Number.POSITIVE_INFINITY
     let birdIdleCount = 0
     let birdSettled = false
+    const birdEntryPlantedPhases = new Set<string>()
     let birdClearanceSweepMin = Number.POSITIVE_INFINITY
     let birdAppleSweepMin = Number.POSITIVE_INFINITY
     let birdPlantedSupportSweepMin = Number.POSITIVE_INFINITY
@@ -715,6 +716,7 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
             : birdIdleKind
               ? `idle-${birdIdleKind}`
               : 'perched'
+        if (entrance.progress < 1 && bird.visible && entrance.planted) birdEntryPlantedPhases.add(phase)
         sceneHost.dataset.birdPhase = phase
         sceneHost.dataset.birdEntrance = entrance.progress.toFixed(4)
         sceneHost.dataset.birdX = birdX.toFixed(3)
@@ -730,6 +732,7 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
         sceneHost.dataset.birdReactionQueued = birdReactionQueued ? 'true' : 'false'
         sceneHost.dataset.birdIdleAction = birdIdleKind ?? 'rest'
         sceneHost.dataset.birdIdleCount = String(birdIdleCount)
+        sceneHost.dataset.birdEntryPlantedPhases = [...birdEntryPlantedPhases].join(',')
         sceneHost.dataset.birdPlanted = planted ? 'true' : 'false'
         sceneHost.dataset.birdSupportY = COUNTER_TOP_Y.toFixed(3)
         sceneHost.dataset.birdFootY = plantedFootY.toFixed(4)

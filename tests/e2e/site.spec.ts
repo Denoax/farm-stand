@@ -622,10 +622,13 @@ test('decoded leaf sound follows video time and stops on interruption', async ({
 test('apple roll follows presented travel, stops on interruption, and never plays on direct shop entry', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop-chromium')
   await page.addInitScript(() => {
-    ;(window as typeof window & { __appleStarts?: string[]; __appleStops?: string[] }).__appleStarts = []
+    ;(window as typeof window & { __appleStarts?: Array<{ name: string; progress: number }>; __appleStops?: string[] }).__appleStarts = []
     ;(window as typeof window & { __appleStops?: string[] }).__appleStops = []
     window.addEventListener('farmstandsound', ((event: CustomEvent<{ name: string }>) => {
-      if (event.detail.name === 'apple-roll') (window as typeof window & { __appleStarts?: string[] }).__appleStarts?.push(event.detail.name)
+      if (event.detail.name === 'apple-roll') {
+        const progress = Number(document.querySelector<HTMLElement>('.scene-host')?.dataset.appleRoll)
+        ;(window as typeof window & { __appleStarts?: Array<{ name: string; progress: number }> }).__appleStarts?.push({ name: event.detail.name, progress })
+      }
     }) as EventListener)
     window.addEventListener('farmstandsoundstop', ((event: CustomEvent<{ name: string; reason: string }>) => {
       if (event.detail.name === 'apple-roll') (window as typeof window & { __appleStops?: string[] }).__appleStops?.push(event.detail.reason)
@@ -635,21 +638,21 @@ test('apple roll follows presented travel, stops on interruption, and never play
   await page.mouse.click(8, 320)
   await expect(page.locator('.sound-controls')).toHaveAttribute('data-sound-status', /ready|partial/, { timeout: 8000 })
   await dispatchWheel(page, 24)
-  await expect.poll(async () => page.evaluate(() => (window as typeof window & { __appleStarts?: string[] }).__appleStarts?.length ?? 0), { timeout: 7000 }).toBe(1)
-  const progressAtStart = Number(await page.locator('.scene-host').getAttribute('data-apple-roll'))
+  await expect.poll(async () => page.evaluate(() => (window as typeof window & { __appleStarts?: Array<{ name: string; progress: number }> }).__appleStarts?.length ?? 0), { timeout: 7000 }).toBe(1)
+  const progressAtStart = await page.evaluate(() => (window as typeof window & { __appleStarts?: Array<{ progress: number }> }).__appleStarts?.[0]?.progress ?? Number.NaN)
   expect(progressAtStart).toBeGreaterThan(0)
   expect(progressAtStart).toBeLessThan(1)
   await page.keyboard.press('Escape')
   await expect.poll(async () => page.evaluate(() => (window as typeof window & { __appleStops?: string[] }).__appleStops ?? [])).toContain('controlled')
   await page.waitForTimeout(400)
-  expect(await page.evaluate(() => (window as typeof window & { __appleStarts?: string[] }).__appleStarts?.length)).toBe(1)
+  expect(await page.evaluate(() => (window as typeof window & { __appleStarts?: Array<{ name: string; progress: number }> }).__appleStarts?.length)).toBe(1)
   await page.evaluate(() => {
-    ;(window as typeof window & { __appleStarts?: string[]; __appleStops?: string[] }).__appleStarts = []
+    ;(window as typeof window & { __appleStarts?: Array<{ name: string; progress: number }>; __appleStops?: string[] }).__appleStarts = []
     ;(window as typeof window & { __appleStops?: string[] }).__appleStops = []
   })
   await page.goto(`${projectPath}#shop`, { waitUntil: 'networkidle' })
   await page.waitForTimeout(500)
-  expect(await page.evaluate(() => (window as typeof window & { __appleStarts?: string[] }).__appleStarts?.length)).toBe(0)
+  expect(await page.evaluate(() => (window as typeof window & { __appleStarts?: Array<{ name: string; progress: number }> }).__appleStarts?.length)).toBe(0)
 })
 
 test('failed transition video commits the shop directly without an empty cover or retained lock', async ({ page }) => {
@@ -879,7 +882,7 @@ test('bird enters clear of the structure, idles on timber, and completes its rea
   await expect(scene).toHaveAttribute('data-bird-phase', 'perched')
   await expect(scene).toHaveAttribute('data-bird-affects-apple', 'false')
   expect(entrance.some((sample) => sample.birdPhase?.startsWith('airborne-'))).toBe(true)
-  expect(entrance.some((sample) => /^(anticipation|recovery)-/.test(sample.birdPhase ?? '') && sample.birdPlanted === 'true')).toBe(true)
+  expect(await scene.getAttribute('data-bird-entry-planted-phases')).toMatch(/(?:anticipation|recovery)-/)
   expect(Math.min(...entrance.map((sample) => Number(sample.birdStructureClearance ?? Number.POSITIVE_INFINITY)))).toBeGreaterThan(.015)
   expect(entrance.every((sample) => sample.birdEnvelopeCollisionFree !== 'false')).toBe(true)
   expect(Number(await scene.getAttribute('data-bird-foot-contact-error'))).toBeLessThanOrEqual(0.001)
