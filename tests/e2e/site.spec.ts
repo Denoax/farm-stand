@@ -998,13 +998,15 @@ test('a cold delayed chirp is queued once and starts from the accepted reaction'
 
 test('failed chirp variants stay isolated and a hidden pending cue never replays stale', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop-chromium')
+  let releaseValidChirps!: () => void
+  const validChirpsBlocked = new Promise<void>((resolve) => { releaseValidChirps = resolve })
   await page.route('**/audio/bird-chirp-2.mp3', (route) => route.abort())
   await page.route('**/audio/bird-chirp.mp3', async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 650))
+    await validChirpsBlocked
     await route.continue()
   })
   await page.route('**/audio/bird-chirp-3.mp3', async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 650))
+    await validChirpsBlocked
     await route.continue()
   })
   await page.addInitScript(() => {
@@ -1028,6 +1030,7 @@ test('failed chirp variants stay isolated and a hidden pending cue never replays
     ;(window as typeof window & { __testHidden?: boolean }).__testHidden = true
     document.dispatchEvent(new Event('visibilitychange'))
   })
+  releaseValidChirps()
   await page.waitForTimeout(850)
   expect(await page.evaluate(() => (window as typeof window & { __birdVariants?: string[] }).__birdVariants)).toEqual([])
   await page.evaluate(() => {

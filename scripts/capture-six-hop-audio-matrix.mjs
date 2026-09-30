@@ -97,10 +97,12 @@ async function finishCase(name, page, extra = {}) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
   const page = await context.newPage()
   await installTrace(page, true)
+  let releaseValidChirps
+  const validChirpsBlocked = new Promise((resolve) => { releaseValidChirps = resolve })
   await page.route('**/audio/bird-chirp-2.mp3', (route) => route.abort())
   for (const suffix of ['', '-3']) {
     await page.route(`**/audio/bird-chirp${suffix}.mp3`, async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 650))
+      await validChirpsBlocked
       await route.continue()
     })
   }
@@ -110,6 +112,7 @@ async function finishCase(name, page, extra = {}) {
     window.__testHidden = true
     document.dispatchEvent(new Event('visibilitychange'))
   })
+  releaseValidChirps()
   await page.waitForTimeout(850)
   const startsWhileHidden = await page.evaluate(() => window.__audioReview.starts.length)
   await page.evaluate(() => {
