@@ -171,25 +171,21 @@
       "transformation": "A 0.90-2.15 second irregular rolling passage was pitch-shifted down to 0.82x without preserving duration, converted to mono 48 kHz, high-passed at 90 Hz, low-passed at 1.8 kHz, lightly compressed, level-adjusted and edge-faded. Runtime begins only when presented apple travel increases, joins late at the matching progress offset, tapers with the roll, and stops on rest, reversal, interruption, visibility loss or teardown."
     },
     {
-      "id": "icons8_farm_animal_doodles",
-      "source": "Icons8 Outline Hand Drawn 100px PNGs for Chicken, Cow and Sheep, used under the provider's free website terms with a live footer link to icons8.com.",
-      "source_url": [
-        "https://icons8.com/icon/101731/chicken",
-        "https://icons8.com/icon/101739/cow",
-        "https://icons8.com/icon/jxtIKXVCKFzS/sheep"
-      ],
-      "license_evidence": "https://icons8.com/license",
+      "id": "user_supplied_pencil_studies",
+      "source": "User-supplied SKETCH-PREVIEW.png, reused at the user's request. The separately described original sketch sheet and transparent crop masters were not present in the delivered filesystem, so no artist or independent licence is asserted.",
+      "source_path": "assets/source/user-provided/sketches/SKETCH-PREVIEW.png",
+      "source_sha256": "4c13b06804075d5dd06c4a3b9288db2072bc26f5af72520b43b557f03bbfe43d",
       "derivative_path": [
-        "public/media/doodles/icons8-outline-hand-drawn-chicken.png",
-        "public/media/doodles/icons8-outline-hand-drawn-cow.png",
-        "public/media/doodles/icons8-outline-hand-drawn-sheep.png"
+        "public/media/doodles/pencil-cow-front.png",
+        "public/media/doodles/pencil-cow-profile.png",
+        "public/media/doodles/pencil-livestock-head-study.png"
       ],
       "derivative_sha256": [
-        "5e9ee42bf02eb31f79dd6ebd03a2fcc21a21ad5d208c9e267b045101a711b452",
-        "09825c3fbe4a6f587e925aa8fa0b21a355e9a8082adbac68119dfc933c145ba2",
-        "02c17e49731922c61fdfc7646e5544830795f94d4fc99051cbbc3dfcebcd583f"
+        "887de1745c5fd06ac16dfa07842fcde6f2afd3841602716ad17dee116d456908",
+        "8955a75be48020860da3f4e078fbaddc3310881600901e3eaf295d48b03f046b",
+        "6950b1e3f303f603c444198221ed672c13d68d8ef5887d986a5f1231e75639b5"
       ],
-      "transformation": "The provider-delivered transparent 100px PNGs are unchanged. CSS only sizes, rotates and softly blends the three decorative marks into the released notebook heading space. Empty alt text and an aria-hidden group keep them out of the accessibility tree."
+      "transformation": "Exact drawing regions were cropped at the dimensions named by the standalone brief (144x124, 149x110 and 134x85). Transparency was derived from the preview's uniform #f5f1e6 paper colour with FFmpeg colorkey; no drawing was generated, traced, smoothed or redrawn. Empty alt text, an aria-hidden group and pointer-events none keep the decorative studies out of controls and the accessibility tree."
     },
     {
       "id": "market_opening_open_stand_plates",

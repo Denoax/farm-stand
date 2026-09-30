@@ -25,6 +25,8 @@ export interface BirdPerformancePose {
   planted: boolean
 }
 
+export const BIRD_ENTRANCE_HOP_COUNT = 6
+
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 const smooth = (value: number) => {
   const bounded = clamp01(value)
@@ -44,38 +46,34 @@ export const BIRD_IDLE_DURATIONS: Record<BirdIdleKind, number> = {
 }
 
 export function evaluateBirdEntrance(openingProgress: number, portrait: boolean, frameScaleX: number): BirdEntrancePose {
-  const progress = clamp01((openingProgress - .43) / .43)
+  // Six compact cycles fit inside the existing opening. The choreography
+  // finishes before the opening releases and never becomes another gate.
+  const progress = clamp01((openingProgress - .38) / .56)
   const scale = portrait ? 1 : frameScaleX
   const positions = portrait
-    ? [2.18, 1.52, .42, -.57]
-    : [3.52 * scale, 2.76 * scale, 2.15 * scale, 1.75 * scale]
-  // Stay fully behind the right post for the first two hops. Only move
-  // forward on the counter after the animated envelope has cleared its inner
-  // edge, then settle into the roomier turning lane.
+    ? [1.26, .80, .52, .24, -.04, -.31, -.57]
+    : [3.07, 2.75, 2.55, 2.35, 2.15, 1.95, 1.75].map((position) => position * scale)
+  // Stay behind the right post until the full skinned envelope has moved
+  // beyond its inner edge. The fifth hop rounds the corner; the sixth settles
+  // into the established turning lane.
   const rearDepth = portrait ? .375 : .40
-  // Centre the final perch within the shutter/fascia depth corridor. This
-  // leaves room for the skinned tail and wings through every full-turn pose,
-  // including the wider portrait silhouette.
-  const depths = [rearDepth, rearDepth, rearDepth, .70]
+  const depths = [rearDepth, rearDepth, rearDepth, rearDepth, rearDepth, .70, .70]
   if (progress <= 0) return { progress, x: positions[0], z: depths[0], lift: 0, hopIndex: 0, phase: 'waiting', planted: true }
-  if (progress >= 1) return { progress, x: positions[3], z: depths[3], lift: 0, hopIndex: 2, phase: 'perched', planted: true }
+  if (progress >= 1) return { progress, x: positions[6], z: depths[6], lift: 0, hopIndex: 5, phase: 'perched', planted: true }
 
-  const hopPosition = progress * 3
-  const hopIndex = Math.min(2, Math.floor(hopPosition))
+  const hopPosition = progress * BIRD_ENTRANCE_HOP_COUNT
+  const hopIndex = Math.min(BIRD_ENTRANCE_HOP_COUNT - 1, Math.floor(hopPosition))
   const local = hopPosition - hopIndex
-  const travel = local < .16 ? 0 : local > .78 ? 1 : smooth((local - .16) / .62)
-  // On the final hop, clear the post laterally before advancing toward the
-  // front of the counter. Coupling both axes from the first frame lets the
-  // skinned wing envelope skim the post even when the root path looks clear.
-  const depthTravel = hopIndex === 2 && travel < .45 ? 0 : hopIndex === 2 ? smooth((travel - .45) / .55) : travel
-  const airborne = local > .16 && local < .78
-  const arcProgress = clamp01((local - .16) / .62)
-  const lift = airborne ? Math.sin(arcProgress * Math.PI) * (.18 - hopIndex * .018) : 0
-  const phase: BirdHopPhase = local < .16
+  const travel = local < .14 ? 0 : local > .70 ? 1 : smooth((local - .14) / .56)
+  const depthTravel = hopIndex === 4 && travel < .42 ? 0 : hopIndex === 4 ? smooth((travel - .42) / .58) : travel
+  const airborne = local > .14 && local < .74
+  const arcProgress = clamp01((local - .14) / .60)
+  const lift = airborne ? Math.sin(arcProgress * Math.PI) * (.088 - hopIndex * .0035) : 0
+  const phase: BirdHopPhase = local < .14
     ? 'anticipation'
-    : local < .68
+    : local < .64
       ? 'airborne'
-      : local < .82
+      : local < .78
         ? 'landing'
         : 'recovery'
   return {

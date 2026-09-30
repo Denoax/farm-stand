@@ -25,6 +25,8 @@ interface Voice {
   stopped: boolean
 }
 
+type SoundTraceStage = 'requested' | 'accepted' | 'queued' | 'suppressed' | 'started' | 'stopped' | 'asset-ready' | 'asset-failed'
+
 const publicAsset = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`
 const variants = (stem: string) => [1, 2, 3, 4].map((variant) => publicAsset(`audio/${stem}${variant === 1 ? '' : `-${variant}`}.mp3`))
 const EFFECT_POOLS: Record<EffectName, string[]> = {
@@ -88,6 +90,9 @@ class SoundscapeController {
   private music?: HTMLAudioElement
   private musicSource?: MediaElementAudioSourceNode
   private buffers = new Map<string, AudioBuffer>()
+  private assetLoads = new Map<string, Promise<boolean>>()
+  private assetAttempts = new Map<string, number>()
+  private failedAssets = new Set<string>()
   private bags = new Map<EffectName, ShuffleBag<string>>()
   private voices = new Set<Voice>()
   private animalVoice?: Voice
@@ -100,6 +105,8 @@ class SoundscapeController {
   private loadPromise?: Promise<void>
   private lastAnimalAt = new Map<AnimalSound, number>()
   private lastBirdAt = -Infinity
+  private pendingBird?: { id: number; requestedAt: number }
+  private birdRequestSequence = 0
   private leafKind?: LeafTransition
   private leafMediaTime = -1
   private leafCues = new Set<number>()
@@ -119,6 +126,53 @@ class SoundscapeController {
   private publish(patch: Partial<SoundscapeSnapshot>) {
     this.snapshot = { ...this.snapshot, ...patch }
     this.onChange(this.snapshot)
+  }
+
+  private trace(name: EffectName, stage: SoundTraceStage, reason?: string, detail: Record<string, unknown> = {}) {
+    window.dispatchEvent(new CustomEvent('farmstandsoundtrace', {
+      detail: { name, stage, reason, atMs: Math.round(performance.now()), contextState: this.context?.state ?? 'absent', ...detail },
+    }))
+  }
+
+  private updateLoadStatus() {
+    const total = new Set(Object.values(EFFECT_POOLS).flat()).size
+    const loaded = this.buffers.size
+    const status: SoundStatus = loaded === total ? 'ready' : loaded || this.failedAssets.size ? 'partial' : 'loading'
+    this.publish({ status, failedEffects: this.failedAssets.size })
+  }
+
+  private loadEffectAsset(url: string, allowRetry = false) {
+    if (this.buffers.has(url)) return Promise.resolve(true)
+    const active = this.assetLoads.get(url)
+    if (active) return active
+    const attempts = this.assetAttempts.get(url) ?? 0
+    if (attempts >= (allowRetry ? 2 : 1)) return Promise.resolve(false)
+    this.assetAttempts.set(url, attempts + 1)
+    const effectName = (Object.entries(EFFECT_POOLS).find(([, urls]) => urls.includes(url))?.[0] ?? 'bird') as EffectName
+    const request = (async () => {
+      try {
+        const response = await fetch(url)
+        if (!response.ok) throw new Error(`${response.status} ${url}`)
+        const buffer = await response.arrayBuffer()
+        this.buffers.set(url, await this.context!.decodeAudioData(buffer))
+        this.failedAssets.delete(url)
+        this.trace(effectName, 'asset-ready', undefined, { asset: url.split('/').pop(), attempt: attempts + 1 })
+        return true
+      } catch {
+        this.failedAssets.add(url)
+        this.trace(effectName, 'asset-failed', 'asset-failed', { asset: url.split('/').pop(), attempt: attempts + 1 })
+        return false
+      } finally {
+        this.assetLoads.delete(url)
+        this.updateLoadStatus()
+      }
+    })()
+    this.assetLoads.set(url, request)
+    return request
+  }
+
+  private loadBirdPool(allowRetry = false) {
+    return Promise.all(EFFECT_POOLS.bird.map((url) => this.loadEffectAsset(url, allowRetry)))
   }
 
   private async ensureGraph() {
@@ -149,31 +203,26 @@ class SoundscapeController {
     this.music.src = MUSIC_URL
     this.musicSource = this.context.createMediaElementSource(this.music)
     this.musicSource.connect(this.musicGain)
+    // Decode the tiny chirp bank as soon as the graph exists. It does not
+    // delay rendering or unlock, but removes the cold-click race with the
+    // much larger all-effects batch.
+    void this.loadBirdPool()
   }
 
   private loadEffects() {
     if (this.loadPromise || !this.context) return this.loadPromise
     this.publish({ status: 'loading' })
     const urls = [...new Set(Object.values(EFFECT_POOLS).flat())]
-    this.loadPromise = Promise.all(urls.map(async (url) => {
-      try {
-        const response = await fetch(url)
-        if (!response.ok) throw new Error(`${response.status} ${url}`)
-        const buffer = await response.arrayBuffer()
-        this.buffers.set(url, await this.context!.decodeAudioData(buffer))
-        return true
-      } catch {
-        return false
-      }
-    })).then((results) => {
-      const failedEffects = results.filter((loaded) => !loaded).length
-      this.publish({ failedEffects, status: failedEffects ? 'partial' : 'ready' })
+    this.loadPromise = Promise.all(urls.map((url) => this.loadEffectAsset(url, true))).then(() => {
+      this.updateLoadStatus()
       if (this.openingShot === 'lift' && this.shutterLift < .995 && !this.shutterVoice) {
         this.playShutterAtLift(this.shutterLift)
       }
       if (this.openingShot === 'apple-roll' && this.appleRoll > 0 && this.appleRoll < .995 && performance.now() - this.lastAppleMovementAt < 140) {
         this.playAppleRollAtProgress(this.appleRoll)
       }
+    }).finally(() => {
+      this.loadPromise = undefined
     })
     return this.loadPromise
   }
@@ -263,16 +312,28 @@ class SoundscapeController {
     voice.gain.gain.setTargetAtTime(0, now, Math.max(0.005, fadeSeconds / 3))
     try { voice.source.stop(now + fadeSeconds) } catch { /* A naturally ended voice is already stopped. */ }
     this.voices.delete(voice)
+    this.trace(voice.name, 'stopped', 'controlled')
     window.dispatchEvent(new CustomEvent('farmstandsoundstop', { detail: { name: voice.name, reason: 'controlled' } }))
   }
 
   private startVoice(name: EffectName, category: 'effect' | 'ui', gainValue: number, offset = 0) {
-    if (!this.context || this.context.state !== 'running') return
+    if (document.hidden) {
+      this.trace(name, 'suppressed', 'hidden')
+      return
+    }
+    if (!this.context || this.context.state !== 'running') {
+      this.trace(name, 'suppressed', 'context-suspended')
+      return
+    }
     const available = EFFECT_POOLS[name].filter((url) => this.buffers.has(url))
     const variant = this.bags.get(name)?.next(available)
     const buffer = variant ? this.buffers.get(variant) : undefined
     const output = category === 'ui' ? this.uiGain : this.effectsGain
-    if (!buffer || !output || offset >= buffer.duration) return
+    if (!buffer || !output || offset >= buffer.duration) {
+      const reason = EFFECT_POOLS[name].every((url) => this.failedAssets.has(url)) ? 'asset-failed' : 'buffer-pending'
+      this.trace(name, 'suppressed', reason)
+      return
+    }
     const source = this.context.createBufferSource()
     const gain = this.context.createGain()
     gain.gain.value = gainValue
@@ -285,9 +346,18 @@ class SoundscapeController {
       this.voices.delete(voice)
       if (voice.stopped) return
       voice.stopped = true
+      this.trace(voice.name, 'stopped', 'ended')
       window.dispatchEvent(new CustomEvent('farmstandsoundstop', { detail: { name: voice.name, reason: 'ended' } }))
     }, { once: true })
-    source.start(0, Math.max(0, offset))
+    try {
+      source.start(0, Math.max(0, offset))
+    } catch {
+      this.voices.delete(voice)
+      voice.stopped = true
+      this.trace(name, 'suppressed', 'source-start-failed')
+      return
+    }
+    this.trace(name, 'started', undefined, { gain: gainValue, offset, variant: variant?.split('/').pop(), contextTime: this.context.currentTime })
     window.dispatchEvent(new CustomEvent('farmstandsound', { detail: { name, gain: gainValue, offset, variant: variant?.split('/').pop() } }))
     return voice
   }
@@ -296,10 +366,12 @@ class SoundscapeController {
     const now = performance.now()
     const cooldown = kind === 'quantity' ? 70 : kind === 'filter' ? 100 : 120
     if (now - (this.lastCommerceAt.get(kind) ?? -Infinity) < cooldown) return false
-    this.lastCommerceAt.set(kind, now)
     this.stopVoice(this.interfaceVoice, kind === 'quantity' ? .012 : .022)
-    this.interfaceVoice = this.startVoice(kind, 'ui', INTERFACE_GAINS[kind])
-    return Boolean(this.interfaceVoice)
+    const voice = this.startVoice(kind, 'ui', INTERFACE_GAINS[kind])
+    if (!voice) return false
+    this.lastCommerceAt.set(kind, now)
+    this.interfaceVoice = voice
+    return true
   }
 
   syncLeafTransition(kind: LeafTransition, mediaTime: number) {
@@ -329,25 +401,90 @@ class SoundscapeController {
     this.leafCues.clear()
   }
 
-  playBird() {
+  playBird(stage: 'start' | 'queued' = 'start') {
+    if (stage === 'queued') {
+      this.trace('bird', 'queued', 'reaction-active')
+      return true
+    }
     const now = performance.now()
-    if (now - this.lastBirdAt < 650) return false
-    this.lastBirdAt = now
-    this.stopVoice(this.birdVoice, 0.035)
-    this.duckMusic(850)
-    this.birdVoice = this.startVoice('bird', 'effect', 0.28)
-    return Boolean(this.birdVoice)
+    this.trace('bird', 'requested')
+    if (document.hidden) {
+      this.trace('bird', 'suppressed', 'hidden')
+      return false
+    }
+    if (now - this.lastBirdAt < 650) {
+      this.trace('bird', 'suppressed', 'cooldown')
+      return false
+    }
+    if (this.pendingBird) {
+      this.trace('bird', 'suppressed', 'pending-request')
+      return false
+    }
+    const pending = { id: ++this.birdRequestSequence, requestedAt: now }
+    this.pendingBird = pending
+    this.trace('bird', 'accepted')
+    if (this.context?.state !== 'running' || !EFFECT_POOLS.bird.some((url) => this.buffers.has(url))) {
+      this.trace('bird', 'queued', this.context?.state === 'running' ? 'buffer-pending' : 'context-suspended')
+    }
+    void this.startBirdWhenReady(pending)
+    return true
+  }
+
+  private async startBirdWhenReady(pending: { id: number; requestedAt: number }) {
+    try {
+      await this.ensureGraph()
+      if (this.context?.state !== 'running') {
+        const resumed = await Promise.race([
+          this.context?.resume().then(() => this.context?.state === 'running'),
+          new Promise<false>((resolve) => window.setTimeout(() => resolve(false), 450)),
+        ])
+        this.publish({ audioReady: Boolean(resumed) })
+      }
+      if (!EFFECT_POOLS.bird.some((url) => this.buffers.has(url))) {
+        await Promise.race([
+          this.loadBirdPool(true),
+          new Promise<void>((resolve) => window.setTimeout(resolve, 700)),
+        ])
+        if (!EFFECT_POOLS.bird.some((url) => this.buffers.has(url))) {
+          await Promise.race([
+            this.loadBirdPool(true),
+            new Promise<void>((resolve) => window.setTimeout(resolve, 300)),
+          ])
+        }
+      }
+      if (this.pendingBird?.id !== pending.id) return
+      this.pendingBird = undefined
+      if (document.hidden) {
+        this.trace('bird', 'suppressed', 'hidden')
+        return
+      }
+      if (performance.now() - pending.requestedAt > 1100) {
+        this.trace('bird', 'suppressed', 'stale')
+        return
+      }
+      this.stopVoice(this.birdVoice, 0.035)
+      const voice = this.startVoice('bird', 'effect', 0.28)
+      if (!voice) return
+      this.lastBirdAt = performance.now()
+      this.duckMusic(850)
+      this.birdVoice = voice
+    } catch {
+      if (this.pendingBird?.id === pending.id) this.pendingBird = undefined
+      this.trace('bird', 'suppressed', 'context-suspended')
+    }
   }
 
   playAnimal(kind: AnimalSound) {
     const now = performance.now()
     if (now - (this.lastAnimalAt.get(kind) ?? -Infinity) < 2500) return false
-    this.lastAnimalAt.set(kind, now)
     this.stopVoice(this.animalVoice, 0.08)
-    this.duckMusic(kind === 'hens' ? 2500 : 1900)
     const gain = kind === 'hens' ? 0.48 : kind === 'cattle' ? 0.167 : 0.42
-    this.animalVoice = this.startVoice(kind, 'effect', gain)
-    return Boolean(this.animalVoice)
+    const voice = this.startVoice(kind, 'effect', gain)
+    if (!voice) return false
+    this.lastAnimalAt.set(kind, now)
+    this.duckMusic(kind === 'hens' ? 2500 : 1900)
+    this.animalVoice = voice
+    return true
   }
 
   private playShutterAtLift(lift: number) {
@@ -392,8 +529,12 @@ class SoundscapeController {
   }
 
   onVisibilityChange() {
-    if (!this.context) return
     if (document.hidden) {
+      if (this.pendingBird) {
+        this.pendingBird = undefined
+        this.trace('bird', 'suppressed', 'hidden')
+      }
+      if (!this.context) return
       this.musicAttempt += 1
       this.stopAllVoices()
       this.music?.pause()
@@ -401,6 +542,7 @@ class SoundscapeController {
       void this.context.suspend()
       return
     }
+    if (!this.context) return
     void this.context.resume().then(() => {
       this.publish({ audioReady: true })
       if (this.snapshot.musicRequested && !this.snapshot.musicMuted) void this.requestMusic()
@@ -455,7 +597,7 @@ export function useSoundscape() {
   const playCommerce = useCallback((kind: CommerceSound) => controllerRef.current!.playCommerce(kind), [])
   const syncLeafTransition = useCallback((kind: LeafTransition, mediaTime: number) => controllerRef.current!.syncLeafTransition(kind, mediaTime), [])
   const stopLeafTransition = useCallback(() => controllerRef.current!.stopLeafTransition(), [])
-  const playBird = useCallback(() => controllerRef.current!.playBird(), [])
+  const playBird = useCallback((stage?: 'start' | 'queued') => controllerRef.current!.playBird(stage), [])
   const playAnimal = useCallback((kind: AnimalSound) => controllerRef.current!.playAnimal(kind), [])
   const syncOpening = useCallback((shot: string, shutterLift: number, appleRoll: number) => controllerRef.current!.syncOpening(shot, shutterLift, appleRoll), [])
 

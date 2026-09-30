@@ -6,10 +6,12 @@ import { promisify } from 'node:util'
 
 const run = promisify(execFile)
 const baseURL = process.env.BASE_URL ?? 'http://127.0.0.1:4173/farm-stand/'
-const evidenceDir = path.resolve(process.env.EVIDENCE_ROOT ?? 'evidence/bird-hop/review')
+const evidenceDir = path.resolve(process.env.EVIDENCE_ROOT ?? 'evidence/six-hop/review')
 const motionDir = path.join(evidenceDir, 'motion')
 const rawDir = path.join(motionDir, 'raw')
+const frameDir = path.join(evidenceDir, 'bird')
 await fs.mkdir(rawDir, { recursive: true })
+await fs.mkdir(frameDir, { recursive: true })
 
 const browser = await chromium.launch()
 const report = { capturedAt: new Date().toISOString(), baseURL, runs: [], errors: [] }
@@ -22,7 +24,9 @@ async function capture(label, viewport, withAudio) {
   page.on('pageerror', (error) => report.errors.push(`${label} page: ${error.message}`))
   await page.addInitScript(() => {
     window.__capturedSounds = []
+    window.__capturedSoundTrace = []
     addEventListener('farmstandsound', (event) => window.__capturedSounds.push({ ...event.detail, atMs: Math.round(performance.now()) }))
+    addEventListener('farmstandsoundtrace', (event) => window.__capturedSoundTrace.push({ ...event.detail, atMs: Math.round(performance.now()) }))
   })
   await page.goto(`${baseURL}?recordSound=1`, { waitUntil: 'networkidle' })
   await page.mouse.click(8, Math.min(320, viewport.height / 2))
@@ -44,17 +48,52 @@ async function capture(label, viewport, withAudio) {
     })
   }
   await page.evaluate(() => dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 24 })))
-  await page.waitForSelector('[data-opening-state="open"]', { timeout: 12000 })
-  await page.getByRole('button', { name: 'Hear the bird chirp' }).click()
-  await page.waitForTimeout(1100)
-  await page.getByRole('button', { name: 'Hear the bird chirp' }).focus()
+  const entranceTrace = await page.evaluate(async () => {
+    const stage = document.querySelector('.hero-stage')
+    const scene = document.querySelector('.scene-host')
+    const trace = []
+    while (stage?.getAttribute('data-opening-state') !== 'open' && trace.length < 260) {
+      trace.push({ atMs: Math.round(performance.now()), ...scene?.dataset })
+      await new Promise((resolve) => setTimeout(resolve, 28))
+    }
+    trace.push({ atMs: Math.round(performance.now()), ...scene?.dataset })
+    return trace
+  })
+  const bird = page.getByRole('button', { name: 'Hear the bird chirp' })
+  const captureCloseup = async (suffix) => {
+    const box = await bird.boundingBox()
+    if (!box) return
+    const padding = 34
+    await page.screenshot({
+      path: path.join(frameDir, `${label}-${suffix}.png`),
+      clip: {
+        x: Math.max(0, box.x - padding),
+        y: Math.max(0, box.y - padding),
+        width: Math.min(viewport.width - Math.max(0, box.x - padding), box.width + padding * 2),
+        height: Math.min(viewport.height - Math.max(0, box.y - padding), box.height + padding * 2),
+      },
+    })
+  }
+  await bird.click()
+  await page.waitForTimeout(490)
+  await captureCloseup('head-tilt-mid')
+  await page.waitForTimeout(620)
+  await bird.focus()
   await page.keyboard.press('Enter')
-  await page.waitForTimeout(900)
+  await page.waitForTimeout(690)
+  await captureCloseup('look-turn-mid')
+  await page.waitForTimeout(820)
+  await bird.click()
+  for (const [suffix, wait] of [['full-turn-quarter', 330], ['full-turn-half', 460], ['full-turn-three-quarter', 460], ['full-turn-return', 650]]) {
+    await page.waitForTimeout(wait)
+    await captureCloseup(suffix)
+  }
   if (withAudio) {
     await page.getByRole('link', { name: 'Explore the demo' }).click()
     await page.waitForSelector('[data-handoff-state="complete"]', { timeout: 9000 })
   }
   const sounds = await page.evaluate(() => window.__capturedSounds ?? [])
+  const soundTrace = await page.evaluate(() => window.__capturedSoundTrace ?? [])
   let rawAudio
   if (withAudio) {
     const dataURL = await page.evaluate(() => new Promise((resolve, reject) => {
@@ -84,7 +123,7 @@ async function capture(label, viewport, withAudio) {
     await fs.copyFile(rawVideo, output)
   }
   const { stdout } = await run('ffprobe', ['-v', 'error', '-show_entries', 'stream=codec_type,codec_name', '-show_entries', 'format=duration,size', '-of', 'json', output])
-  report.runs.push({ label, viewport, withAudio, audioOffsetSeconds: withAudio ? (audioStartedAt - videoStartedAt) / 1000 : null, output: path.relative(evidenceDir, output), sounds, scene, probe: JSON.parse(stdout) })
+  report.runs.push({ label, viewport, withAudio, audioOffsetSeconds: withAudio ? (audioStartedAt - videoStartedAt) / 1000 : null, output: path.relative(evidenceDir, output), sounds, soundTrace, entranceTrace, scene, probe: JSON.parse(stdout) })
 }
 
 await capture('desktop-opening-bird-leaves', { width: 1440, height: 900 }, true)

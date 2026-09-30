@@ -20,7 +20,7 @@ interface FarmSceneProps {
   progressRef: React.RefObject<number>
   onStateChange: (state: SceneState) => void
   onPresented: (progress: number, shot: string) => void
-  onBirdActivate: () => void
+  onBirdActivate: (stage?: 'start' | 'queued') => void
 }
 
 interface PreparedApple {
@@ -305,6 +305,8 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
     let birdHead: THREE.Bone | undefined
     let birdNeck: THREE.Bone | undefined
     let birdTail: THREE.Bone | undefined
+    let birdJaw: THREE.Bone | undefined
+    const birdImportedPose = new Map<THREE.Bone, THREE.Quaternion>()
     let birdFootBones: THREE.Bone[] = []
     let birdReactionKind: BirdReactionKind | undefined
     let birdReactionStart = 0
@@ -321,6 +323,7 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
     let birdIdleCount = 0
     let birdSettled = false
     const birdEntryPlantedPhases = new Set<string>()
+    const birdVisibleHops = new Set<number>()
     let birdClearanceSweepMin = Number.POSITIVE_INFINITY
     let birdAppleSweepMin = Number.POSITIVE_INFINITY
     let birdPlantedSupportSweepMin = Number.POSITIVE_INFINITY
@@ -351,6 +354,7 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
         birdTurnSweepMax = 0
       }
       nextBirdIdleAt = birdReactionUntil + 2200
+      onBirdActivate('start')
       requestRender()
     }
 
@@ -374,11 +378,10 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
       if (birdReactionKind && now < birdReactionUntil) {
         if (birdReactionQueued) return
         birdReactionQueued = true
-        onBirdActivate()
+        onBirdActivate('queued')
         return
       }
       startBirdReaction(now)
-      onBirdActivate()
     }
     sceneHost.addEventListener('farmbirdreaction', onBirdReaction)
 
@@ -462,6 +465,15 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
         birdHead = model.getObjectByName('Head_M') as THREE.Bone | undefined
         birdNeck = model.getObjectByName('Neck_M') as THREE.Bone | undefined
         birdTail = model.getObjectByName('Tail1_M') as THREE.Bone | undefined
+        birdJaw = model.getObjectByName('Jaw_M') as THREE.Bone | undefined
+        // Take 001 remains the supplied rig authority. Capture one inspected,
+        // readable take pose so each render can restore it before applying a
+        // single bounded procedural delta; no previous-frame deformation is
+        // ever reused as the next frame's base.
+        birdMixer?.setTime(1.35)
+        for (const bone of [birdHead, birdNeck, birdTail, birdJaw]) {
+          if (bone) birdImportedPose.set(bone, bone.quaternion.clone())
+        }
         birdFootBones = [
           'Ankle_L', 'Ankle_R', 'ToesAEnd_L', 'ToesAEnd_R',
           'ToesEnd_L', 'ToesEnd_R', 'ToesCEnd_L', 'ToesCEnd_R',
@@ -646,18 +658,14 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
         const expectedFootY = COUNTER_TOP_Y + totalLift
         bird.position.set(birdX, expectedFootY, birdZ)
         bird.rotation.set(.1, -Math.PI / 2 + performancePose.bodyYaw, performancePose.bodyRoll)
-        const articulatedGesture = birdReactionKind
-          ? Math.sin(reactionProgress * Math.PI)
-          : birdIdleKind
-            ? Math.sin(idleProgress * Math.PI)
-            : 0
-        const takeTime = entrance.progress < 1
-          ? 1.05 + entrance.progress * .3
-          : 1.35 + articulatedGesture * (birdReactionKind ? 1.6 : .42)
+        const articulatedGesture = birdReactionKind ? Math.sin(reactionProgress * Math.PI) : 0
+        const takeTime = 1.35
         birdMixer?.setTime(takeTime)
+        for (const [bone, base] of birdImportedPose) bone.quaternion.copy(base)
         if (birdHead) birdHead.quaternion.multiply(birdBoneDelta.setFromEuler(new THREE.Euler(0, performancePose.headYaw, performancePose.headRoll)))
         if (birdNeck) birdNeck.quaternion.multiply(birdBoneDelta.setFromEuler(new THREE.Euler(0, performancePose.headYaw * .32, performancePose.headRoll * .4)))
         if (birdTail) birdTail.quaternion.multiply(birdBoneDelta.setFromEuler(new THREE.Euler(performancePose.tailPitch, 0, 0)))
+        if (birdJaw) birdJaw.quaternion.multiply(birdBoneDelta.setFromEuler(new THREE.Euler(articulatedGesture * .075, 0, 0)))
         bird.updateMatrixWorld(true)
         const footPoints = birdFootBones.map((bone) => bone.getWorldPosition(new THREE.Vector3()))
         measureBirdMesh()
@@ -735,6 +743,7 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
               ? `idle-${birdIdleKind}`
               : 'perched'
         if (entrance.progress < 1 && bird.visible && entrance.planted) birdEntryPlantedPhases.add(phase)
+        if (entrance.progress < 1 && bird.visible && entrance.phase === 'airborne') birdVisibleHops.add(entrance.hopIndex + 1)
         sceneHost.dataset.birdPhase = phase
         sceneHost.dataset.birdEntrance = entrance.progress.toFixed(4)
         sceneHost.dataset.birdX = birdX.toFixed(3)
@@ -749,9 +758,15 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
         sceneHost.dataset.birdReactionProgress = reactionProgress.toFixed(4)
         sceneHost.dataset.birdReactionCount = String(birdReactionCount)
         sceneHost.dataset.birdReactionQueued = birdReactionQueued ? 'true' : 'false'
+        sceneHost.dataset.birdPoseComposition = 'restored-imported-base+bounded-procedural-delta'
+        sceneHost.dataset.birdTakeTime = takeTime.toFixed(2)
         sceneHost.dataset.birdIdleAction = birdIdleKind ?? 'rest'
         sceneHost.dataset.birdIdleCount = String(birdIdleCount)
         sceneHost.dataset.birdEntryPlantedPhases = [...birdEntryPlantedPhases].join(',')
+        sceneHost.dataset.birdVisibleHops = [...birdVisibleHops].join(',')
+        sceneHost.dataset.birdPoseSignature = [birdHead, birdNeck, birdTail, birdJaw]
+          .flatMap((bone) => bone ? bone.quaternion.toArray().map((value) => value.toFixed(5)) : ['missing'])
+          .join(',')
         sceneHost.dataset.birdPlanted = planted ? 'true' : 'false'
         sceneHost.dataset.birdSupportY = COUNTER_TOP_Y.toFixed(3)
         sceneHost.dataset.birdFootY = plantedFootY.toFixed(4)

@@ -800,7 +800,7 @@ export function App() {
       <footer>
         <a className="footer-brand" href="#top" aria-label="Return to the farm stand"><Logo /> <span>Return to the farm stand ↑</span></a>
         <p>Farm stand website example · no orders, payments, bookings, or submissions</p>
-        <p>Produce models: Poly Haven, CC0 · product photography: credited Pexels contributors · farm-animal doodles: <a href="https://icons8.com">Icons8</a></p>
+        <p>Produce models: Poly Haven, CC0 · product photography: credited Pexels contributors · pencil studies: user-supplied reference pixels, reused at the user’s request</p>
         <p>Farm photograph: <a href="https://www.pexels.com/photo/trees-in-orchard-17765489/">Mark Stebnicki / Pexels</a> · leaf transitions: <a href="https://www.youtube.com/watch?v=RRyXHZKOYGc">Kajal Karmakar 01</a> and <a href="https://www.youtube.com/watch?v=dAZGvwAzupY">02</a>, user-supplied originals · <a href="https://incompetech.com/music/royalty-free/index.html?Search=Search&amp;isrc=USUAN2300003">“Morning” by Kevin MacLeod</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a></p>
       </footer>
     </div>

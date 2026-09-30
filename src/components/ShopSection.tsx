@@ -318,9 +318,9 @@ export function ShopSection({ basket, dispatch, focusRequest, marketReady, onCom
       <div className="section-intro catalogue-intro">
         <h2 id="shop-heading">Shop the stand.</h2>
         <div className="market-doodles" aria-hidden="true">
-          <img src="./media/doodles/icons8-outline-hand-drawn-chicken.png" alt="" />
-          <img src="./media/doodles/icons8-outline-hand-drawn-cow.png" alt="" />
-          <img src="./media/doodles/icons8-outline-hand-drawn-sheep.png" alt="" />
+          <img src="./media/doodles/pencil-cow-front.png" alt="" />
+          <img src="./media/doodles/pencil-cow-profile.png" alt="" />
+          <img src="./media/doodles/pencil-livestock-head-study.png" alt="" />
         </div>
       </div>
 

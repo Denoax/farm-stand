@@ -55,6 +55,9 @@ test('market is one normal-flow spiral notebook and the speaker rests as an alig
   await expect(page.getByText('Browse 48 photographed examples across the market. Prices and availability are illustrative; nothing can be ordered here.', { exact: true })).toHaveCount(0)
   await expect(page.locator('.market-doodles img')).toHaveCount(3)
   expect(await page.locator('.market-doodles').getAttribute('aria-hidden')).toBe('true')
+  await expect(page.locator('.market-doodles img').nth(0)).toHaveAttribute('src', /pencil-cow-front\.png$/)
+  await expect(page.locator('.market-doodles img').nth(1)).toHaveAttribute('src', /pencil-cow-profile\.png$/)
+  await expect(page.locator('.market-doodles img').nth(2)).toHaveAttribute('src', /pencil-livestock-head-study\.png$/)
   await expect(page.locator('.market-notebook')).toHaveCount(1)
   await expect(page.locator('.market-notebook__binding')).toHaveCount(1)
   await expect(page.locator('.market-notebook__wood-tab')).toHaveCount(2)
@@ -886,7 +889,16 @@ test('bird enters clear of the structure, idles on timber, and completes its rea
   await expect(scene).toHaveAttribute('data-bird-phase', 'perched')
   await expect(scene).toHaveAttribute('data-bird-affects-apple', 'false')
   expect(entrance.some((sample) => sample.birdPhase?.startsWith('airborne-'))).toBe(true)
+  expect(new Set(entrance.filter((sample) => sample.birdPhase?.startsWith('airborne-')).map((sample) => sample.birdPhase))).toEqual(new Set([
+    'airborne-1', 'airborne-2', 'airborne-3', 'airborne-4', 'airborne-5', 'airborne-6',
+  ]))
+  await expect(scene).toHaveAttribute('data-bird-visible-hops', '1,2,3,4,5,6')
   expect(await scene.getAttribute('data-bird-entry-planted-phases')).toMatch(/(?:anticipation|recovery)-/)
+  for (let hop = 1; hop <= 6; hop += 1) {
+    expect(await scene.getAttribute('data-bird-entry-planted-phases')).toContain(`recovery-${hop}`)
+  }
+  await expect(scene).toHaveAttribute('data-bird-pose-composition', 'restored-imported-base+bounded-procedural-delta')
+  await expect(scene).toHaveAttribute('data-bird-take-time', '1.35')
   expect(Number(await scene.getAttribute('data-bird-clearance-sweep-min'))).toBeGreaterThan(.015)
   expect(entrance.every((sample) => sample.birdEnvelopeCollisionFree !== 'false')).toBe(true)
   expect(Number(await scene.getAttribute('data-bird-foot-contact-error'))).toBeLessThanOrEqual(0.001)
@@ -895,6 +907,7 @@ test('bird enters clear of the structure, idles on timber, and completes its rea
   expect(Number(await scene.getAttribute('data-bird-apple-sweep-min'))).toBeGreaterThan(.2)
   await expect(bird).toBeVisible()
   const appleX = await scene.getAttribute('data-apple-x')
+  const restPoseSignature = await scene.getAttribute('data-bird-pose-signature')
   expect(await page.evaluate(() => (window as typeof window & { __appleSounds?: string[] }).__appleSounds?.length)).toBe(1)
   const idleKinds = new Set<string>()
   for (let index = 0; index < 30; index += 1) {
@@ -916,6 +929,7 @@ test('bird enters clear of the structure, idles on timber, and completes its rea
   await expect(scene).toHaveAttribute('data-bird-root-z', '0.0000')
   await expect(scene).toHaveAttribute('data-bird-yaw-degrees', '0.00')
   await expect(scene).toHaveAttribute('data-bird-planted', 'true')
+  expect(await scene.getAttribute('data-bird-pose-signature')).toBe(restPoseSignature)
   expect(await scene.getAttribute('data-apple-x')).toBe(appleX)
   await bird.focus()
   await page.keyboard.press('Enter')
@@ -950,6 +964,86 @@ test('reduced motion keeps a stable keyboard-operable bird perch', async ({ brow
   await bird.focus()
   await expect(bird).toBeFocused()
   await context.close()
+})
+
+test('a cold delayed chirp is queued once and starts from the accepted reaction', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium')
+  await page.route('**/audio/bird-chirp*.mp3', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 520))
+    await route.continue()
+  })
+  await page.addInitScript(() => {
+    sessionStorage.setItem('farm-stand-market-opening-v2', 'complete')
+    ;(window as typeof window & { __soundTrace?: Array<Record<string, unknown>>; __actualBirdStarts?: number }).__soundTrace = []
+    ;(window as typeof window & { __actualBirdStarts?: number }).__actualBirdStarts = 0
+    addEventListener('farmstandsoundtrace', ((event: CustomEvent<Record<string, unknown>>) => {
+      if (event.detail.name === 'bird') (window as typeof window & { __soundTrace?: Array<Record<string, unknown>> }).__soundTrace?.push(event.detail)
+    }) as EventListener)
+    addEventListener('farmstandsound', ((event: CustomEvent<{ name: string }>) => {
+      if (event.detail.name === 'bird') (window as typeof window & { __actualBirdStarts?: number }).__actualBirdStarts = ((window as typeof window & { __actualBirdStarts?: number }).__actualBirdStarts ?? 0) + 1
+    }) as EventListener)
+  })
+  await page.goto(projectPath, { waitUntil: 'domcontentloaded' })
+  const bird = page.getByRole('button', { name: 'Hear the bird chirp' })
+  await expect(bird).toBeVisible({ timeout: 8000 })
+  await bird.click()
+  await expect.poll(async () => page.evaluate(() => (window as typeof window & { __actualBirdStarts?: number }).__actualBirdStarts ?? 0), { timeout: 2000 }).toBe(1)
+  const trace = await page.evaluate(() => (window as typeof window & { __soundTrace?: Array<{ stage: string; reason?: string }> }).__soundTrace ?? [])
+  expect(trace.some(({ stage }) => stage === 'requested')).toBe(true)
+  expect(trace.some(({ stage }) => stage === 'accepted')).toBe(true)
+  expect(trace.some(({ stage }) => stage === 'queued')).toBe(true)
+  expect(trace.some(({ stage }) => stage === 'started')).toBe(true)
+  expect(trace.filter(({ stage }) => stage === 'started')).toHaveLength(1)
+})
+
+test('failed chirp variants stay isolated and a hidden pending cue never replays stale', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium')
+  await page.route('**/audio/bird-chirp-2.mp3', (route) => route.abort())
+  await page.route('**/audio/bird-chirp.mp3', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 650))
+    await route.continue()
+  })
+  await page.route('**/audio/bird-chirp-3.mp3', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 650))
+    await route.continue()
+  })
+  await page.addInitScript(() => {
+    sessionStorage.setItem('farm-stand-market-opening-v2', 'complete')
+    ;(window as typeof window & { __testHidden?: boolean }).__testHidden = false
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => Boolean((window as typeof window & { __testHidden?: boolean }).__testHidden) })
+    ;(window as typeof window & { __soundTrace?: Array<Record<string, unknown>>; __birdVariants?: string[] }).__soundTrace = []
+    ;(window as typeof window & { __birdVariants?: string[] }).__birdVariants = []
+    addEventListener('farmstandsoundtrace', ((event: CustomEvent<Record<string, unknown>>) => {
+      if (event.detail.name === 'bird') (window as typeof window & { __soundTrace?: Array<Record<string, unknown>> }).__soundTrace?.push(event.detail)
+    }) as EventListener)
+    addEventListener('farmstandsound', ((event: CustomEvent<{ name: string; variant?: string }>) => {
+      if (event.detail.name === 'bird' && event.detail.variant) (window as typeof window & { __birdVariants?: string[] }).__birdVariants?.push(event.detail.variant)
+    }) as EventListener)
+  })
+  await page.goto(projectPath, { waitUntil: 'domcontentloaded' })
+  const bird = page.getByRole('button', { name: 'Hear the bird chirp' })
+  await expect(bird).toBeVisible({ timeout: 8000 })
+  await bird.click()
+  await page.evaluate(() => {
+    ;(window as typeof window & { __testHidden?: boolean }).__testHidden = true
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+  await page.waitForTimeout(850)
+  expect(await page.evaluate(() => (window as typeof window & { __birdVariants?: string[] }).__birdVariants)).toEqual([])
+  await page.evaluate(() => {
+    ;(window as typeof window & { __testHidden?: boolean }).__testHidden = false
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+  await bird.click()
+  await expect.poll(async () => page.evaluate(() => (window as typeof window & { __birdVariants?: string[] }).__birdVariants?.length ?? 0), { timeout: 2000 }).toBe(1)
+  const result = await page.evaluate(() => ({
+    variants: (window as typeof window & { __birdVariants?: string[] }).__birdVariants ?? [],
+    trace: (window as typeof window & { __soundTrace?: Array<{ stage: string; reason?: string; asset?: string }> }).__soundTrace ?? [],
+  }))
+  expect(result.variants).not.toContain('bird-chirp-2.mp3')
+  expect(result.trace.some(({ stage, reason }) => stage === 'suppressed' && reason === 'hidden')).toBe(true)
+  expect(result.trace.some(({ stage, reason, asset }) => stage === 'asset-failed' && reason === 'asset-failed' && asset === 'bird-chirp-2.mp3')).toBe(true)
+  expect(result.trace.filter(({ stage }) => stage === 'started')).toHaveLength(1)
 })
 
 test('portrait bird entrance clears the post and plants only on supported timber', async ({ page }, testInfo) => {

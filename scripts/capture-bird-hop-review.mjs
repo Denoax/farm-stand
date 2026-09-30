@@ -9,12 +9,13 @@ const browser = await chromium.launch({ headless: true })
 
 async function openingFrames(name, viewport) {
   const context = await browser.newContext({ viewport, reducedMotion: 'no-preference' })
-  for (const progress of [0.48, 0.56, 0.66, 0.76, 0.88, 1]) {
+  const landingProgress = Array.from({ length: 6 }, (_, hop) => .38 + ((hop + .84) / 6) * .56)
+  for (const [hop, progress] of landingProgress.entries()) {
     const page = await context.newPage()
     await page.goto(`http://127.0.0.1:5173/farm-stand/?debugProgress=${progress}`, { waitUntil: 'networkidle' })
     await page.locator('.scene-host[data-bird-state="ready"]').waitFor({ timeout: 10000 })
     await page.waitForTimeout(350)
-    await page.screenshot({ path: path.join(root, 'bird', `${name}-${String(progress).replace('.', '-')}.png`) })
+    await page.screenshot({ path: path.join(root, 'bird', `${name}-landing-${hop + 1}.png`) })
     await page.close()
   }
   await context.close()
