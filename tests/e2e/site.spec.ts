@@ -920,16 +920,23 @@ test('bird enters clear of the structure, idles on timber, and completes its rea
   await bird.focus()
   await page.keyboard.press('Enter')
   await expect(scene).toHaveAttribute('data-bird-reaction-count', '4')
+  const reactionsBeforeBurst = Number(await scene.getAttribute('data-bird-reaction-count'))
   await bird.evaluate((element) => {
     ;(element as HTMLButtonElement).click()
     ;(element as HTMLButtonElement).click()
     ;(element as HTMLButtonElement).click()
   })
   await expect(scene).toHaveAttribute('data-bird-reaction-queued', 'true')
-  await expect(scene).toHaveAttribute('data-bird-reaction-count', '5', { timeout: 3000 })
-  await expect(scene).toHaveAttribute('data-bird-reaction', 'none', { timeout: 6000 })
+  await expect.poll(async () => Number(await scene.getAttribute('data-bird-reaction-count'))).toBeGreaterThan(reactionsBeforeBurst)
+  await expect(scene).toHaveAttribute('data-bird-reaction', 'none', { timeout: 10_000 })
+  const reactionsAfterBurst = Number(await scene.getAttribute('data-bird-reaction-count'))
+  // If the preceding keyboard reaction is still active, the burst adds one
+  // queued reaction. If a throttled runner completes it between the assertion
+  // and the burst, the first click starts one and the second queues one. It
+  // must never start or queue all three clicks independently.
+  expect(reactionsAfterBurst).toBeLessThanOrEqual(reactionsBeforeBurst + 2)
   await page.waitForTimeout(200)
-  await expect(scene).toHaveAttribute('data-bird-reaction-count', '5')
+  await expect(scene).toHaveAttribute('data-bird-reaction-count', String(reactionsAfterBurst))
 })
 
 test('reduced motion keeps a stable keyboard-operable bird perch', async ({ browser }, testInfo) => {
