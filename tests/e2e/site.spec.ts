@@ -51,6 +51,10 @@ test('project-path build loads the opening and keeps entrance links usable', asy
 
 test('market is one normal-flow spiral notebook and the speaker rests as an aligned glyph', async ({ page }) => {
   await page.goto(`${projectPath}#shop`, { waitUntil: 'networkidle' })
+  await expect(page.getByText('Demonstration market', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('Browse 48 photographed examples across the market. Prices and availability are illustrative; nothing can be ordered here.', { exact: true })).toHaveCount(0)
+  await expect(page.locator('.market-doodles img')).toHaveCount(3)
+  expect(await page.locator('.market-doodles').getAttribute('aria-hidden')).toBe('true')
   await expect(page.locator('.market-notebook')).toHaveCount(1)
   await expect(page.locator('.market-notebook__binding')).toHaveCount(1)
   await expect(page.locator('.market-notebook__wood-tab')).toHaveCount(2)
@@ -451,12 +455,13 @@ test('exact shop video owns one continuous hold and commits only in its decoded 
   await dispatchWheel(page, 500)
   expect(await page.evaluate(() => Number.parseFloat(document.body.style.top || '0'))).toBe(heldAt)
   await expect(page.locator('.video-handoff')).toBeVisible()
-  await page.waitForTimeout(2200)
+  await page.waitForTimeout(1500)
   await expect(page).not.toHaveURL(/#shop$/)
   await expect(root).toHaveAttribute('data-handoff-state', 'covered', { timeout: 2500 })
   const coverTime = Number(await page.locator('.video-handoff').getAttribute('data-cover-time'))
-  expect(coverTime).toBeGreaterThanOrEqual(3.2)
+  expect(coverTime).toBeGreaterThanOrEqual(3.03)
   expect(coverTime).toBeLessThanOrEqual(3.8)
+  await expect(page.locator('.video-handoff')).toHaveAttribute('data-cover-hold', 'visible')
   await expect(root).toHaveAttribute('data-scroll-gate-owner', 'handoff')
   await expect(page.locator('.floating-basket')).toBeHidden()
   await expect(page).toHaveURL(/#shop$/)
@@ -469,6 +474,84 @@ test('exact shop video owns one continuous hold and commits only in its decoded 
   await dispatchWheel(page, 300)
   await expect(root).toHaveAttribute('data-handoff-state', 'complete')
   await expect(stage).toHaveAttribute('data-scroll-hold', 'released')
+})
+
+test('one leaf run stays monotonic through scroll storms and harmless parent rerenders', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium')
+  await page.addInitScript(() => {
+    const state = { loads: 0, plays: 0, seeks: [] as number[], trace: [] as Array<Record<string, unknown>> }
+    ;(window as typeof window & { __handoffMediaOps?: typeof state }).__handoffMediaOps = state
+    window.addEventListener('farmstandhandofftrace', ((event: CustomEvent<Record<string, unknown>>) => state.trace.push(event.detail)) as EventListener)
+    const mediaPrototype = HTMLMediaElement.prototype
+    const originalLoad = mediaPrototype.load
+    const originalPlay = mediaPrototype.play
+    const currentTime = Object.getOwnPropertyDescriptor(mediaPrototype, 'currentTime')
+    mediaPrototype.load = function (...args) {
+      if (this.matches('.video-handoff video')) state.loads += 1
+      return originalLoad.apply(this, args)
+    }
+    mediaPrototype.play = function (...args) {
+      if (this.matches('.video-handoff video')) state.plays += 1
+      return originalPlay.apply(this, args)
+    }
+    if (currentTime?.get && currentTime.set) {
+      Object.defineProperty(mediaPrototype, 'currentTime', {
+        configurable: currentTime.configurable,
+        enumerable: currentTime.enumerable,
+        get: currentTime.get,
+        set(value: number) {
+          if (this.matches('.video-handoff video')) state.seeks.push(value)
+          currentTime.set!.call(this, value)
+        },
+      })
+    }
+  })
+  await page.goto(projectPath)
+  const root = page.locator('body > #root > div')
+  await expect(page.locator('.hero-stage')).toHaveClass(/hero-stage--ready/)
+  await dispatchWheel(page, 24)
+  await page.keyboard.press('Escape')
+  await expect(root).toHaveAttribute('data-handoff-state', 'armed')
+  await dispatchWheel(page, 120)
+  await expect(root).toHaveAttribute('data-handoff-state', 'covering')
+  const samples: number[] = []
+  for (const deltaY of [80, -70, 120, -90, 140]) {
+    await dispatchWheel(page, deltaY)
+    await page.evaluate(() => (document.querySelector('.music-toggle') as HTMLButtonElement | null)?.click())
+    await page.waitForTimeout(150)
+    samples.push(Number(await page.locator('.video-handoff').getAttribute('data-media-time')))
+  }
+  await page.keyboard.press('PageDown')
+  await page.setViewportSize({ width: 1360, height: 900 })
+  await page.evaluate(() => {
+    const start = new Touch({ identifier: 1, target: document.body, clientX: 100, clientY: 500 })
+    const move = new Touch({ identifier: 1, target: document.body, clientX: 100, clientY: 350 })
+    dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true, touches: [start] }))
+    dispatchEvent(new TouchEvent('touchmove', { bubbles: true, cancelable: true, touches: [move] }))
+  })
+  const mediaTimeAfterStorm = Number(await page.locator('.video-handoff').getAttribute('data-media-time'))
+  expect(mediaTimeAfterStorm).toBeGreaterThan(.45)
+  expect(samples.every((value, index) => index === 0 || value >= samples[index - 1] - .03)).toBe(true)
+  await expect(root).toHaveAttribute('data-handoff-state', 'covered', { timeout: 5000 })
+  await dispatchWheel(page, -300)
+  await page.keyboard.press('ArrowDown')
+  await expect(root).toHaveAttribute('data-handoff-state', 'revealing', { timeout: 2000 })
+  await dispatchWheel(page, 300)
+  await page.keyboard.press('End')
+  await expect(root).toHaveAttribute('data-handoff-state', 'complete', { timeout: 7000 })
+  const operations = await page.evaluate(() => (window as typeof window & { __handoffMediaOps?: { loads: number; plays: number; seeks: number[]; trace: Array<{ event: string; runId: number; videoId?: string; committed?: boolean; unlocked?: boolean }> } }).__handoffMediaOps)
+  expect({ loads: operations?.loads, plays: operations?.plays, seeks: operations?.seeks }).toEqual({ loads: 1, plays: 1, seeks: [0] })
+  const trace = operations?.trace ?? []
+  expect(new Set(trace.map((event) => event.runId)).size).toBe(1)
+  expect(new Set(trace.map((event) => event.videoId).filter(Boolean)).size).toBe(1)
+  expect(trace.filter((event) => event.event === 'commit')).toHaveLength(1)
+  expect(trace.filter((event) => event.event === 'terminated')).toHaveLength(1)
+  expect(trace.find((event) => event.event === 'commit')).toMatchObject({ committed: true, unlocked: false })
+  expect(trace.find((event) => event.event === 'terminated')).toMatchObject({ committed: true, unlocked: true })
+  await dispatchWheel(page, -600)
+  await dispatchWheel(page, 600)
+  await page.waitForTimeout(250)
+  expect((await page.evaluate(() => (window as typeof window & { __handoffMediaOps?: { loads: number; plays: number } }).__handoffMediaOps))).toMatchObject({ loads: 1, plays: 1 })
 })
 
 test('Escape fail-opens an interrupted video handoff and unlocks the existing basket', async ({ page }) => {
@@ -487,6 +570,26 @@ test('Escape fail-opens an interrupted video handoff and unlocks the existing ba
   await expect(page.getByRole('button', { name: /Open basket preview/ })).toBeVisible()
   await dispatchWheel(page, 120)
   await expect(root).toHaveAttribute('data-handoff-state', 'bypassed')
+})
+
+test('visibility loss cancels an active handoff and releases its input gate', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium')
+  await page.goto(projectPath)
+  const root = page.locator('body > #root > div')
+  await expect(page.locator('.hero-stage')).toHaveClass(/hero-stage--ready/)
+  await dispatchWheel(page, 24)
+  await page.keyboard.press('Escape')
+  await expect(root).toHaveAttribute('data-handoff-state', 'armed')
+  await dispatchWheel(page, 120)
+  await expect(root).toHaveAttribute('data-handoff-state', 'covering')
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true })
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+  await expect(root).toHaveAttribute('data-handoff-state', 'bypassed')
+  await expect(root).toHaveAttribute('data-scroll-gate-owner', 'none')
+  await expect(root).toHaveAttribute('data-scroll-hold', 'released')
+  await expect(page.locator('.video-handoff')).toHaveCount(0)
 })
 
 test('decoded leaf sound follows video time and stops on interruption', async ({ page }, testInfo) => {
@@ -516,6 +619,39 @@ test('decoded leaf sound follows video time and stops on interruption', async ({
   expect(await page.evaluate(() => (window as typeof window & { __leafSounds?: string[] }).__leafSounds?.length ?? 0)).toBe(soundsAtInterruption)
 })
 
+test('apple roll follows presented travel, stops on interruption, and never plays on direct shop entry', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium')
+  await page.addInitScript(() => {
+    ;(window as typeof window & { __appleStarts?: string[]; __appleStops?: string[] }).__appleStarts = []
+    ;(window as typeof window & { __appleStops?: string[] }).__appleStops = []
+    window.addEventListener('farmstandsound', ((event: CustomEvent<{ name: string }>) => {
+      if (event.detail.name === 'apple-roll') (window as typeof window & { __appleStarts?: string[] }).__appleStarts?.push(event.detail.name)
+    }) as EventListener)
+    window.addEventListener('farmstandsoundstop', ((event: CustomEvent<{ name: string; reason: string }>) => {
+      if (event.detail.name === 'apple-roll') (window as typeof window & { __appleStops?: string[] }).__appleStops?.push(event.detail.reason)
+    }) as EventListener)
+  })
+  await page.goto(projectPath, { waitUntil: 'networkidle' })
+  await page.mouse.click(8, 320)
+  await expect(page.locator('.sound-controls')).toHaveAttribute('data-sound-status', /ready|partial/, { timeout: 8000 })
+  await dispatchWheel(page, 24)
+  await expect.poll(async () => page.evaluate(() => (window as typeof window & { __appleStarts?: string[] }).__appleStarts?.length ?? 0), { timeout: 7000 }).toBe(1)
+  const progressAtStart = Number(await page.locator('.scene-host').getAttribute('data-apple-roll'))
+  expect(progressAtStart).toBeGreaterThan(0)
+  expect(progressAtStart).toBeLessThan(1)
+  await page.keyboard.press('Escape')
+  await expect.poll(async () => page.evaluate(() => (window as typeof window & { __appleStops?: string[] }).__appleStops ?? [])).toContain('controlled')
+  await page.waitForTimeout(400)
+  expect(await page.evaluate(() => (window as typeof window & { __appleStarts?: string[] }).__appleStarts?.length)).toBe(1)
+  await page.evaluate(() => {
+    ;(window as typeof window & { __appleStarts?: string[]; __appleStops?: string[] }).__appleStarts = []
+    ;(window as typeof window & { __appleStops?: string[] }).__appleStops = []
+  })
+  await page.goto(`${projectPath}#shop`, { waitUntil: 'networkidle' })
+  await page.waitForTimeout(500)
+  expect(await page.evaluate(() => (window as typeof window & { __appleStarts?: string[] }).__appleStarts?.length)).toBe(0)
+})
+
 test('failed transition video commits the shop directly without an empty cover or retained lock', async ({ page }) => {
   await page.route('**/media/transitions/leaves-shop-01-alpha.webm', (route) => route.abort())
   await page.goto(projectPath)
@@ -541,6 +677,7 @@ test('animal Polaroids use exact transition 02 without replaying on ordinary far
   await page.waitForTimeout(900)
   await expect(page).toHaveURL(/#top$/)
   await expect(root).toHaveAttribute('data-handoff-state', 'covered', { timeout: 1800 })
+  await expect(page.locator('.video-handoff')).toHaveAttribute('data-cover-hold', 'visible')
   const coverTime = Number(await page.locator('.video-handoff').getAttribute('data-cover-time'))
   expect(coverTime).toBeGreaterThanOrEqual(1.9)
   expect(coverTime).toBeLessThanOrEqual(2)
@@ -709,12 +846,14 @@ test('decoded sound pools vary without adjacent repeats and exclude a failed var
   expect(new Set(variants)).toEqual(new Set(['quantity.mp3', 'quantity-3.mp3', 'quantity-4.mp3']))
 })
 
-test('bird uses the inspected take on supported timber and reacts through one accurate control', async ({ page }, testInfo) => {
+test('bird enters clear of the structure, idles on timber, and completes its reaction sequence', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop-chromium')
   await page.addInitScript(() => {
-    ;(window as typeof window & { __birdSounds?: string[] }).__birdSounds = []
+    ;(window as typeof window & { __birdSounds?: string[]; __appleSounds?: string[] }).__birdSounds = []
+    ;(window as typeof window & { __appleSounds?: string[] }).__appleSounds = []
     window.addEventListener('farmstandsound', ((event: CustomEvent<{ name: string }>) => {
       if (event.detail.name === 'bird') (window as typeof window & { __birdSounds?: string[] }).__birdSounds?.push(event.detail.name)
+      if (event.detail.name === 'apple-roll') (window as typeof window & { __appleSounds?: string[] }).__appleSounds?.push(event.detail.name)
     }) as EventListener)
   })
   await page.goto(projectPath, { waitUntil: 'networkidle' })
@@ -722,25 +861,70 @@ test('bird uses the inspected take on supported timber and reacts through one ac
   const bird = page.getByRole('button', { name: 'Hear the bird chirp' })
   await expect(scene).toHaveAttribute('data-bird-state', 'ready')
   await expect(scene).toHaveAttribute('data-bird-take', 'Take 001')
-  await dispatchWheel(page, 24)
-  await expect(page.locator('.hero-stage')).toHaveAttribute('data-opening-state', 'playing')
-  await page.keyboard.press('Escape')
-  await expect(scene).toHaveAttribute('data-bird-phase', 'perched')
-  await expect(scene).toHaveAttribute('data-bird-affects-apple', 'false')
-  expect(Number(await scene.getAttribute('data-bird-foot-contact-error'))).toBeLessThanOrEqual(0.001)
-  await expect(bird).toBeVisible()
-  const appleX = await scene.getAttribute('data-apple-x')
   await page.mouse.click(8, 320)
   await expect(page.locator('.sound-controls')).toHaveAttribute('data-sound-status', /ready|partial/, { timeout: 8000 })
-  await bird.click()
-  await expect(scene).toHaveAttribute('data-bird-phase', 'reacting')
-  await expect.poll(async () => page.evaluate(() => (window as typeof window & { __birdSounds?: string[] }).__birdSounds?.length)).toBe(1)
-  await expect(scene).toHaveAttribute('data-bird-phase', 'perched', { timeout: 1400 })
+  await dispatchWheel(page, 24)
+  await expect(page.locator('.hero-stage')).toHaveAttribute('data-opening-state', 'playing')
+  const entrance = await page.evaluate(async () => {
+    const host = document.querySelector<HTMLElement>('.scene-host')!
+    const stage = document.querySelector<HTMLElement>('.hero-stage')!
+    const samples: Array<Record<string, string>> = []
+    while (stage.dataset.openingState !== 'open' && samples.length < 180) {
+      samples.push({ ...host.dataset })
+      await new Promise((resolve) => setTimeout(resolve, 45))
+    }
+    samples.push({ ...host.dataset })
+    return samples
+  })
+  await expect(scene).toHaveAttribute('data-bird-phase', 'perched')
+  await expect(scene).toHaveAttribute('data-bird-affects-apple', 'false')
+  expect(entrance.some((sample) => sample.birdPhase?.startsWith('airborne-'))).toBe(true)
+  expect(entrance.some((sample) => /^(anticipation|recovery)-/.test(sample.birdPhase ?? '') && sample.birdPlanted === 'true')).toBe(true)
+  expect(Math.min(...entrance.map((sample) => Number(sample.birdStructureClearance ?? Number.POSITIVE_INFINITY)))).toBeGreaterThan(.015)
+  expect(entrance.every((sample) => sample.birdEnvelopeCollisionFree !== 'false')).toBe(true)
+  expect(Number(await scene.getAttribute('data-bird-foot-contact-error'))).toBeLessThanOrEqual(0.001)
+  expect(Number(await scene.getAttribute('data-bird-foot-support-margin'))).toBeGreaterThan(.1)
+  expect(Number(await scene.getAttribute('data-bird-planted-support-sweep-min'))).toBeGreaterThan(.05)
+  expect(Number(await scene.getAttribute('data-bird-apple-sweep-min'))).toBeGreaterThan(.2)
+  await expect(bird).toBeVisible()
+  const appleX = await scene.getAttribute('data-apple-x')
+  expect(await page.evaluate(() => (window as typeof window & { __appleSounds?: string[] }).__appleSounds?.length)).toBe(1)
+  const idleKinds = new Set<string>()
+  for (let index = 0; index < 30; index += 1) {
+    idleKinds.add(await scene.getAttribute('data-bird-idle-action') ?? '')
+    await page.waitForTimeout(200)
+  }
+  expect([...idleKinds].some((kind) => kind !== '' && kind !== 'rest')).toBe(true)
+  let maximumTurn = 0
+  for (let reaction = 1; reaction <= 3; reaction += 1) {
+    await bird.click()
+    await expect(scene).toHaveAttribute('data-bird-reaction-count', String(reaction))
+    while ((await scene.getAttribute('data-bird-reaction')) !== 'none') {
+      maximumTurn = Math.max(maximumTurn, Number(await scene.getAttribute('data-bird-turn-degrees')))
+      await page.waitForTimeout(30)
+    }
+  }
+  await expect.poll(async () => page.evaluate(() => (window as typeof window & { __birdSounds?: string[] }).__birdSounds?.length)).toBe(3)
+  expect(maximumTurn).toBeGreaterThanOrEqual(359)
+  await expect(scene).toHaveAttribute('data-bird-last-turn-degrees', '360.00')
+  await expect(scene).toHaveAttribute('data-bird-root-x', '0.0000')
+  await expect(scene).toHaveAttribute('data-bird-root-z', '0.0000')
+  await expect(scene).toHaveAttribute('data-bird-yaw-degrees', '0.00')
+  await expect(scene).toHaveAttribute('data-bird-planted', 'true')
   expect(await scene.getAttribute('data-apple-x')).toBe(appleX)
-  await page.waitForTimeout(700)
   await bird.focus()
   await page.keyboard.press('Enter')
-  await expect(scene).toHaveAttribute('data-bird-phase', 'reacting')
+  await expect(scene).toHaveAttribute('data-bird-reaction-count', '4')
+  await bird.evaluate((element) => {
+    ;(element as HTMLButtonElement).click()
+    ;(element as HTMLButtonElement).click()
+    ;(element as HTMLButtonElement).click()
+  })
+  await expect(scene).toHaveAttribute('data-bird-reaction-queued', 'true')
+  await expect(scene).toHaveAttribute('data-bird-reaction-count', '5', { timeout: 3000 })
+  await expect(scene).toHaveAttribute('data-bird-reaction', 'none', { timeout: 3000 })
+  await page.waitForTimeout(200)
+  await expect(scene).toHaveAttribute('data-bird-reaction-count', '5')
 })
 
 test('reduced motion keeps a stable keyboard-operable bird perch', async ({ browser }, testInfo) => {
@@ -754,6 +938,24 @@ test('reduced motion keeps a stable keyboard-operable bird perch', async ({ brow
   await bird.focus()
   await expect(bird).toBeFocused()
   await context.close()
+})
+
+test('portrait bird entrance clears the post and plants only on supported timber', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'portrait-chromium')
+  await page.goto(projectPath, { waitUntil: 'networkidle' })
+  const scene = page.locator('.scene-host')
+  await expect(scene).toHaveAttribute('data-bird-state', 'ready')
+  await dispatchWheel(page, 24)
+  await expect(page.locator('.hero-stage')).toHaveAttribute('data-opening-state', 'open', { timeout: 12_000 })
+  await expect(scene).toHaveAttribute('data-bird-phase', 'perched')
+  expect(Number(await scene.getAttribute('data-bird-clearance-sweep-min'))).toBeGreaterThan(.015)
+  expect(Number(await scene.getAttribute('data-bird-planted-support-sweep-min'))).toBeGreaterThan(.05)
+  expect(Number(await scene.getAttribute('data-bird-apple-sweep-min'))).toBeGreaterThan(.2)
+  await expect(scene).toHaveAttribute('data-bird-envelope-collision-free', 'true')
+  expect(Number(await scene.getAttribute('data-bird-foot-contact-error'))).toBeLessThanOrEqual(.001)
+  const bird = page.getByRole('button', { name: 'Hear the bird chirp' })
+  await bird.tap()
+  await expect(scene).toHaveAttribute('data-bird-reaction-count', '1')
 })
 
 test('bird model failure keeps the static perch and accessible chirp control', async ({ page }, testInfo) => {

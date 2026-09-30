@@ -3,7 +3,7 @@ import { ShuffleBag } from './shuffleBag'
 
 export type AnimalSound = 'hens' | 'cattle' | 'sheep'
 export type CommerceSound = 'add' | 'quantity' | 'details-open' | 'details-close' | 'filter' | 'remove' | 'clear' | 'basket-open' | 'basket-close' | 'confirm'
-type EffectName = AnimalSound | CommerceSound | 'shutter' | 'bird' | 'leaves-shop' | 'leaves-animals' | 'leaf-accent'
+type EffectName = AnimalSound | CommerceSound | 'shutter' | 'apple-roll' | 'bird' | 'leaves-shop' | 'leaves-animals' | 'leaf-accent'
 type LeafTransition = 'shop' | 'animals'
 type SoundStatus = 'silent' | 'loading' | 'ready' | 'partial'
 
@@ -19,14 +19,17 @@ export interface SoundscapeSnapshot {
 }
 
 interface Voice {
+  name: EffectName
   source: AudioBufferSourceNode
   gain: GainNode
+  stopped: boolean
 }
 
 const publicAsset = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`
 const variants = (stem: string) => [1, 2, 3, 4].map((variant) => publicAsset(`audio/${stem}${variant === 1 ? '' : `-${variant}`}.mp3`))
 const EFFECT_POOLS: Record<EffectName, string[]> = {
   shutter: [publicAsset('audio/shutter-open.mp3')],
+  'apple-roll': [publicAsset('audio/apple-roll-wood.mp3')],
   bird: [publicAsset('audio/bird-chirp.mp3'), publicAsset('audio/bird-chirp-2.mp3'), publicAsset('audio/bird-chirp-3.mp3')],
   'leaves-shop': [publicAsset('audio/leaves-shop-bed.mp3')],
   'leaves-animals': [publicAsset('audio/leaves-animals-bed.mp3')],
@@ -89,6 +92,7 @@ class SoundscapeController {
   private voices = new Set<Voice>()
   private animalVoice?: Voice
   private shutterVoice?: Voice
+  private appleRollVoice?: Voice
   private birdVoice?: Voice
   private leafVoice?: Voice
   private interfaceVoice?: Voice
@@ -102,6 +106,8 @@ class SoundscapeController {
   private lastCommerceAt = new Map<CommerceSound, number>()
   private openingShot = 'light'
   private shutterLift = 0
+  private appleRoll = 0
+  private lastAppleMovementAt = -Infinity
   private snapshot = INITIAL_SNAPSHOT
 
   constructor(private readonly onChange: (snapshot: SoundscapeSnapshot) => void) {
@@ -164,6 +170,9 @@ class SoundscapeController {
       this.publish({ failedEffects, status: failedEffects ? 'partial' : 'ready' })
       if (this.openingShot === 'lift' && this.shutterLift < .995 && !this.shutterVoice) {
         this.playShutterAtLift(this.shutterLift)
+      }
+      if (this.openingShot === 'apple-roll' && this.appleRoll > 0 && this.appleRoll < .995 && performance.now() - this.lastAppleMovementAt < 140) {
+        this.playAppleRollAtProgress(this.appleRoll)
       }
     })
     return this.loadPromise
@@ -247,12 +256,14 @@ class SoundscapeController {
   }
 
   private stopVoice(voice?: Voice, fadeSeconds = 0.035) {
-    if (!voice || !this.context) return
+    if (!voice || !this.context || voice.stopped) return
+    voice.stopped = true
     const now = this.context.currentTime
     voice.gain.gain.cancelScheduledValues(now)
     voice.gain.gain.setTargetAtTime(0, now, Math.max(0.005, fadeSeconds / 3))
     try { voice.source.stop(now + fadeSeconds) } catch { /* A naturally ended voice is already stopped. */ }
     this.voices.delete(voice)
+    window.dispatchEvent(new CustomEvent('farmstandsoundstop', { detail: { name: voice.name, reason: 'controlled' } }))
   }
 
   private startVoice(name: EffectName, category: 'effect' | 'ui', gainValue: number, offset = 0) {
@@ -268,9 +279,14 @@ class SoundscapeController {
     source.buffer = buffer
     source.connect(gain)
     gain.connect(output)
-    const voice = { source, gain }
+    const voice = { name, source, gain, stopped: false }
     this.voices.add(voice)
-    source.addEventListener('ended', () => this.voices.delete(voice), { once: true })
+    source.addEventListener('ended', () => {
+      this.voices.delete(voice)
+      if (voice.stopped) return
+      voice.stopped = true
+      window.dispatchEvent(new CustomEvent('farmstandsoundstop', { detail: { name: voice.name, reason: 'ended' } }))
+    }, { once: true })
     source.start(0, Math.max(0, offset))
     window.dispatchEvent(new CustomEvent('farmstandsound', { detail: { name, gain: gainValue, offset, variant: variant?.split('/').pop() } }))
     return voice
@@ -342,14 +358,36 @@ class SoundscapeController {
     this.shutterVoice = this.startVoice('shutter', 'effect', 0.46, offset)
   }
 
-  syncOpening(shot: string, shutterLift: number) {
+  private playAppleRollAtProgress(progress: number) {
+    if (this.appleRollVoice) return
+    const buffer = this.buffers.get(EFFECT_POOLS['apple-roll'][0])
+    if (!buffer || progress >= .995) return
+    const offset = Math.min(buffer.duration - .05, buffer.duration * progress * .78)
+    this.appleRollVoice = this.startVoice('apple-roll', 'effect', .17, offset)
+  }
+
+  syncOpening(shot: string, shutterLift: number, appleRoll: number) {
     const enteringLift = shot === 'lift' && this.openingShot !== 'lift'
+    const rollDelta = appleRoll - this.appleRoll
     this.openingShot = shot
     this.shutterLift = shutterLift
+    this.appleRoll = appleRoll
     if (enteringLift) this.playShutterAtLift(shutterLift)
     if (this.shutterVoice && (shot !== 'lift' || shutterLift >= .995)) {
       this.stopVoice(this.shutterVoice, 0.09)
       this.shutterVoice = undefined
+    }
+    if (shot === 'apple-roll' && rollDelta > .00005 && appleRoll < .995) {
+      this.lastAppleMovementAt = performance.now()
+      this.playAppleRollAtProgress(appleRoll)
+      if (this.appleRollVoice && this.context) {
+        const taper = appleRoll < .72 ? 1 : Math.max(.18, 1 - (appleRoll - .72) / .28)
+        this.appleRollVoice.gain.gain.setTargetAtTime(.17 * taper, this.context.currentTime, .045)
+      }
+    }
+    if (this.appleRollVoice && (shot !== 'apple-roll' || appleRoll >= .995 || rollDelta < -.00005)) {
+      this.stopVoice(this.appleRollVoice, .11)
+      this.appleRollVoice = undefined
     }
   }
 
@@ -373,6 +411,7 @@ class SoundscapeController {
     for (const voice of [...this.voices]) this.stopVoice(voice, 0.025)
     this.animalVoice = undefined
     this.shutterVoice = undefined
+    this.appleRollVoice = undefined
     this.interfaceVoice = undefined
     this.birdVoice = undefined
     this.leafVoice = undefined
@@ -418,7 +457,7 @@ export function useSoundscape() {
   const stopLeafTransition = useCallback(() => controllerRef.current!.stopLeafTransition(), [])
   const playBird = useCallback(() => controllerRef.current!.playBird(), [])
   const playAnimal = useCallback((kind: AnimalSound) => controllerRef.current!.playAnimal(kind), [])
-  const syncOpening = useCallback((shot: string, shutterLift: number) => controllerRef.current!.syncOpening(shot, shutterLift), [])
+  const syncOpening = useCallback((shot: string, shutterLift: number, appleRoll: number) => controllerRef.current!.syncOpening(shot, shutterLift, appleRoll), [])
 
   return { snapshot, unlock, handleEligibleInteraction, toggleMusic, playCommerce, syncLeafTransition, stopLeafTransition, playBird, playAnimal, syncOpening }
 }

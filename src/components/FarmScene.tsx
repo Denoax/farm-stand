@@ -2,6 +2,15 @@ import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import {
+  BIRD_IDLE_DURATIONS,
+  BIRD_REACTION_DURATIONS,
+  evaluateBirdEntrance,
+  evaluateBirdIdle,
+  evaluateBirdReaction,
+  type BirdIdleKind,
+  type BirdReactionKind,
+} from '../scene/birdPerformance'
 import { evaluateMarketOpening } from '../scene/marketOpeningShot'
 import { marketView } from '../scene/marketView'
 
@@ -172,6 +181,7 @@ function boardMaterials(
 export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActivate }: FarmSceneProps) {
   const hostRef = useRef<HTMLDivElement>(null)
   const birdButtonRef = useRef<HTMLButtonElement>(null)
+  const birdPointerRef = useRef<{ x: number; y: number; moved: boolean } | undefined>(undefined)
 
   useEffect(() => {
     const host = hostRef.current
@@ -292,11 +302,25 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
     let bird: THREE.Group | undefined
     let birdShadow: THREE.Mesh | undefined
     let birdMixer: THREE.AnimationMixer | undefined
+    let birdHead: THREE.Bone | undefined
+    let birdNeck: THREE.Bone | undefined
+    let birdTail: THREE.Bone | undefined
+    let birdFootBones: THREE.Bone[] = []
+    let birdReactionKind: BirdReactionKind | undefined
+    let birdReactionStart = 0
     let birdReactionUntil = 0
-    let birdIdlePulseStart = 0
-    let birdIdlePulseUntil = 0
-    let nextBirdIdleAt = performance.now() + 4200
+    let birdReactionQueued = false
+    let birdReactionCount = 0
+    let birdLastTurnDegrees = 0
+    let birdIdleKind: BirdIdleKind | undefined
+    let birdIdleStart = 0
+    let birdIdleUntil = 0
+    let nextBirdIdleAt = Number.POSITIVE_INFINITY
     let birdIdleCount = 0
+    let birdSettled = false
+    let birdClearanceSweepMin = Number.POSITIVE_INFINITY
+    let birdAppleSweepMin = Number.POSITIVE_INFINITY
+    let birdPlantedSupportSweepMin = Number.POSITIVE_INFINITY
     let disposed = false
     let frame = 0
     let idleTimer = 0
@@ -309,23 +333,45 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
       if (!frame) frame = requestAnimationFrame(render)
     }
 
-    function scheduleIdleRender(delay = 110) {
+    const idleOrder: BirdIdleKind[] = ['look-left', 'weight-shift', 'look-right']
+    const reactionOrder: BirdReactionKind[] = ['head-tilt', 'look-turn', 'full-turn']
+
+    function startBirdReaction(now: number) {
+      birdIdleKind = undefined
+      birdIdleUntil = 0
+      birdReactionKind = reactionOrder[birdReactionCount % reactionOrder.length]
+      birdReactionCount += 1
+      birdReactionStart = now
+      birdReactionUntil = now + BIRD_REACTION_DURATIONS[birdReactionKind]
+      nextBirdIdleAt = birdReactionUntil + 2200
+      requestRender()
+    }
+
+    function scheduleIdleRender() {
       window.clearTimeout(idleTimer)
       if (!renderEnabled || !heroVisible || document.hidden || !bird) return
       const now = performance.now()
-      if (now >= nextBirdIdleAt && now >= birdIdlePulseUntil) {
-        birdIdlePulseStart = now
-        birdIdlePulseUntil = now + 680
+      if (!birdReactionKind && !birdIdleKind && now >= nextBirdIdleAt) {
+        birdIdleKind = idleOrder[birdIdleCount % idleOrder.length]
         birdIdleCount += 1
-        nextBirdIdleAt = birdIdlePulseUntil + (birdIdleCount % 2 ? 4700 : 5600)
+        birdIdleStart = now
+        birdIdleUntil = now + BIRD_IDLE_DURATIONS[birdIdleKind]
       }
-      const wait = now < birdIdlePulseUntil ? delay : Math.max(80, nextBirdIdleAt - now)
+      const wait = birdIdleKind ? 16 : Math.max(80, nextBirdIdleAt - now)
       idleTimer = window.setTimeout(requestRender, wait)
     }
 
     const onBirdReaction = () => {
-      birdReactionUntil = performance.now() + 720
-      requestRender()
+      if (!bird || (progressRef.current ?? 0) < .96) return
+      const now = performance.now()
+      if (birdReactionKind && now < birdReactionUntil) {
+        if (birdReactionQueued) return
+        birdReactionQueued = true
+        onBirdActivate()
+        return
+      }
+      startBirdReaction(now)
+      onBirdActivate()
     }
     sceneHost.addEventListener('farmbirdreaction', onBirdReaction)
 
@@ -406,6 +452,13 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
           const action = birdMixer.clipAction(gltf.animations[0])
           action.play()
         }
+        birdHead = model.getObjectByName('Head_M') as THREE.Bone | undefined
+        birdNeck = model.getObjectByName('Neck_M') as THREE.Bone | undefined
+        birdTail = model.getObjectByName('Tail1_M') as THREE.Bone | undefined
+        birdFootBones = [
+          'Ankle_L', 'Ankle_R', 'ToesAEnd_L', 'ToesAEnd_R',
+          'ToesEnd_L', 'ToesEnd_R', 'ToesCEnd_L', 'ToesCEnd_R',
+        ].map((name) => model.getObjectByName(name)).filter((bone): bone is THREE.Bone => bone instanceof THREE.Bone)
         sceneHost.dataset.birdState = 'ready'
         sceneHost.dataset.birdSource = 'bird-orange.glb'
         sceneHost.dataset.birdTake = gltf.animations[0]?.name ?? 'none'
@@ -450,6 +503,8 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
     const rollingQuaternion = new THREE.Quaternion()
     const birdBounds = new THREE.Box3()
     const birdMeshBounds = new THREE.Box3()
+    const appleBounds = new THREE.Box3()
+    const birdBoneDelta = new THREE.Quaternion()
     const measureBirdMesh = () => {
       birdBounds.makeEmpty()
       bird?.traverse((object) => {
@@ -529,39 +584,70 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
       apple.group.quaternion.copy(rollingQuaternion.setFromAxisAngle(rollingAxis, rollAngle))
 
       if (bird) {
-        const entrance = THREE.MathUtils.smoothstep(state.progress, 0.43, 0.86)
-        const hopPosition = entrance * 3
-        const hopIndex = Math.min(2, Math.floor(hopPosition))
-        const hopLocal = entrance >= 1 ? 1 : hopPosition - hopIndex
-        const hopArc = entrance > 0 && entrance < 1 ? Math.sin(hopLocal * Math.PI) * (0.2 - hopIndex * 0.025) : 0
-        const birdEntryX = portrait ? 1.88 : 3.92 * frameScaleX
-        // Portrait's photo cluster fills the right side of the counter. Let the
-        // same right-origin entrance cross to an unobstructed left-hand perch
-        // instead of placing the bird under a link's hit area.
-        const birdPerchX = portrait ? -0.57 : 1.92 * frameScaleX
-        const birdX = THREE.MathUtils.lerp(birdEntryX, birdPerchX, entrance)
-        const reacting = performance.now() < birdReactionUntil
-        const reactionPhase = reacting ? 1 - Math.max(0, birdReactionUntil - performance.now()) / 720 : 0
-        const reactionLift = reacting ? Math.sin(reactionPhase * Math.PI) * 0.09 : 0
-        bird.visible = entrance > 0.012
+        const now = performance.now()
+        const entrance = evaluateBirdEntrance(state.progress, portrait, frameScaleX)
+        if (entrance.progress >= 1 && !birdSettled) {
+          birdSettled = true
+          nextBirdIdleAt = now + 1500
+        }
+        if (birdReactionKind && now >= birdReactionUntil) {
+          if (birdReactionKind === 'full-turn') birdLastTurnDegrees = 360
+          birdReactionKind = undefined
+          if (birdReactionQueued) {
+            birdReactionQueued = false
+            startBirdReaction(now)
+          }
+        }
+        if (birdIdleKind && now >= birdIdleUntil) {
+          birdIdleKind = undefined
+          nextBirdIdleAt = now + (birdIdleCount % 2 ? 2700 : 3400)
+        }
+        const reactionProgress = birdReactionKind
+          ? Math.min(1, Math.max(0, (now - birdReactionStart) / BIRD_REACTION_DURATIONS[birdReactionKind]))
+          : 0
+        const idleProgress = birdIdleKind
+          ? Math.min(1, Math.max(0, (now - birdIdleStart) / BIRD_IDLE_DURATIONS[birdIdleKind]))
+          : 0
+        const performancePose = birdReactionKind
+          ? evaluateBirdReaction(birdReactionKind, reactionProgress)
+          : birdIdleKind
+            ? evaluateBirdIdle(birdIdleKind, idleProgress)
+            : evaluateBirdIdle('look-left', 0)
+        const birdX = entrance.x + performancePose.rootX
+        const birdZ = entrance.z + performancePose.rootZ
+        const totalLift = entrance.lift + performancePose.lift
+        // The first anticipation happens outside the counter. Reveal only as
+        // the bird lifts into its first hop; every visible planted phase then
+        // lands on measured timber rather than hovering off the edge.
+        bird.visible = entrance.progress > .055
         if (birdShadow) {
           birdShadow.visible = bird.visible
-          birdShadow.position.set(birdX, COUNTER_TOP_Y + 0.032, 1.19)
-          const shadowScale = 1 - Math.min(0.46, (hopArc + reactionLift) * 1.45)
+          birdShadow.position.set(birdX, COUNTER_TOP_Y + 0.032, birdZ)
+          const shadowScale = 1 - Math.min(0.46, totalLift * 1.65)
           birdShadow.scale.setScalar(shadowScale)
         }
-        const expectedFootY = COUNTER_TOP_Y + hopArc + reactionLift
-        bird.position.set(birdX, expectedFootY, 1.19)
-        bird.rotation.set(0.13, entrance < 1 ? -0.22 : -0.52, reacting ? Math.sin(reactionPhase * Math.PI * 2) * 0.055 : 0)
-        const idlePulse = performance.now() < birdIdlePulseUntil
-          ? (performance.now() - birdIdlePulseStart) / 680
-          : 0
-        const idleTime = entrance < 1 ? 1.05 + entrance * 0.55 : idlePulse ? 1.35 + idlePulse * 0.62 : 1.35
-        birdMixer?.setTime(reacting ? 0.36 + reactionPhase * 0.62 : idleTime)
+        const expectedFootY = COUNTER_TOP_Y + totalLift
+        bird.position.set(birdX, expectedFootY, birdZ)
+        bird.rotation.set(.1, -Math.PI / 2 + performancePose.bodyYaw, performancePose.bodyRoll)
+        const articulatedGesture = birdReactionKind
+          ? Math.sin(reactionProgress * Math.PI)
+          : birdIdleKind
+            ? Math.sin(idleProgress * Math.PI)
+            : 0
+        const takeTime = entrance.progress < 1
+          ? 1.05 + entrance.progress * .3
+          : 1.35 + articulatedGesture * (birdReactionKind ? 1.6 : .42)
+        birdMixer?.setTime(takeTime)
+        if (birdHead) birdHead.quaternion.multiply(birdBoneDelta.setFromEuler(new THREE.Euler(0, performancePose.headYaw, performancePose.headRoll)))
+        if (birdNeck) birdNeck.quaternion.multiply(birdBoneDelta.setFromEuler(new THREE.Euler(0, performancePose.headYaw * .32, performancePose.headRoll * .4)))
+        if (birdTail) birdTail.quaternion.multiply(birdBoneDelta.setFromEuler(new THREE.Euler(performancePose.tailPitch, 0, 0)))
         bird.updateMatrixWorld(true)
+        const footPoints = birdFootBones.map((bone) => bone.getWorldPosition(new THREE.Vector3()))
         measureBirdMesh()
-        bird.position.y += expectedFootY - birdBounds.min.y
+        const unalignedFootY = footPoints.length ? Math.min(...footPoints.map((point) => point.y)) : birdBounds.min.y
+        bird.position.y += expectedFootY - unalignedFootY
         bird.updateMatrixWorld(true)
+        const plantedFeet = birdFootBones.map((bone) => bone.getWorldPosition(new THREE.Vector3()))
         measureBirdMesh()
 
         const button = birdButtonRef.current
@@ -589,15 +675,76 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
           button.style.top = `${minimumY - padding}px`
           button.style.width = `${Math.max(44, maximumX - minimumX + padding * 2)}px`
           button.style.height = `${Math.max(44, maximumY - minimumY + padding * 2)}px`
-          button.hidden = entrance < 0.96
+          button.hidden = entrance.progress < .96
         }
-        const footError = Math.abs(birdBounds.min.y - expectedFootY)
-        sceneHost.dataset.birdPhase = entrance >= 1 ? (reacting ? 'reacting' : 'perched') : entrance > 0 ? `hop-${hopIndex + 1}` : 'waiting'
-        sceneHost.dataset.birdEntrance = entrance.toFixed(4)
+        const plantedFootY = plantedFeet.length ? Math.min(...plantedFeet.map((point) => point.y)) : birdBounds.min.y
+        const footError = Math.abs(plantedFootY - expectedFootY)
+        const counterMinZ = .96 - 1.62 / 2
+        const counterMaxZ = .96 + 1.62 / 2
+        const counterHalfX = 7.65 * frameScaleX / 2
+        const footSupportMargin = plantedFeet.length
+          ? Math.min(...plantedFeet.map((point) => Math.min(point.z - counterMinZ, counterMaxZ - point.z, point.x + counterHalfX, counterHalfX - point.x)))
+          : -1
+        const rightPostMinX = (3.16 - 1.08 / 2) * frameScaleX
+        const rightPostMaxX = (3.16 + 1.08 / 2) * frameScaleX
+        const overlapsRightPostX = birdBounds.max.x > rightPostMinX && birdBounds.min.x < rightPostMaxX
+        const rightPostClearance = overlapsRightPostX
+          ? postRearZ - birdBounds.max.z
+          : Math.max(rightPostMinX - birdBounds.max.x, birdBounds.min.x - rightPostMaxX)
+        const birdShutterClearance = birdBounds.min.z - shutterFrontZ
+        const birdTrackClearance = birdBounds.min.z - trackFrontZ
+        const birdFasciaClearance = fasciaRearZ - birdBounds.max.z
+        appleBounds.setFromObject(apple.group, true)
+        const axisGap = (minimumA: number, maximumA: number, minimumB: number, maximumB: number) => Math.max(minimumB - maximumA, minimumA - maximumB, 0)
+        const appleGapX = axisGap(birdBounds.min.x, birdBounds.max.x, appleBounds.min.x, appleBounds.max.x)
+        const appleGapY = axisGap(birdBounds.min.y, birdBounds.max.y, appleBounds.min.y, appleBounds.max.y)
+        const appleGapZ = axisGap(birdBounds.min.z, birdBounds.max.z, appleBounds.min.z, appleBounds.max.z)
+        const birdAppleClearance = Math.hypot(appleGapX, appleGapY, appleGapZ)
+        const planted = entrance.planted && performancePose.planted
+        const structureClearance = Math.min(rightPostClearance, birdShutterClearance, birdTrackClearance, birdFasciaClearance)
+        const envelopeClearance = Math.min(structureClearance, birdAppleClearance)
+        if (bird.visible) {
+          birdClearanceSweepMin = Math.min(birdClearanceSweepMin, envelopeClearance)
+          birdAppleSweepMin = Math.min(birdAppleSweepMin, birdAppleClearance)
+        }
+        if (bird.visible && planted) birdPlantedSupportSweepMin = Math.min(birdPlantedSupportSweepMin, footSupportMargin)
+        const phase = entrance.progress < 1
+          ? `${entrance.phase}-${entrance.hopIndex + 1}`
+          : birdReactionKind
+            ? `reaction-${birdReactionKind}`
+            : birdIdleKind
+              ? `idle-${birdIdleKind}`
+              : 'perched'
+        sceneHost.dataset.birdPhase = phase
+        sceneHost.dataset.birdEntrance = entrance.progress.toFixed(4)
         sceneHost.dataset.birdX = birdX.toFixed(3)
+        sceneHost.dataset.birdZ = birdZ.toFixed(3)
+        sceneHost.dataset.birdRootX = performancePose.rootX.toFixed(4)
+        sceneHost.dataset.birdRootZ = performancePose.rootZ.toFixed(4)
+        sceneHost.dataset.birdYawDegrees = THREE.MathUtils.radToDeg(performancePose.bodyYaw).toFixed(2)
+        sceneHost.dataset.birdTurnDegrees = performancePose.turnDegrees.toFixed(2)
+        sceneHost.dataset.birdLastTurnDegrees = birdLastTurnDegrees.toFixed(2)
+        sceneHost.dataset.birdReaction = birdReactionKind ?? 'none'
+        sceneHost.dataset.birdReactionProgress = reactionProgress.toFixed(4)
+        sceneHost.dataset.birdReactionCount = String(birdReactionCount)
+        sceneHost.dataset.birdReactionQueued = birdReactionQueued ? 'true' : 'false'
+        sceneHost.dataset.birdIdleAction = birdIdleKind ?? 'rest'
+        sceneHost.dataset.birdIdleCount = String(birdIdleCount)
+        sceneHost.dataset.birdPlanted = planted ? 'true' : 'false'
         sceneHost.dataset.birdSupportY = COUNTER_TOP_Y.toFixed(3)
-        sceneHost.dataset.birdFootY = birdBounds.min.y.toFixed(4)
+        sceneHost.dataset.birdFootY = plantedFootY.toFixed(4)
         sceneHost.dataset.birdFootContactError = footError.toFixed(4)
+        sceneHost.dataset.birdFootSupportMargin = footSupportMargin.toFixed(4)
+        sceneHost.dataset.birdPostClearance = rightPostClearance.toFixed(4)
+        sceneHost.dataset.birdShutterClearance = birdShutterClearance.toFixed(4)
+        sceneHost.dataset.birdTrackClearance = birdTrackClearance.toFixed(4)
+        sceneHost.dataset.birdFasciaClearance = birdFasciaClearance.toFixed(4)
+        sceneHost.dataset.birdAppleClearance = birdAppleClearance.toFixed(4)
+        sceneHost.dataset.birdStructureClearance = structureClearance.toFixed(4)
+        sceneHost.dataset.birdClearanceSweepMin = Number.isFinite(birdClearanceSweepMin) ? birdClearanceSweepMin.toFixed(4) : 'pending'
+        sceneHost.dataset.birdAppleSweepMin = Number.isFinite(birdAppleSweepMin) ? birdAppleSweepMin.toFixed(4) : 'pending'
+        sceneHost.dataset.birdPlantedSupportSweepMin = Number.isFinite(birdPlantedSupportSweepMin) ? birdPlantedSupportSweepMin.toFixed(4) : 'pending'
+        sceneHost.dataset.birdEnvelopeCollisionFree = birdClearanceSweepMin > 0 && (!Number.isFinite(birdPlantedSupportSweepMin) || birdPlantedSupportSweepMin >= 0) ? 'true' : 'false'
         sceneHost.dataset.birdAffectsApple = 'false'
       }
 
@@ -636,7 +783,7 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
       sceneHost.dataset.rendering = 'active'
       onPresented(state.progress, state.shot)
       if (bird && state.progress >= 1) {
-        if (performance.now() < birdReactionUntil || performance.now() < birdIdlePulseUntil) {
+        if (birdReactionKind || birdIdleKind) {
           frame = requestAnimationFrame(render)
         } else {
           scheduleIdleRender()
@@ -708,7 +855,7 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
       renderer.dispose()
       renderer.domElement.remove()
     }
-  }, [onPresented, onStateChange, progressRef])
+  }, [onBirdActivate, onPresented, onStateChange, progressRef])
 
   return (
     <>
@@ -719,9 +866,19 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
         type="button"
         hidden
         aria-label="Hear the bird chirp"
-        onClick={() => {
+        onPointerDown={(event) => {
+          birdPointerRef.current = { x: event.clientX, y: event.clientY, moved: false }
+        }}
+        onPointerMove={(event) => {
+          const pointer = birdPointerRef.current
+          if (pointer && Math.hypot(event.clientX - pointer.x, event.clientY - pointer.y) > 8) pointer.moved = true
+        }}
+        onPointerCancel={() => { birdPointerRef.current = undefined }}
+        onClick={(event) => {
+          const pointer = birdPointerRef.current
+          birdPointerRef.current = undefined
+          if (event.detail > 0 && pointer?.moved) return
           hostRef.current?.dispatchEvent(new Event('farmbirdreaction'))
-          onBirdActivate()
         }}
       >
         <img src={publicAsset('media/bird-orange-perch.webp')} alt="" />

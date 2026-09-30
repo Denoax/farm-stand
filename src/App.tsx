@@ -34,18 +34,25 @@ const HANDOFF_CLIPS: Record<HandoffKind, HandoffClip> = {
   shop: {
     kind: 'shop',
     src: publicAsset('media/transitions/leaves-shop-01-alpha.webm'),
-    coverStart: 3.2,
+    holdSrc: publicAsset('media/transitions/leaves-shop-cover.webp'),
+    coverStart: 3.03,
     coverEnd: 3.8,
     scale: 1,
+    playbackRate: 1.35,
   },
   animals: {
     kind: 'animals',
     src: publicAsset('media/transitions/leaves-animals-02-alpha.webm'),
+    holdSrc: publicAsset('media/transitions/leaves-animals-cover.webp'),
     coverStart: 1.9,
-    coverEnd: 2,
+    // The native opaque interval is only three decoded frames. Keep its
+    // decoded 1.933 s source frame above the keyed clip a little longer so
+    // destination commit cannot be missed at 1.35x playback.
+    coverEnd: 2.6,
     // The native clip never covers the complete frame. This explicit crop is
     // the smallest inspected scale with four consecutive opaque frames.
     scale: 1.9,
+    playbackRate: 1.35,
   },
 }
 
@@ -132,7 +139,8 @@ export function App() {
     stage.dataset.presentedProgress = value
     stage.dataset.shot = shot
     document.documentElement.style.setProperty('--stage-progress', value)
-    soundscape.syncOpening(shot, evaluateMarketOpening(progress).shutterLift)
+    const presented = evaluateMarketOpening(progress)
+    soundscape.syncOpening(shot, presented.shutterLift, presented.appleRoll)
     if (openingStateRef.current === 'playing') {
       setOpeningContentState((current) => {
         const next = contentStateAtProgress(progress)
@@ -397,6 +405,18 @@ export function App() {
       setShopHandoffState(failed ? 'bypassed' : 'complete')
       setMarketReady(true)
     }
+    window.dispatchEvent(new CustomEvent('farmstandhandofftrace', {
+      detail: {
+        runId: handoffRun,
+        event: 'terminated',
+        phase: handoffPhaseRef.current,
+        kind: request.kind,
+        destination: request.targetId,
+        committed: coverCommittedRef.current,
+        unlocked: true,
+        reason: failed ? 'bypass' : 'ended',
+      },
+    }))
     handoffPhaseRef.current = 'idle'
     handoffRequestRef.current = undefined
     setHandoffPhase('idle')
@@ -414,7 +434,7 @@ export function App() {
         setHandoffRun((run) => run + 1)
       }, 0)
     }
-  }, [moveToTarget, scrollGate.activeRef, scrollGate.release, soundscape.stopLeafTransition])
+  }, [handoffRun, moveToTarget, scrollGate.activeRef, scrollGate.release, soundscape.stopLeafTransition])
 
   const startHandoff = useCallback((request: HandoffRequest) => {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -457,11 +477,17 @@ export function App() {
     const request = handoffRequestRef.current
     if (!request || coverCommittedRef.current || scrollGate.activeRef.current !== 'handoff') return
     coverCommittedRef.current = true
+    window.dispatchEvent(new CustomEvent('farmstandhandofftrace', {
+      detail: { runId: handoffRun, event: 'commit', phase: 'covered', kind: request.kind, destination: request.targetId, committed: true, unlocked: false },
+    }))
     history.pushState(null, '', `#${request.targetId}`)
     if (!moveToTarget(request.targetId, true)) return finishHandoff(true)
     handoffPhaseRef.current = 'covered'
     setHandoffPhase('covered')
-  }, [finishHandoff, moveToTarget, scrollGate.activeRef])
+  }, [finishHandoff, handoffRun, moveToTarget, scrollGate.activeRef])
+
+  const finishSuccessfulHandoff = useCallback(() => finishHandoff(false), [finishHandoff])
+  const failHandoffOpen = useCallback(() => finishHandoff(true), [finishHandoff])
 
   const revealHandoff = useCallback(() => {
     if (!coverCommittedRef.current) return finishHandoff(true)
@@ -757,13 +783,15 @@ export function App() {
       {handoffRequest && handoffPhase !== 'idle' && (
         <VideoHandoff
           key={handoffRun}
+          runId={handoffRun}
+          targetId={handoffRequest.targetId}
           clip={HANDOFF_CLIPS[handoffRequest.kind]}
           phase={handoffPhase}
           onReady={startPreparedHandoff}
           onCovered={commitCoveredHandoff}
           onRevealing={revealHandoff}
-          onEnded={() => finishHandoff(false)}
-          onFailed={() => finishHandoff(true)}
+          onEnded={finishSuccessfulHandoff}
+          onFailed={failHandoffOpen}
           onMediaTime={soundscape.syncLeafTransition}
           onSoundStop={soundscape.stopLeafTransition}
         />
@@ -772,7 +800,7 @@ export function App() {
       <footer>
         <a className="footer-brand" href="#top" aria-label="Return to the farm stand"><Logo /> <span>Return to the farm stand ↑</span></a>
         <p>Farm stand website example · no orders, payments, bookings, or submissions</p>
-        <p>Produce models: Poly Haven, CC0 · product photography: credited Pexels contributors</p>
+        <p>Produce models: Poly Haven, CC0 · product photography: credited Pexels contributors · farm-animal doodles: <a href="https://icons8.com">Icons8</a></p>
         <p>Farm photograph: <a href="https://www.pexels.com/photo/trees-in-orchard-17765489/">Mark Stebnicki / Pexels</a> · leaf transitions: <a href="https://www.youtube.com/watch?v=RRyXHZKOYGc">Kajal Karmakar 01</a> and <a href="https://www.youtube.com/watch?v=dAZGvwAzupY">02</a>, user-supplied originals · <a href="https://incompetech.com/music/royalty-free/index.html?Search=Search&amp;isrc=USUAN2300003">“Morning” by Kevin MacLeod</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a></p>
       </footer>
     </div>

@@ -316,8 +316,12 @@ export function ShopSection({ basket, dispatch, focusRequest, marketReady, onCom
         </svg>
         <div className="market-notebook__paper">
       <div className="section-intro catalogue-intro">
-        <div><p className="eyebrow">Demonstration market</p><h2 id="shop-heading">Shop the stand.</h2></div>
-        <div className="catalogue-summary"><p>Browse 48 photographed examples across the market. Prices and availability are illustrative; nothing can be ordered here.</p></div>
+        <h2 id="shop-heading">Shop the stand.</h2>
+        <div className="market-doodles" aria-hidden="true">
+          <img src="./media/doodles/icons8-outline-hand-drawn-chicken.png" alt="" />
+          <img src="./media/doodles/icons8-outline-hand-drawn-cow.png" alt="" />
+          <img src="./media/doodles/icons8-outline-hand-drawn-sheep.png" alt="" />
+        </div>
       </div>
 
       <div className="market-browser">

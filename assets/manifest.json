@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_on": "2026-09-27",
+  "checked_on": "2026-09-29",
   "project_label": "Farm Stand (working label)",
   "media_bundled": true,
   "notice": "Retained model, font, photography, and generated-background media have been downloaded, inspected, and recorded below. Captured evidence is review material, not a user-approved visual baseline.",
@@ -94,13 +94,17 @@
       ],
       "derivative_path": [
         "public/media/transitions/leaves-shop-01-alpha.webm",
-        "public/media/transitions/leaves-animals-02-alpha.webm"
+        "public/media/transitions/leaves-animals-02-alpha.webm",
+        "public/media/transitions/leaves-shop-cover.webp",
+        "public/media/transitions/leaves-animals-cover.webp"
       ],
       "derivative_sha256": [
-        "6604211994391a7d08b4af7a81e7d5ea426c4dd86f84ea0b078e00ae415ccda6",
-        "b86f75338e57d33e0b64cdd2f0d68a1739e57cf407931d1c33f9da8e9bb3f7f5"
+        "72e2c0c5a9304cf5ea6e9102c35045cf5f9e25c30e2f7b7cbc60d3fd300db00c",
+        "da07c0ba2afaa1021e138e27a12e8ac738b1056ce2e00a2c0fc050b535cba1dd",
+        "d0ee0166f715327ca37d159084e3bb4bf3f35891f1cfcf4f9e2f68ea1df61c6c",
+        "ff404de5f321fcb78675d213f53967795dc1ba1aa33c6adec6b319d430f00430"
       ],
-      "transformation": "The inspected 1280x720 H.264 black-backed originals were decoded without source audio, keyed with FFmpeg colorkey black similarity 0.15/blend 0.045, given a one-pixel alpha-edge erosion to remove the remaining black matte rim, and VP9 alpha-encoded at 1280x720/30 fps. Native-size composites over cream, dark green and saturated blue were checked at multiple motion phases; this preserves the verified dark leaf interiors. Transition 01 keeps native framing and the 3.20-3.80 s commit window. Transition 02 retains its centered 1.9x runtime crop and 1.900-2.000 s commit window. The unused supplied Transition 03 master remains outside public delivery."
+      "transformation": "scripts/process-leaf-mattes.sh reproducibly decodes the inspected 1280x720 H.264 black-backed originals without source audio, applies FFmpeg colorkey black similarity 0.15/blend 0.07, unpremultiplies black-contaminated RGB, replaces RGB only on the keyed edge from alpha-weighted neighbours, contracts alpha fractionally from each pixel and its four-neighbour minimum, and VP9 alpha-encodes at 1280x720/30 fps. This avoids blanket erosion of dark leaf interiors. Native-size composites were inspected over cream and dark green. Both clips play at 1.35x while decoded media time remains the synchronization clock. Opaque source-frame WebP holds at 3.033 seconds and 1.933 seconds briefly sit above the alpha movies during commit, closing isolated keyed points without layering a moving edge over a different leaf frame. Transition 01 keeps native framing and commits at 3.03-3.80 seconds. Transition 02 retains its centered 1.9x runtime crop, commits at 1.90-2.00 seconds and retains the opaque hold through 2.60 seconds so the narrow decoded native interval cannot be skipped. The unused supplied Transition 03 master remains outside public delivery."
     },
     {
       "id": "user_cleared_bird_orange",
@@ -120,7 +124,7 @@
         "6f602871ea448c0f54d0f1355da8a6e8f37f842777f62fdeb80b6b7a61aad80c",
         "41c1c74f21686007fc127935e5de645fe0660e9ae13b6f49f161c4feeb6f6851"
       ],
-      "transformation": "Pinned Three.js parsed the supplied FBX. The 40 exported skin bones and 86-track Take 001 were retained; one visible rig-control line was neutralized and five flat rear-feather components were omitted from the public camera derivative while the original FBX stayed untouched. The supplied RGB base colour was resized to 1024px WebP and explicitly remapped. Runtime authors only the missing world-space hop path and reuses Take 001 for restrained pose/head/jaw motion."
+      "transformation": "Pinned Three.js parsed the supplied FBX. The 40 exported skin bones and 86-track Take 001 were retained; one visible rig-control line was neutralized and five flat rear-feather components were omitted from the public camera derivative while the original FBX stayed untouched. The supplied RGB base colour was resized to 1024px WebP and explicitly remapped. Runtime authors the missing world-space entrance, with three anticipation/airborne/landing/recovery hops around the right post, and reuses Take 001 with named head, neck, tail, ankle and toe bones. Quiet idle actions are separated by rests. Three reactions culminate in four planted hop-steps through a full 360-degree turn and return to the same perch."
     },
     {
       "id": "pen_paper_sound_pool_variants",
@@ -155,6 +159,37 @@
       ],
       "derivative_path": "public/audio/bird-chirp*.mp3, public/audio/leaves-*-bed.mp3 and public/audio/leaf-accent-*.mp3",
       "transformation": "Three short non-species-labelled chirps are non-overlapping trims with edge fades and restrained loudness. Each exact leaf video has a quiet filtered rustle bed plus a three-file dry overlap-accent pool. Playback crosses cue times from decoded video mediaTime, once per run, and fades/stops on reveal, interruption, failure, hidden tab or unmount."
+    },
+    {
+      "id": "apple_roll_on_wood_audio",
+      "source": "LiezelDippenaar, Marble (single) rolling on wooden floor.wav, Freesound sound 707545, CC0. The source is an actual small object rolling on wood; it is not represented as an apple field recording.",
+      "source_url": "https://freesound.org/people/LiezelDippenaar/sounds/707545/",
+      "source_sha256": "a748e54534a3cefea4239d3699e9ee347b2f356779ff97384a6e91a2507cdb96",
+      "source_path": "assets/source/audio/freesound/marble-roll-707545-preview.mp3",
+      "derivative_path": "public/audio/apple-roll-wood.mp3",
+      "derivative_sha256": "a652db2f86ffb3e40cd9e23eec3db5526765eca5f1479231a02d8fdbf94c9d85",
+      "transformation": "A 0.90-2.15 second irregular rolling passage was pitch-shifted down to 0.82x without preserving duration, converted to mono 48 kHz, high-passed at 90 Hz, low-passed at 1.8 kHz, lightly compressed, level-adjusted and edge-faded. Runtime begins only when presented apple travel increases, joins late at the matching progress offset, tapers with the roll, and stops on rest, reversal, interruption, visibility loss or teardown."
+    },
+    {
+      "id": "icons8_farm_animal_doodles",
+      "source": "Icons8 Outline Hand Drawn 100px PNGs for Chicken, Cow and Sheep, used under the provider's free website terms with a live footer link to icons8.com.",
+      "source_url": [
+        "https://icons8.com/icon/101731/chicken",
+        "https://icons8.com/icon/101739/cow",
+        "https://icons8.com/icon/jxtIKXVCKFzS/sheep"
+      ],
+      "license_evidence": "https://icons8.com/license",
+      "derivative_path": [
+        "public/media/doodles/icons8-outline-hand-drawn-chicken.png",
+        "public/media/doodles/icons8-outline-hand-drawn-cow.png",
+        "public/media/doodles/icons8-outline-hand-drawn-sheep.png"
+      ],
+      "derivative_sha256": [
+        "5e9ee42bf02eb31f79dd6ebd03a2fcc21a21ad5d208c9e267b045101a711b452",
+        "09825c3fbe4a6f587e925aa8fa0b21a355e9a8082adbac68119dfc933c145ba2",
+        "02c17e49731922c61fdfc7646e5544830795f94d4fc99051cbbc3dfcebcd583f"
+      ],
+      "transformation": "The provider-delivered transparent 100px PNGs are unchanged. CSS only sizes, rotates and softly blends the three decorative marks into the released notebook heading space. Empty alt text and an aria-hidden group keep them out of the accessibility tree."
     },
     {
       "id": "market_opening_open_stand_plates",

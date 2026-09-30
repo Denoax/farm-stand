@@ -140,6 +140,11 @@ h1 { max-width: 11ch; font-size: clamp(4rem, 7vw, 7.2rem); line-height: .92; tex
 .catalogue-intro h2 { font-size: clamp(2.5rem, 4vw, 3.5rem); }
 .catalogue-summary { max-width: 34rem; justify-self: end; }
 .catalogue-summary > p { margin: 0 0 1.1rem; color: #526359; font-size: 1.05rem; }
+.market-doodles { display: flex; align-items: end; justify-content: end; gap: clamp(.7rem, 1.8vw, 1.4rem); min-height: 4.5rem; color: var(--ink); }
+.market-doodles img { display: block; width: clamp(3.35rem, 5vw, 4.75rem); height: auto; opacity: .76; mix-blend-mode: multiply; }
+.market-doodles img:nth-child(1) { transform: rotate(-3deg) translateY(.15rem); }
+.market-doodles img:nth-child(2) { transform: rotate(2deg) scale(1.06); }
+.market-doodles img:nth-child(3) { transform: rotate(-1deg) translateY(.2rem); }
 .basket-button { display: inline-flex; align-items: center; gap: .85rem; min-height: 3rem; padding: .6rem .7rem .6rem 1.1rem; border: 1px solid var(--action); border-radius: 999px; color: var(--action-label); background: var(--action); font-weight: 700; cursor: pointer; }
 .basket-button:hover { border-color: var(--action-hover); background: var(--action-hover); }
 .basket-button:active { border-color: var(--action-active); background: var(--action-active); }
@@ -329,6 +334,8 @@ footer a { text-underline-offset: .18rem; }
   .section-intro h2 { font-size: clamp(2.35rem, 9.5vw, 3.5rem); }
   .catalogue-summary { justify-self: start; }
   .catalogue-summary > p { margin-bottom: .8rem; font-size: .96rem; }
+  .market-doodles { justify-content: start; min-height: 3.8rem; }
+  .market-doodles img { width: clamp(3rem, 13vw, 4rem); }
   .catalogue-toolbar { gap: .4rem; margin: 1.25rem 0 1rem; }
   .catalogue-toolbar button { min-height: 2.4rem; padding: .4rem .72rem; font-size: .88rem; }
   .product-grid { grid-template-columns: minmax(0, 1fr); }
@@ -1145,7 +1152,8 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
   background: transparent;
 }
 .video-handoff[data-handoff-phase="preparing"] { visibility: hidden; }
-.video-handoff video {
+.video-handoff video,
+.video-handoff__hold {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -1157,6 +1165,8 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
   transform-origin: center;
   will-change: transform;
 }
+.video-handoff__hold { z-index: 1; visibility: hidden; }
+.video-handoff[data-cover-hold="visible"] .video-handoff__hold { visibility: visible; }
 
 @media (max-width: 760px) {
   .header-brand { gap: .45rem; }

@@ -17,6 +17,7 @@
     "capture:notebook-sound": "node scripts/capture-notebook-sound.mjs",
     "capture:video-bird": "node scripts/capture-video-bird-notebook.mjs",
     "capture:video-bird-sound": "node scripts/capture-sound-pools.mjs",
+    "capture:bird-performance": "node scripts/capture-bird-performance-review.mjs",
     "capture:brighter-safeguards": "node scripts/capture-brighter-safeguards.mjs",
     "capture:frame-guides": "node scripts/capture-frame-guides.mjs",
     "capture:v24": "node scripts/capture-v24-evidence.mjs",
