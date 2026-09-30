@@ -326,7 +326,6 @@ test('shutter is monotonic, the apple clears the complete assembly, and the fram
   expect(roll.rotation * roll.radius).toBeCloseTo(roll.travel, 3)
   expect(Number(await scene.getAttribute('data-apple-clearance'))).toBeGreaterThan(0)
   expect(Number(await scene.getAttribute('data-shutter-clearance'))).toBeGreaterThan(0)
-  expect(Number(await scene.getAttribute('data-track-clearance'))).toBeGreaterThan(0)
   expect(Number(await scene.getAttribute('data-fascia-clearance'))).toBeGreaterThan(0)
   expect(Math.abs(Number(await scene.getAttribute('data-counter-penetration')))).toBeLessThan(.001)
   expect(Number(await scene.getAttribute('data-assembly-min-clearance'))).toBeGreaterThan(0)
@@ -334,6 +333,9 @@ test('shutter is monotonic, the apple clears the complete assembly, and the fram
   expect(Number(await scene.getAttribute('data-clearance-sweep-min'))).toBeGreaterThan(0)
   expect(Math.abs(Number(await scene.getAttribute('data-clearance-sweep-max-counter-penetration')))).toBeLessThan(.001)
   await expect(scene).toHaveAttribute('data-apple-collision-free', 'true')
+  await expect(scene).toHaveAttribute('data-visible-shutter-rails', 'false')
+  await expect(scene).toHaveAttribute('data-joint-occlusion', 'geometry-linked')
+  await expect(scene).toHaveAttribute('data-timber-material', 'storybook-painted-rough-wood-derivative')
   await expect(scene).toHaveAttribute('data-context-antialias', 'true')
   expect(Number(await scene.getAttribute('data-context-samples'))).toBeGreaterThan(0)
   expect(Number(await scene.getAttribute('data-pixel-ratio-cap'))).toBe(1.5)
@@ -373,7 +375,47 @@ test('market exposes exact counts, curated default, subgroup browse, search, and
   await expect(page.locator('.product-card')).toHaveCount(12)
 })
 
-test('basket supports variants, quantity, undo, preview, and clear', async ({ page }) => {
+test('product images recover from a transient failure and offer a decoded manual retry after a persistent failure', async ({ page }) => {
+  let requests = 0
+  await page.route('**/media/catalogue-expanded/apple.avif*', async (route) => {
+    requests += 1
+    if (requests === 1) await route.abort()
+    else await route.continue()
+  })
+  await openShop(page, false)
+  const appleImage = page.locator('#product-apple img[data-image-source]')
+  await expect(appleImage).toHaveAttribute('data-image-state', 'decoded')
+  await expect(appleImage).toHaveAttribute('data-image-attempt', '1')
+  expect(requests).toBe(2)
+
+  await page.unroute('**/media/catalogue-expanded/apple.avif*')
+  await page.route('**/media/catalogue-expanded/apple.avif*', (route) => route.abort())
+  await page.reload({ waitUntil: 'networkidle' })
+  await expect(page.locator('#product-apple').getByRole('button', { name: 'Retry image' })).toBeVisible()
+  await page.unroute('**/media/catalogue-expanded/apple.avif*')
+  await page.locator('#product-apple').getByRole('button', { name: 'Retry image' }).click()
+  await expect(appleImage).toHaveAttribute('data-image-state', 'decoded')
+  await expect(appleImage).toHaveAttribute('data-image-attempt', '2')
+})
+
+test('all 48 catalogue photographs reach a decoded image state', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium')
+  await openShop(page)
+  const cards = page.locator('.product-card')
+  await expect(cards).toHaveCount(48)
+  for (let index = 0; index < 48; index += 1) {
+    const image = cards.nth(index).locator('img[data-image-source]')
+    await image.scrollIntoViewIfNeeded()
+    await expect(image, `product image ${index + 1}`).toHaveAttribute('data-image-state', 'decoded')
+    expect(await image.evaluate((node) => ({ width: (node as HTMLImageElement).naturalWidth, height: (node as HTMLImageElement).naturalHeight }))).toEqual(expect.objectContaining({ width: expect.any(Number), height: expect.any(Number) }))
+    expect(await image.evaluate((node) => (node as HTMLImageElement).naturalWidth)).toBeGreaterThan(0)
+    expect(await image.evaluate((node) => (node as HTMLImageElement).naturalHeight)).toBeGreaterThan(0)
+  }
+})
+
+test('basket supports variants, quantity, undo, collection, checkout, completion, edit, and clear', async ({ page }) => {
+  const writes: string[] = []
+  page.on('request', (request) => { if (request.method() !== 'GET') writes.push(`${request.method()} ${request.url()}`) })
   await openShop(page)
   await addProduct(page, 'apple')
   const shirt = page.locator('#product-farm-tee')
@@ -391,7 +433,7 @@ test('basket supports variants, quantity, undo, preview, and clear', async ({ pa
   await expect(page.getByRole('button', { name: /Open basket preview, 3 items/ })).toBeFocused()
   await page.getByRole('button', { name: /Open basket preview, 3 items/ }).click()
   await preview.getByRole('button', { name: 'View full basket' }).click()
-  const drawer = page.getByRole('dialog', { name: /Your basket/ })
+  const drawer = page.locator('.basket-dialog')
   await expect(drawer).not.toContainText('Demo only. No order, payment, stock, or collection slot is submitted.')
   await expect(drawer).not.toContainText('Prices are read from the current catalogue')
   await expect(drawer.getByText('Size: Small')).toBeVisible()
@@ -401,10 +443,41 @@ test('basket supports variants, quantity, undo, preview, and clear', async ({ pa
   await drawer.locator('.basket-lines li').filter({ hasText: 'Size: Small' }).getByRole('button', { name: 'Remove' }).click()
   await drawer.getByRole('button', { name: 'Undo' }).click()
   await expect(drawer.getByText('Size: Small')).toBeVisible()
-  await drawer.getByRole('button', { name: 'Preview collection' }).click()
+  await drawer.getByRole('button', { name: 'Choose collection' }).click()
+  await expect(drawer.getByRole('heading', { name: 'Choose an illustrative collection period.' })).toBeFocused()
   await expect(drawer).toContainText('never removes, substitutes, or reprices')
-  await drawer.getByRole('button', { name: 'Save this preview' }).click()
-  await expect(drawer).toContainText('Nothing was sent')
+  await drawer.getByLabel(/Saturday pickup/).check()
+  await drawer.getByRole('button', { name: 'Continue to checkout' }).click()
+  await expect(drawer.getByRole('heading', { name: 'Review the local preview.' })).toBeFocused()
+  await expect(drawer).toContainText('Saturday pickup')
+  await drawer.getByRole('button', { name: 'Use sample details' }).click()
+  await drawer.getByLabel('Email').fill('not-an-email')
+  await drawer.getByRole('button', { name: 'Complete preview' }).click()
+  await expect(drawer.getByText(/Enter an email/)).toBeVisible()
+  await drawer.getByLabel('Email').fill('alex@example.com')
+  await drawer.getByRole('button', { name: 'Back to collection' }).click()
+  await expect(drawer.getByLabel(/Saturday pickup/)).toBeChecked()
+  await drawer.getByRole('button', { name: 'Continue to checkout' }).click()
+  await drawer.getByRole('button', { name: 'Edit basket' }).click()
+  await drawer.getByRole('button', { name: 'Increase Orchard apples quantity' }).click()
+  await drawer.getByRole('button', { name: 'Choose collection' }).click()
+  await expect(drawer.getByLabel(/Saturday pickup/)).toBeChecked()
+  await drawer.getByRole('button', { name: 'Continue to checkout' }).click()
+  await expect(drawer.getByLabel('Email')).toHaveValue('alex@example.com')
+  await expect(drawer.locator('.basket-drawer__footer')).toContainText('$75.50')
+  await expect(drawer.locator('form')).toHaveCount(0)
+  await expect(drawer.getByLabel(/card|bank|cvv|payment/i)).toHaveCount(0)
+  await drawer.getByRole('button', { name: 'Complete preview' }).evaluate((button) => { (button as HTMLButtonElement).click(); (button as HTMLButtonElement).click() })
+  await expect(drawer.getByRole('heading', { name: 'Preview complete', exact: true })).toBeVisible()
+  await expect(drawer.getByRole('heading', { name: 'Preview complete', exact: true })).toHaveCount(1)
+  await expect(drawer).toContainText('Nothing was sent, reserved or charged')
+  await expect(drawer).toContainText('your basket is unchanged')
+  expect(await page.evaluate(() => Object.values(sessionStorage).join('\n'))).not.toContain('alex@example.com')
+  expect(page.url()).not.toContain('alex')
+  expect(writes).toEqual([])
+  await drawer.getByRole('button', { name: 'Back to checkout' }).click()
+  await drawer.getByRole('button', { name: 'Edit basket' }).click()
+  await expect(drawer).toHaveAttribute('data-checkout-step', 'basket')
   await drawer.getByRole('button', { name: 'Clear demonstration basket' }).click()
   await drawer.getByRole('button', { name: 'Yes, clear it' }).click()
   await expect(drawer).toContainText('Your demonstration basket is empty.')
@@ -459,6 +532,7 @@ test('exact shop video owns one continuous hold and commits only in its decoded 
   await dispatchWheel(page, 500)
   expect(await page.evaluate(() => Number.parseFloat(document.body.style.top || '0'))).toBe(heldAt)
   await expect(page.locator('.video-handoff')).toBeVisible()
+  await expect(page.locator('.video-handoff')).toHaveAttribute('data-initial-frame', 'presented')
   await page.waitForTimeout(1500)
   await expect(page).not.toHaveURL(/#shop$/)
   await expect(root).toHaveAttribute('data-handoff-state', 'covered', { timeout: 2500 })
@@ -549,6 +623,8 @@ test('one leaf run stays monotonic through scroll storms and harmless parent rer
   expect(new Set(trace.map((event) => event.runId)).size).toBe(1)
   expect(new Set(trace.map((event) => event.videoId).filter(Boolean)).size).toBe(1)
   expect(trace.filter((event) => event.event === 'commit')).toHaveLength(1)
+  expect(trace.filter((event) => event.event === 'initial-frame-presented')).toHaveLength(1)
+  expect(trace.findIndex((event) => event.event === 'initial-frame-presented')).toBeLessThan(trace.findIndex((event) => event.event === 'play'))
   expect(trace.filter((event) => event.event === 'terminated')).toHaveLength(1)
   expect(trace.find((event) => event.event === 'commit')).toMatchObject({ committed: true, unlocked: false })
   expect(trace.find((event) => event.event === 'terminated')).toMatchObject({ committed: true, unlocked: true })
@@ -1140,7 +1216,7 @@ test('basket transitions emit one semantic open or close cue without a mini-to-f
   await expect.poll(async () => page.evaluate(() => (window as typeof window & { __heardSounds?: string[] }).__heardSounds)).toEqual(['basket-open', 'basket-open', 'basket-close'])
 })
 
-test('cattle cue uses the lowered gain', async ({ page }) => {
+test('source-calibrated animal cues stay restrained and do not stack on duplicate activation', async ({ page }) => {
   await page.addInitScript(() => {
     ;(window as typeof window & { __heardSounds?: Array<{ name: string; gain: number }> }).__heardSounds = []
     window.addEventListener('farmstandsound', ((event: CustomEvent<{ name: string; gain: number }>) => {
@@ -1151,10 +1227,54 @@ test('cattle cue uses the lowered gain', async ({ page }) => {
   await page.mouse.click(8, 320)
   await expect(page.locator('.sound-controls')).toHaveAttribute('data-sound-status', /ready|partial/, { timeout: 8000 })
   await page.locator('.entrance-links [data-animal-sound="cattle"]').click()
-  await expect.poll(async () => page.evaluate(() => ((window as typeof window & { __heardSounds?: Array<{ name: string; gain: number }> }).__heardSounds ?? []).find(({ name }) => name === 'cattle')?.gain)).toBeCloseTo(.167, 3)
+  await expect.poll(async () => page.evaluate(() => ((window as typeof window & { __heardSounds?: Array<{ name: string; gain: number }> }).__heardSounds ?? []).find(({ name }) => name === 'cattle')?.gain)).toBeCloseTo(.039, 3)
   await page.locator('.entrance-links [data-animal-sound="cattle"]').evaluate((link) => (link as HTMLAnchorElement).click())
   await page.waitForTimeout(100)
   expect(await page.evaluate(() => ((window as typeof window & { __heardSounds?: Array<{ name: string }> }).__heardSounds ?? []).filter(({ name }) => name === 'cattle').length)).toBe(1)
+})
+
+test('fixed header compacts after real scrolling and restores only at the true top', async ({ page }) => {
+  await page.goto(`${projectPath}#shop`, { waitUntil: 'networkidle' })
+  const header = page.locator('.site-header')
+  await expect(header).toHaveAttribute('data-compact', 'true')
+  const anchorGeometry = await page.evaluate(() => ({ headerBottom: document.querySelector('.site-header')!.getBoundingClientRect().bottom, headingTop: document.querySelector('#shop h2')!.getBoundingClientRect().top }))
+  expect(anchorGeometry.headingTop).toBeGreaterThanOrEqual(anchorGeometry.headerBottom)
+  await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }))
+  await expect(header).toHaveAttribute('data-compact', 'false')
+  await page.evaluate(() => scrollTo({ top: 180, behavior: 'instant' }))
+  await expect(header).toHaveAttribute('data-compact', 'true')
+  const geometry = await header.evaluate((element) => ({ top: element.getBoundingClientRect().top, position: getComputedStyle(element).position }))
+  expect(geometry).toEqual({ top: 0, position: 'fixed' })
+  await page.evaluate(() => scrollTo({ top: 20, behavior: 'instant' }))
+  await expect(header).toHaveAttribute('data-compact', 'false')
+})
+
+test('contact editing preserves exact long input through insertion and undo without multiplying or overflowing', async ({ page }) => {
+  await page.goto(`${projectPath}#contact`, { waitUntil: 'networkidle' })
+  const field = page.getByLabel('What should your website make easier?')
+  const original = `${'Long farm detail '.repeat(310)}END-MARKER`
+  await field.fill(original)
+  await field.evaluate((node) => {
+    const textarea = node as HTMLTextAreaElement
+    textarea.focus()
+    textarea.setSelectionRange(13, 13)
+  })
+  await page.keyboard.insertText('PASTE-MARKER ')
+  const inserted = `${original.slice(0, 13)}PASTE-MARKER ${original.slice(13)}`
+  await expect(field).toHaveValue(inserted)
+  await page.keyboard.press('Control+z')
+  await expect(field).toHaveValue(original)
+  const result = await page.locator('#contact').evaluate((section, expected) => {
+    const summary = section.querySelector('.brief-summary')!
+    return {
+      summaries: section.querySelectorAll('.brief-summary').length,
+      markerCount: (summary.textContent?.match(/END-MARKER/g) ?? []).length,
+      exactValue: (section.querySelector('textarea') as HTMLTextAreaElement).value === expected,
+      pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      sectionOverflow: section.scrollWidth - section.clientWidth,
+    }
+  }, original)
+  expect(result).toEqual({ summaries: 1, markerCount: 1, exactValue: true, pageOverflow: 0, sectionOverflow: 0 })
 })
 
 test('reduced motion presents complete still states and keeps manual video control', async ({ page }) => {
@@ -1173,14 +1293,14 @@ test('reduced motion presents complete still states and keeps manual video contr
 test('model, opening-image, product-image, and video failures retain complete fallbacks', async ({ page }) => {
   await page.route('**/models/**', (route) => route.abort())
   await page.route('**/media/real-farm/*.avif', (route) => route.abort())
-  await page.route('**/media/catalogue-expanded/apple.avif', (route) => route.abort())
+  await page.route('**/media/catalogue-expanded/apple.avif*', (route) => route.abort())
   await page.route('**/media/farm-life-motion/hens.mp4', (route) => route.abort())
   await page.goto(projectPath)
   await expect(page.locator('.hero-stage')).toHaveClass(/hero-stage--fallback/)
   await expect(page.locator('.hero-stage')).toHaveAttribute('data-opening-state', 'fallback')
   await openShop(page, false)
   await expect(page.getByRole('button', { name: /Open basket preview/ })).toBeVisible()
-  await expect(page.getByRole('img', { name: /Orchard apples image unavailable/ })).toBeVisible()
+  await expect(page.getByRole('group', { name: /Orchard apples image unavailable/ })).toBeVisible()
   await page.goto(`${projectPath}#hens`)
   await expect(page.getByRole('img', { name: /Hens video unavailable/ })).toBeVisible()
 })

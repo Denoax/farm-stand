@@ -94,7 +94,9 @@ export function useOpeningScrollGate(watchdogMs: number) {
     return true
   }, [])
 
+  const getLogicalScrollY = useCallback(() => storedRef.current?.scrollY ?? window.scrollY, [])
+
   useEffect(() => () => { release(undefined, false) }, [release])
 
-  return { active: owner !== null, activeRef: ownerRef, owner, begin, moveTo, release }
+  return { active: owner !== null, activeRef: ownerRef, owner, begin, moveTo, release, getLogicalScrollY }
 }

@@ -25,7 +25,10 @@ type ScrollHintState = 'hidden' | 'closed' | 'market'
 
 const openingStorageKey = 'farm-stand-market-opening-v2'
 const openingDuration = 6500
-const contentReturnStart = 0.895
+// The final photograph starts 210 ms after the 580 ms return animation.
+// Begin the return with enough time to reach the exact complete style before
+// the fixed 6.5 second opening settles; changing state must not cancel it.
+const contentReturnStart = 0.875
 const openingSettleStart = 0.75
 const openingWatchdog = 9000
 const handoffWatchdog = 7500
@@ -100,6 +103,7 @@ export function App() {
   const [idleSequence, setIdleSequence] = useState(0)
   const elapsedRef = useRef(openingState === 'open' ? openingDuration : 0)
   const scrollGate = useOpeningScrollGate(openingWatchdog)
+  const [headerCompact, setHeaderCompact] = useState(() => window.scrollY > 104)
   const introHoldActive = scrollGate.owner === 'opening'
   const introHoldRef = scrollGate.activeRef
   const soundscape = useSoundscape()
@@ -117,6 +121,27 @@ export function App() {
     }
   })
   const [shopFocusRequest, setShopFocusRequest] = useState<{ productId: ProductId; sequence: number }>()
+
+  const syncHeaderState = useCallback(() => {
+    const logicalY = scrollGate.getLogicalScrollY()
+    setHeaderCompact((current) => logicalY > 104 ? true : logicalY < 36 ? false : current)
+  }, [scrollGate.getLogicalScrollY])
+
+  useEffect(() => {
+    let frame = 0
+    const schedule = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(syncHeaderState)
+    }
+    schedule()
+    window.addEventListener('scroll', schedule, { passive: true })
+    window.addEventListener('resize', schedule)
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', schedule)
+      window.removeEventListener('resize', schedule)
+    }
+  }, [scrollGate.owner, syncHeaderState])
   const settleOpening = useCallback((state: Extract<OpeningState, 'open' | 'fallback'> = 'open') => {
     scrollGate.release('opening')
     elapsedRef.current = openingDuration
@@ -380,8 +405,9 @@ export function App() {
     const targetY = target.getBoundingClientRect().top + currentY
     if (withGate) scrollGate.moveTo('handoff', 0, targetY)
     else target.scrollIntoView({ block: 'start' })
+    requestAnimationFrame(syncHeaderState)
     return true
-  }, [scrollGate.moveTo])
+  }, [scrollGate.moveTo, syncHeaderState])
 
   const finishHandoff = useCallback((failed = false) => {
     const request = handoffRequestRef.current
@@ -679,7 +705,7 @@ export function App() {
       data-sound-ready={soundscape.snapshot.audioReady ? 'true' : 'false'}
     >
       <a className="skip-link" href="#main">Skip to the main content</a>
-      <header className="site-header">
+      <header className="site-header" data-compact={headerCompact ? 'true' : 'false'}>
         <div className="header-brand">
           <a className="wordmark" href="#top" aria-label="Farm stand website demonstration, home">
             <Logo />

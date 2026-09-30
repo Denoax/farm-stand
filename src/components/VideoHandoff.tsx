@@ -35,6 +35,8 @@ export function VideoHandoff({ runId, targetId, clip, phase, onReady, onCovered,
   const holdReadyRef = useRef(false)
   const coveredRef = useRef(false)
   const revealingRef = useRef(false)
+  const initialFrameRequestedRef = useRef(false)
+  const initialFrameHandleRef = useRef(0)
   const startedRunRef = useRef<number | undefined>(undefined)
   const callbacksRef = useRef({ onReady, onCovered, onRevealing, onEnded, onFailed, onMediaTime, onSoundStop })
   const countersRef = useRef({ loads: 0, seeks: 0, plays: 0 })
@@ -68,13 +70,43 @@ export function VideoHandoff({ runId, targetId, clip, phase, onReady, onCovered,
     callbacksRef.current.onReady()
   }
 
+  const prepareInitialFrame = () => {
+    const video = videoRef.current
+    if (!video || initialFrameRequestedRef.current || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return
+    initialFrameRequestedRef.current = true
+    countersRef.current.seeks += 1
+    video.currentTime = 0
+    const presented = (mediaTime: number) => {
+      if (!videoRef.current || startedRunRef.current === runId) return
+      videoReadyRef.current = true
+      if (wrapperRef.current) {
+        wrapperRef.current.dataset.initialFrame = 'presented'
+        wrapperRef.current.dataset.initialFrameTime = mediaTime.toFixed(4)
+      }
+      trace('initial-frame-presented', mediaTime)
+      notifyReady()
+    }
+    const callbackVideo = video as HTMLVideoElement & { requestVideoFrameCallback?: (callback: VideoFrameRequestCallback) => number }
+    if (callbackVideo.requestVideoFrameCallback) {
+      initialFrameHandleRef.current = callbackVideo.requestVideoFrameCallback((_now, metadata) => presented(metadata.mediaTime))
+      return
+    }
+    // Older engines have no presented-frame callback. HAVE_CURRENT_DATA plus
+    // two compositor turns is the narrow fallback; supported browsers use the
+    // decoded-frame boundary above.
+    requestAnimationFrame(() => requestAnimationFrame(() => presented(video.currentTime)))
+  }
+
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
     readyRef.current = false
     videoReadyRef.current = false
+    holdReadyRef.current = false
     coveredRef.current = false
     revealingRef.current = false
+    initialFrameRequestedRef.current = false
+    initialFrameHandleRef.current = 0
     if (wrapperRef.current) wrapperRef.current.dataset.coverHold = 'hidden'
     countersRef.current.loads += 1
     video.load()
@@ -92,8 +124,6 @@ export function VideoHandoff({ runId, targetId, clip, phase, onReady, onCovered,
     coveredRef.current = false
     revealingRef.current = false
     video.playbackRate = clip.playbackRate
-    countersRef.current.seeks += 1
-    video.currentTime = 0
     countersRef.current.plays += 1
     trace('play')
     void video.play().catch(() => callbacksRef.current.onFailed())
@@ -160,7 +190,11 @@ export function VideoHandoff({ runId, targetId, clip, phase, onReady, onCovered,
     return () => window.clearTimeout(revealFallback)
   }, [phase, runId])
 
-  useEffect(() => () => callbacksRef.current.onSoundStop(), [runId])
+  useEffect(() => () => {
+    const video = videoRef.current as (HTMLVideoElement & { cancelVideoFrameCallback?: (handle: number) => void }) | null
+    if (initialFrameHandleRef.current) video?.cancelVideoFrameCallback?.(initialFrameHandleRef.current)
+    callbacksRef.current.onSoundStop()
+  }, [runId])
 
   const style = { '--handoff-scale': clip.scale } as CSSProperties
 
@@ -179,10 +213,7 @@ export function VideoHandoff({ runId, targetId, clip, phase, onReady, onCovered,
         muted
         playsInline
         preload="auto"
-        onCanPlay={() => {
-          videoReadyRef.current = true
-          notifyReady()
-        }}
+        onLoadedData={prepareInitialFrame}
         onEnded={() => { if (wrapperRef.current) wrapperRef.current.dataset.coverHold = 'hidden'; trace('ended'); callbacksRef.current.onSoundStop(); callbacksRef.current.onEnded() }}
         onError={() => { if (wrapperRef.current) wrapperRef.current.dataset.coverHold = 'hidden'; trace('error'); callbacksRef.current.onSoundStop(); callbacksRef.current.onFailed() }}
       />

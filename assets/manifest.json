@@ -81,7 +81,16 @@
         "38343cb062e7fadcda513ded0b17271c9d7f1da56765d03508dc84c8ff1bd475"
       ],
       "derivative_path": "public/media/materials/",
-      "inspection_result": "Diffuse, OpenGL normal, and roughness maps were inspected in the permanent frame. Three single-board regions were cropped to exclude photographed joints, oriented along each member, and rendered with non-colour normal/roughness handling."
+      "inspection_result": "Diffuse, OpenGL normal, and roughness maps were inspected in the permanent frame. Three single-board regions were cropped to exclude photographed joints, oriented along each member, and rendered with non-colour normal/roughness handling. The 2026-09-30 storybook derivatives retain those exact CC0 crops while reducing high-frequency photographic noise, warming the broad value structure, and preserving readable grain and knots. Runtime normal strength is reduced rather than blurred into the interface.",
+      "storybook_derivative_script": "scripts/prepare-storybook-wood.sh",
+      "storybook_derivative_sha256": [
+        "9d79f39d3936d3a4885b362f2c39205c97008238a4cfca29a407e46ffadce8fd",
+        "c9c0ee876b7de002aa49112343b73ea16d3f801cb650eebba73915bd80ee3b08",
+        "9091d4aa2b178b1f8d606d08365ca0dc790285763651d699ccb13eedd04ed097",
+        "5885ad3922436d7590f901da7969fe79b33b6ad4e062912f964c574b9ed25bb4",
+        "776c27b563d5344e5737c8d25d53e152ee9f52402579dd43c8474a74dc92ee60",
+        "14a54f53f6094a1074ab7ec284c2e2d00652b4419c57ed80f4d8823786709c2f"
+      ]
     }
   ],
   "project_derivatives": [
@@ -206,37 +215,37 @@
     },
     {
       "id": "market_opening_first_paint_posters",
-      "source": "Deterministic first-frame captures of the implemented timber shutter, rails, permanent frame, lighting, and retained CC0 apple over the selected bright orchard plate",
+      "source": "Deterministic first-frame captures of the implemented timber shutter, rail-free permanent frame, storybook diffuse treatment, geometry-linked joint shading, lighting, and retained CC0 apple over the selected bright orchard plate",
       "source_sha256": [
-        "e223715b697f5394dcfe6f1a64ec6382243d09c6cb6f95cfe9a982243723b383",
-        "ddf8f95ae8212fe2bf492ae36427052f8b331339ca216cbed1fe55d4e1387608"
+        "d29282bf03cee2e668f42b7b587677880041dafab8559c67511420a6a40e0a95",
+        "0a010b7b263925258822dc0fb701d8d1e3d0eb7cd57db2c7cf8bab3ca4fefdeb"
       ],
       "derivative_path": [
         "public/media/market-opening-poster-desktop.avif",
         "public/media/market-opening-poster-portrait.avif"
       ],
       "derivative_sha256": [
-        "aa8034c70fab0549796b955375b910f953bcd50c31c173aba29d7367d9c2ecd4",
-        "d2c9988bd21deb151c6073ca410df07026cc42255bd7b65c5c44c5ab8ce0a02d"
+        "08c55156ef5de0fe393ff3799cacbba96b504917f758fad998b17d6efca40292",
+        "f0578de48e929a09bf114568e07a84861301256d2cd2bb78ebdbb660dbf34d57"
       ],
-      "transformation": "Captured from the current permanent-frame local WebGL start state at 1536 by 1024 and 640 by 960 CSS pixels with HTML interface layers suppressed; still-image AVIF-encoded with FFmpeg at CRF 30. These are loading posters, not independent artwork or review baselines."
+      "transformation": "Captured from the current permanent-frame local WebGL start state at 1536 by 1024 and 640 by 960 CSS pixels with HTML interface layers suppressed; still-image AVIF-encoded with FFmpeg at CRF 28. These are loading posters, not independent artwork or review baselines."
     },
     {
       "id": "market_opening_settled_posters",
       "source": "Deterministic complete-state captures of the implemented permanent frame, real Mark Stebnicki orchard photograph, lighting, and camera, with the obsolete photo backing wall removed",
       "source_sha256": [
-        "57563b35dced4359665edc35dfe4bf7e069359cf459dca301a3ecefd2e180f9c",
-        "d68c3bf3bcb4aac3372d49843f2284d9216797ebb719f2ad7e0d552bebac8352"
+        "489d3f87b2e132a73bf91d8a575fd9b9a66c3e0b0153730d06306c39f49a8265",
+        "8cb41eefb57b6964fb2e95b3235e971fb027edfaa162cf38c72c6c0e8d60fd19"
       ],
       "derivative_path": [
         "public/media/market-opening-settled-desktop.avif",
         "public/media/market-opening-settled-portrait.avif"
       ],
       "derivative_sha256": [
-        "8f2a652dfea6c5aa7eaabb5e35a8fe58222b267b9f020bd83985420484e6486d",
-        "8058396cf26f9932724844ca97d0a5399b271b2e3b65df10af9088ce6fd70b30"
+        "b2225d9ac0ac99efabdf5a4fba19974aae3337ffb4b2fda3ea0c009ec9916f5b",
+        "3672be0264659fa31fd9ebc211cd6f940d1a97fb1ce3e7d9cb9c85ccdaffe52a"
       ],
-      "transformation": "Captured at 1536 by 1024 and 640 by 960 CSS pixels with interface layers suppressed; still-image AVIF-encoded with FFmpeg at CRF 30. Used for reduced motion, scene failure, and complete-session loading so the aperture never becomes empty or structurally mismatched."
+      "transformation": "Captured at 1536 by 1024 and 640 by 960 CSS pixels with interface layers suppressed; still-image AVIF-encoded with FFmpeg at CRF 28. Used for reduced motion, scene failure, and complete-session loading so the aperture never becomes empty or structurally mismatched."
     },
     {
       "id": "permanent_frame_rough_wood_maps",

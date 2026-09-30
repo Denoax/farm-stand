@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import {
   BIRD_IDLE_DURATIONS,
   BIRD_REACTION_DURATIONS,
@@ -52,7 +53,6 @@ const WOOD_VARIANTS = ['a', 'b', 'c'] as const
 const COUNTER_TOP_Y = -1.9
 const APPLE_SUPPORT_SAMPLES = 72
 const SHUTTER_DEPTH_OFFSET = -0.8
-const TRACK_DEPTH_OFFSET = -0.86
 
 function prepareApple(model: THREE.Object3D): PreparedApple {
   const bounds = new THREE.Box3().setFromObject(model)
@@ -161,14 +161,14 @@ function boardMaterials(
   width: number,
   tint: THREE.ColorRepresentation,
 ) {
-  const repeats = Math.max(1, length / Math.max(width * 8, 0.001))
+  const repeats = Math.max(1, length / Math.max(width * 10, 0.001))
   const longGrain = new THREE.MeshStandardMaterial({
     map: cloneMap(maps.diffuse, axis, repeats),
     normalMap: cloneMap(maps.normal, axis, repeats),
     roughnessMap: cloneMap(maps.roughness, axis, repeats),
-    normalScale: new THREE.Vector2(0.10, 0.10),
+    normalScale: new THREE.Vector2(0.035, 0.035),
     color: tint,
-    roughness: 0.96,
+    roughness: 0.9,
     metalness: 0,
   })
   // RoundedBoxGeometry creates six material groups. A material array would
@@ -217,8 +217,8 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
     const camera = new THREE.PerspectiveCamera(33, 1, 0.1, 30)
     camera.position.set(0, 0.15, 7.6)
 
-    scene.add(new THREE.HemisphereLight(0xfff0d5, 0x424a40, 1.68))
-    const frontFill = new THREE.DirectionalLight(0xe8eadc, 1.15)
+    scene.add(new THREE.HemisphereLight(0xfff0d5, 0x424a40, 1.28))
+    const frontFill = new THREE.DirectionalLight(0xe8eadc, 0.86)
     frontFill.position.set(2.8, 2.4, 5.8)
     scene.add(frontFill)
     const sun = new THREE.DirectionalLight(0xffdfa6, 4.8)
@@ -244,10 +244,10 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
     const textureLoader = new THREE.TextureLoader()
     const anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 8)
     const woodMaps: WoodVariant[] = WOOD_VARIANTS.map((variant) => ({
-      diffuse: configureMap(textureLoader.load(publicAsset(`media/materials/rough-wood-${variant}-diff.jpg`)), true, anisotropy),
+      diffuse: configureMap(textureLoader.load(publicAsset(`media/materials/storybook-wood-${variant}-diff.jpg`)), true, anisotropy),
       normal: configureMap(textureLoader.load(publicAsset(`media/materials/rough-wood-${variant}-nor.jpg`)), false, anisotropy),
       roughness: configureMap(textureLoader.load(publicAsset(`media/materials/rough-wood-${variant}-rough.jpg`)), false, anisotropy),
-      verticalDiffuse: configureMap(textureLoader.load(publicAsset(`media/materials/rough-wood-${variant}-vertical-diff.jpg`)), true, anisotropy),
+      verticalDiffuse: configureMap(textureLoader.load(publicAsset(`media/materials/storybook-wood-${variant}-vertical-diff.jpg`)), true, anisotropy),
       verticalNormal: configureMap(textureLoader.load(publicAsset(`media/materials/rough-wood-${variant}-vertical-nor.jpg`)), false, anisotropy),
       verticalRoughness: configureMap(textureLoader.load(publicAsset(`media/materials/rough-wood-${variant}-vertical-rough.jpg`)), false, anisotropy),
     }))
@@ -258,8 +258,6 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
           normal: woodMaps[variant].verticalNormal,
           roughness: woodMaps[variant].verticalRoughness,
         }
-    const iron = new THREE.MeshStandardMaterial({ color: 0x565e58, roughness: 0.82, metalness: 0.34 })
-
     const permanentFrame = new THREE.Group()
     permanentFrame.name = 'permanent-fruit-stand-frame'
     permanentFrame.add(
@@ -269,6 +267,23 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
       makeBoard([7.55, 0.62, 0.54], boardMaterials(mapsFor(1, 'horizontal'), 'horizontal', 7.55, 0.62, 0xf1e5d2), [0, -2.28, 1.66], 0.045, 3),
       makeBoard([7.65, 0.2, 1.62], boardMaterials(mapsFor(1, 'horizontal'), 'horizontal', 7.65, 0.2, 0xf4ead8), [0, COUNTER_TOP_Y - 0.1, 0.96], 0.035, 3),
     )
+    const jointShadeMaterial = new THREE.MeshStandardMaterial({ color: 0x5a321b, roughness: 1, metalness: 0, transparent: true, opacity: 0.25, depthWrite: false })
+    const jointShade = (dimensions: [number, number, number], position: [number, number, number], radius = 0.018) => {
+      const geometry = new RoundedBoxGeometry(...dimensions, 2, radius)
+      geometry.translate(...position)
+      return geometry
+    }
+    const jointShadeGeometry = mergeGeometries([
+      jointShade([0.075, 0.5, 0.04], [-2.635, 1.78, 1.735]),
+      jointShade([0.075, 0.5, 0.04], [2.635, 1.78, 1.735]),
+      jointShade([0.84, 0.07, 0.045], [-3.16, -1.91, 1.75]),
+      jointShade([0.84, 0.07, 0.045], [3.16, -1.91, 1.75]),
+    ])
+    if (!jointShadeGeometry) throw new Error('Unable to prepare timber joint contact geometry')
+    const jointContact = new THREE.Mesh(jointShadeGeometry, jointShadeMaterial)
+    jointContact.name = 'timber-joint-contact-shading'
+    jointContact.renderOrder = 2
+    permanentFrame.add(jointContact)
     scene.add(permanentFrame)
 
     const shutter = new THREE.Group()
@@ -290,13 +305,6 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
     shutter.add(braceLeft, braceRight)
     shutter.position.z = SHUTTER_DEPTH_OFFSET
     scene.add(shutter)
-
-    const trackHardware = new THREE.Group()
-    trackHardware.name = 'shutter-track-hardware'
-    trackHardware.add(makeBoard([0.1, 7.2, 0.12], iron, [-2.78, 0.1, 0.9], 0.018))
-    trackHardware.add(makeBoard([0.1, 7.2, 0.12], iron, [2.78, 0.1, 0.9], 0.018))
-    trackHardware.position.z = TRACK_DEPTH_OFFSET
-    scene.add(trackHardware)
 
     let apple: PreparedApple | undefined
     let bird: THREE.Group | undefined
@@ -561,7 +569,6 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
       }
 
       permanentFrame.scale.x = frameScaleX
-      trackHardware.scale.x = frameScaleX
       shutter.scale.x = frameScaleX
       shutter.position.y = state.shutterLift * (portrait ? 6.55 : 6.15)
       thresholdLight.intensity = THREE.MathUtils.lerp(62, 38, state.shutterLift)
@@ -578,14 +585,12 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
       const appleFrontZ = appleLaneZ + apple.halfExtentZ * appleScale
       const appleRearZ = appleLaneZ - apple.halfExtentZ * appleScale
       const shutterFrontZ = SHUTTER_DEPTH_OFFSET + 0.74 + 0.32 / 2
-      const trackFrontZ = TRACK_DEPTH_OFFSET + 0.9 + 0.12 / 2
       const fasciaRearZ = 1.66 - 0.54 / 2
       const shutterClearance = appleRearZ - shutterFrontZ
-      const trackClearance = appleRearZ - trackFrontZ
       const fasciaClearance = fasciaRearZ - appleFrontZ
       const supportY = COUNTER_TOP_Y + apple.supportHeightAt(rollAngle) * appleScale
       const counterPenetration = COUNTER_TOP_Y - (supportY - apple.supportHeightAt(rollAngle) * appleScale)
-      const assemblyClearance = Math.min(appleClearance, shutterClearance, trackClearance, fasciaClearance)
+      const assemblyClearance = Math.min(appleClearance, shutterClearance, fasciaClearance)
       if (!clearanceSweepCache || clearanceSweepCache.appleScale !== appleScale || clearanceSweepCache.frameScaleX !== frameScaleX) {
         let maxCounterPenetration = 0
         for (let sample = 0; sample <= 100; sample += 1) {
@@ -720,7 +725,6 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
         // can report a near-zero miss despite separation on the other axis.
         const rightPostClearance = Math.hypot(rightPostGapX, rightPostGapZ)
         const birdShutterClearance = birdBounds.min.z - shutterFrontZ
-        const birdTrackClearance = birdBounds.min.z - trackFrontZ
         const birdFasciaClearance = fasciaRearZ - birdBounds.max.z
         appleBounds.setFromObject(apple.group, true)
         const appleGapX = axisGap(birdBounds.min.x, birdBounds.max.x, appleBounds.min.x, appleBounds.max.x)
@@ -728,7 +732,7 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
         const appleGapZ = axisGap(birdBounds.min.z, birdBounds.max.z, appleBounds.min.z, appleBounds.max.z)
         const birdAppleClearance = Math.hypot(appleGapX, appleGapY, appleGapZ)
         const planted = entrance.planted && performancePose.planted
-        const structureClearance = Math.min(rightPostClearance, birdShutterClearance, birdTrackClearance, birdFasciaClearance)
+        const structureClearance = Math.min(rightPostClearance, birdShutterClearance, birdFasciaClearance)
         const envelopeClearance = Math.min(structureClearance, birdAppleClearance)
         if (bird.visible) {
           birdClearanceSweepMin = Math.min(birdClearanceSweepMin, envelopeClearance)
@@ -776,7 +780,6 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
         sceneHost.dataset.birdPostGapX = rightPostGapX.toFixed(4)
         sceneHost.dataset.birdPostGapZ = rightPostGapZ.toFixed(4)
         sceneHost.dataset.birdShutterClearance = birdShutterClearance.toFixed(4)
-        sceneHost.dataset.birdTrackClearance = birdTrackClearance.toFixed(4)
         sceneHost.dataset.birdFasciaClearance = birdFasciaClearance.toFixed(4)
         sceneHost.dataset.birdAppleClearance = birdAppleClearance.toFixed(4)
         sceneHost.dataset.birdStructureClearance = structureClearance.toFixed(4)
@@ -805,7 +808,6 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
       sceneHost.dataset.postRearZ = postRearZ.toFixed(3)
       sceneHost.dataset.appleClearance = appleClearance.toFixed(3)
       sceneHost.dataset.shutterClearance = shutterClearance.toFixed(3)
-      sceneHost.dataset.trackClearance = trackClearance.toFixed(3)
       sceneHost.dataset.fasciaClearance = fasciaClearance.toFixed(3)
       sceneHost.dataset.counterPenetration = counterPenetration.toFixed(4)
       sceneHost.dataset.assemblyMinClearance = assemblyClearance.toFixed(3)
@@ -818,6 +820,9 @@ export function FarmScene({ progressRef, onStateChange, onPresented, onBirdActiv
       sceneHost.dataset.cameraTarget = `${view.target.x.toFixed(3)},${view.target.y.toFixed(3)},${view.target.z.toFixed(3)}`
       sceneHost.dataset.counterY = COUNTER_TOP_Y.toFixed(3)
       sceneHost.dataset.frame = 'permanent'
+      sceneHost.dataset.timberMaterial = 'storybook-painted-rough-wood-derivative'
+      sceneHost.dataset.jointOcclusion = 'geometry-linked'
+      sceneHost.dataset.visibleShutterRails = 'false'
       if (debugProgress !== null) sceneHost.dataset.debugProgress = debugProgress.toFixed(4)
       sceneHost.dataset.rendering = 'active'
       onPresented(state.progress, state.shot)

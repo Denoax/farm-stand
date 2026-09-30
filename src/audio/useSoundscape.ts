@@ -66,6 +66,11 @@ const MUSIC_URL = publicAsset('audio/morning-bed.mp3')
 const MUSIC_MUTE_KEY = 'farm-stand-music-muted-v1'
 const MUSIC_GAIN = 0.061
 const DUCKED_MUSIC_GAIN = 0.023
+// Source-level measurements differ by more than 18 dB. These per-source
+// trims place each short call near the normal music bed plus roughly 2 dB;
+// equal GainNode values would make cattle and sheep dominate the mix.
+const BIRD_GAIN = 0.075
+const ANIMAL_GAINS: Record<AnimalSound, number> = { hens: 0.15, cattle: 0.039, sheep: 0.058 }
 function initiallyMuted() {
   try { return sessionStorage.getItem(MUSIC_MUTE_KEY) === 'true' } catch { return false }
 }
@@ -463,10 +468,9 @@ class SoundscapeController {
         return
       }
       this.stopVoice(this.birdVoice, 0.035)
-      const voice = this.startVoice('bird', 'effect', 0.28)
+      const voice = this.startVoice('bird', 'effect', BIRD_GAIN)
       if (!voice) return
       this.lastBirdAt = performance.now()
-      this.duckMusic(850)
       this.birdVoice = voice
     } catch {
       if (this.pendingBird?.id === pending.id) this.pendingBird = undefined
@@ -478,11 +482,10 @@ class SoundscapeController {
     const now = performance.now()
     if (now - (this.lastAnimalAt.get(kind) ?? -Infinity) < 2500) return false
     this.stopVoice(this.animalVoice, 0.08)
-    const gain = kind === 'hens' ? 0.48 : kind === 'cattle' ? 0.167 : 0.42
+    const gain = ANIMAL_GAINS[kind]
     const voice = this.startVoice(kind, 'effect', gain)
     if (!voice) return false
     this.lastAnimalAt.set(kind, now)
-    this.duckMusic(kind === 'hens' ? 2500 : 1900)
     this.animalVoice = voice
     return true
   }
