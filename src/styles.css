@@ -163,7 +163,7 @@ h1 { max-width: 11ch; font-size: clamp(4rem, 7vw, 7.2rem); line-height: .92; tex
 .product-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(1rem, 2.5vw, 2rem); }
 .product-card { min-width: 0; overflow: hidden; background: #fffaf0; border: 1px solid #d8d4c5; border-radius: 1.1rem; box-shadow: 0 1.2rem 3rem rgb(32 52 39 / .07); transition: box-shadow .28s ease, transform .18s ease; }
 .product-picture { aspect-ratio: 4 / 3; overflow: hidden; background: #d9ddcd; }
-.product-picture, .farm-life__figure { position: relative; }
+.product-picture { position: relative; }
 .product-picture img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .45s ease; }
 .media-fallback { position: absolute; inset: 0; display: grid; place-content: center; gap: .45rem; padding: 1rem; color: #5a675e; background: #dce1d3; text-align: center; font-weight: 700; }
 .media-fallback .text-button { justify-self: center; font-size: .82rem; }
@@ -273,27 +273,6 @@ dialog::backdrop { background: rgb(5 22 16 / .72); backdrop-filter: blur(3px); }
 .reset-basket [role="group"] { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
 .reset-basket [role="group"] button { min-height: 2.5rem; padding: .4rem .8rem; border: 1px solid #89968c; border-radius: 999px; background: white; cursor: pointer; }
 
-.farm-life { display: grid; grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr); min-height: 44rem; color: white; background: var(--pine-deep); }
-.farm-life__copy { align-self: center; padding: clamp(4rem, 7vw, 7rem) clamp(1.25rem, 6vw, 6rem); }
-.farm-life__copy h2 { max-width: 10ch; font-size: clamp(3rem, 5vw, 5.2rem); line-height: .95; }
-.farm-life__panel p { max-width: 38rem; color: rgb(255 255 255 / .7); font-size: 1.1rem; }
-.farm-life-tabs { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.8rem 0 1.5rem; }
-.farm-life-tabs button { min-height: 2.8rem; padding: .55rem 1rem; border: 1px solid rgb(255 255 255 / .35); border-radius: 999px; color: white; background: transparent; cursor: pointer; }
-.farm-life-tabs button[aria-selected="true"] { color: var(--pine-deep); background: var(--sun); border-color: var(--sun); }
-.farm-life__panel-content { animation: farm-copy-in .4s ease both; }
-.farm-life__load-status { min-height: 1.4em; margin: .8rem 0 0; color: #f5cf74; font-size: .82rem; }
-.farm-life__disclosure { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid rgb(255 255 255 / .18); font-size: .8rem !important; }
-.farm-life__figure { position: relative; min-height: 38rem; margin: 0; overflow: hidden; background: #6d765c; clip-path: inset(8% 7% 8% 7% round 1.4rem); transform: scale(.97); transition: clip-path .78s cubic-bezier(.18, .8, .22, 1), transform .78s cubic-bezier(.18, .8, .22, 1); }
-.farm-life[data-entered="true"] .farm-life__figure { clip-path: inset(0 round 0); transform: scale(1); }
-.farm-life__figure .farm-life__image { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
-.farm-life__image--outgoing { z-index: 1; }
-.farm-life__image--incoming { z-index: 2; animation: farm-image-in .58s cubic-bezier(.18, .8, .22, 1) both; }
-.farm-life__figure figcaption { position: absolute; right: .8rem; bottom: .8rem; padding: .35rem .55rem; color: rgb(255 255 255 / .85); background: rgb(8 29 22 / .64); font-size: .7rem; }
-.farm-life__figure figcaption { z-index: 4; }
-.farm-life__figure .media-fallback { z-index: 3; }
-@keyframes farm-image-in { from { opacity: 0; clip-path: inset(5% 7% 5% 7% round 1rem); transform: scale(1.035); } to { opacity: 1; clip-path: inset(0 round 0); transform: scale(1); } }
-@keyframes farm-copy-in { from { opacity: .35; transform: translateY(.45rem); } to { opacity: 1; transform: translateY(0); } }
-
 .visit { display: grid; grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr); gap: clamp(3rem, 8vw, 8rem); padding: clamp(6rem, 10vw, 9rem) clamp(1.25rem, 8vw, 8rem); background: #e4dfc9; }
 .visit-heading h2 { max-width: 11ch; font-size: clamp(3rem, 5.3vw, 5.8rem); line-height: .96; }
 .visit-heading > p:not(.eyebrow) { max-width: 37rem; color: #59665e; font-size: 1.05rem; }
@@ -373,7 +352,7 @@ footer a { text-underline-offset: .18rem; }
   .hero-actions { flex-wrap: wrap; }
   .text-link { font-size: .92rem; }
   .scroll-cue { display: none; }
-  .section-intro, .farm-life, .visit, .service, .contact { grid-template-columns: minmax(0, 1fr); gap: 3rem; }
+  .section-intro, .visit, .service, .contact { grid-template-columns: minmax(0, 1fr); gap: 3rem; }
   .catalogue { padding: 2.25rem 1.25rem 4rem; }
   .catalogue { margin-top: -58vh; }
   .catalogue-intro { gap: 1rem; }
@@ -401,12 +380,6 @@ footer a { text-underline-offset: .18rem; }
   .basket-lines li { grid-template-columns: 4.75rem minmax(0, 1fr); grid-template-areas: 'image copy' 'image total' 'actions actions'; align-items: start; }
   .basket-line-media { width: 4.75rem; height: 4rem; }
   .line-total { justify-self: start; text-align: left; }
-  .farm-life { gap: 0; }
-  .farm-life__copy { padding: 3rem 1.25rem 1.5rem; }
-  .farm-life__copy h2 { font-size: clamp(2.8rem, 13vw, 4rem); }
-  .farm-life-tabs { margin: 1.5rem 0 1rem; }
-  .farm-life__disclosure { margin-top: 1.5rem; }
-  .farm-life__figure { min-height: 30rem; }
   .visit-details > div { grid-template-columns: 2rem 1fr; }
   .visit-details p, .visit-details small, .visit-details a { grid-column: 2; }
   .contact-copy, .brief-builder { min-width: 0; }
@@ -444,7 +417,7 @@ footer a { text-underline-offset: .18rem; }
   .hero-copy { position: relative; top: auto; left: auto; right: auto; width: auto; padding: 4rem clamp(1.25rem, 6vw, 6rem); transform: none; opacity: 1; background: var(--pine); }
   .scroll-cue { display: none; }
   .catalogue { margin-top: 0; }
-  .product-picture img, .farm-life__figure img { transition: none; animation: none; }
+  .product-picture img { transition: none; animation: none; }
 }
 
 /* v2.3 harvest story */
@@ -477,29 +450,6 @@ footer a { text-underline-offset: .18rem; }
 .weather-story__actions button { min-height: 2.6rem; padding: .45rem .9rem; border: 1px solid rgb(255 255 255 / .55); border-radius: 999px; color: white; background: rgb(13 43 32 / .38); cursor: pointer; }
 .weather-story__waterline { position: absolute; z-index: 3; left: -10%; right: -10%; bottom: calc((1 - var(--weather-progress)) * 100% - 14%); height: 18%; background: linear-gradient(180deg, transparent, rgb(235 246 232 / .27) 43%, rgb(255 243 193 / .15) 52%, transparent 62%); filter: blur(7px); transform: rotate(-2deg); }
 
-/* Farm-life is a sequence, not a tab switcher. */
-.farm-life { display: block; color: white; background: var(--pine-deep); }
-.farm-life__intro { min-height: 58vh; padding: clamp(5rem, 10vw, 10rem) clamp(1.25rem, 8vw, 8rem); background: var(--pine-deep); }
-.farm-life__intro h2 { max-width: 12ch; font-size: clamp(3.4rem, 7vw, 7rem); line-height: .92; }
-.farm-life__intro > p:last-child { max-width: 43rem; color: rgb(255 255 255 / .68); }
-.farm-life__intro nav { display: flex; gap: .65rem; margin: 2rem 0; }
-.farm-life__intro nav a { padding: .55rem 1rem; border: 1px solid rgb(255 255 255 / .36); border-radius: 999px; text-decoration: none; }
-.farm-profile { --profile-progress: 0; position: relative; height: 175vh; scroll-margin-top: 0; }
-.farm-profile__sticky { position: sticky; top: 0; height: 100vh; min-height: 38rem; overflow: hidden; background: #102f24; }
-.farm-profile__figure { position: absolute; inset: 0; margin: 0; overflow: hidden; background: #405345; }
-.farm-profile__figure::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgb(7 29 21 / .86), rgb(7 29 21 / .28) 55%, transparent 78%); }
-.farm-profile__figure img { width: 100%; height: 100%; object-fit: cover; will-change: transform; }
-.farm-profile--hens img { transform: scale(calc(1.1 - var(--profile-progress) * .07)); }
-.farm-profile--cattle img { width: 108%; transform: translateX(calc(-4% + var(--profile-progress) * 7%)) scale(1.03); }
-.farm-profile--sheep img { transform-origin: 48% 54%; transform: scale(calc(1.34 - var(--profile-progress) * .32)); }
-.farm-profile__foreground { position: absolute; z-index: 2; inset: auto -4% -7% -4%; height: 22%; background: linear-gradient(178deg, transparent 5%, rgb(12 43 28 / .66) 78%); filter: blur(6px); transform: translateY(calc(var(--profile-progress) * 14%)); }
-.farm-profile--hens .farm-profile__foreground { height: 37%; background: radial-gradient(ellipse at 8% 100%, #173d28 0 20%, transparent 21%), radial-gradient(ellipse at 28% 105%, #214d31 0 23%, transparent 24%), radial-gradient(ellipse at 83% 108%, #173d28 0 26%, transparent 27%), linear-gradient(180deg, transparent 55%, rgb(15 47 29 / .92)); clip-path: none; transform: translateX(calc((.5 - var(--profile-progress)) * 8%)); }
-.farm-profile__figure figcaption { position: absolute; z-index: 4; right: 1rem; bottom: 1rem; padding: .35rem .55rem; background: rgb(8 29 22 / .7); font-size: .72rem; }
-.farm-profile__copy { position: absolute; z-index: 4; left: clamp(1.25rem, 8vw, 8rem); top: 50%; width: min(36rem, 46vw); transform: translateY(calc(-50% + (var(--profile-progress) - .5) * -2.5rem)); }
-.farm-profile__copy h2 { font-size: clamp(4rem, 8vw, 8.4rem); line-height: .88; }
-.farm-profile__copy > p:not(.eyebrow, .farm-profile__number) { color: rgb(255 255 255 / .75); font-size: 1.08rem; }
-.farm-profile__number { margin: 0 0 1rem; color: #f4cf6b; font-size: .72rem; letter-spacing: .13em; }
-
 /* Responsive cart drawer */
 .persistent-basket { position: fixed; z-index: 15; right: 1.25rem; bottom: 1.25rem; display: flex; align-items: center; gap: .8rem; min-height: 3.2rem; padding: .55rem .6rem .55rem 1.1rem; border: 1px solid var(--action); border-radius: 999px; color: var(--action-label); background: var(--action); box-shadow: 0 .9rem 2.5rem rgb(10 34 25 / .26); cursor: pointer; }
 .persistent-basket:hover { border-color: var(--action-hover); background: var(--action-hover); }
@@ -520,7 +470,6 @@ footer a { text-underline-offset: .18rem; }
 .basket-drawer__footer .basket-total { margin: 0 0 .8rem; }
 .basket-drawer__footer .button { min-width: 11rem; }
 
-.farm-profile__figure .media-fallback { z-index: 3; }
 .persistent-basket { z-index: 19; }
 
 @media (max-width: 760px) {
@@ -533,16 +482,6 @@ footer a { text-underline-offset: .18rem; }
   .weather-story { height: 145vh; }
   .weather-story__copy { top: 55%; }
   .weather-story__copy h2 { font-size: clamp(3rem, 13vw, 4.8rem); }
-  .farm-life__intro { min-height: 0; padding-block: 5rem; }
-  .farm-life__intro h2 { font-size: clamp(3.2rem, 14vw, 5rem); }
-  .farm-life__intro nav { flex-wrap: wrap; }
-  .farm-profile { height: 135vh; }
-  .farm-profile__figure::after { background: linear-gradient(0deg, rgb(7 29 21 / .92), transparent 73%); }
-  .farm-profile__copy { left: 1.25rem; right: 1.25rem; top: auto; bottom: 8%; width: auto; transform: translateY(calc((var(--profile-progress) - .5) * -1rem)); }
-  .farm-profile__copy h2 { font-size: clamp(4rem, 21vw, 6.5rem); }
-  .farm-profile--hens img { object-position: 50% 64% !important; }
-  .farm-profile--cattle img { width: 112%; object-position: 50% 50% !important; }
-  .farm-profile--sheep img { object-position: 48% 50% !important; }
   .basket-dialog.basket-drawer { top: auto; width: 100vw; height: min(92dvh, 52rem); border-radius: 1rem 1rem 0 0; }
   .basket-drawer[open] { animation-name: drawer-up; }
   @keyframes drawer-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
@@ -557,9 +496,6 @@ footer a { text-underline-offset: .18rem; }
   .weather-story__sticky { position: relative; }
   .weather-story__rain, .weather-story__waterline { display: none; }
   .weather-story__sun { opacity: 1; }
-  .farm-profile { height: auto; min-height: 44rem; }
-  .farm-profile__sticky { position: relative; min-height: 44rem; }
-  .farm-profile__figure img, .farm-profile__foreground, .farm-profile__copy { transform: none; }
 }
 
 /* v2.4 cinematic rebuild: deliberate shot changes, source-led animal scenes, and a finished shop surface. */
@@ -729,47 +665,6 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
 .weather-story__controls { position: absolute; z-index: 4; right: clamp(1rem, 3vw, 3rem); bottom: clamp(1rem, 3vw, 2rem); display: flex; align-items: center; gap: 1rem; padding: .45rem; border-radius: .45rem; background: rgb(8 31 23 / .68); }
 .weather-story__controls button { min-height: 2.5rem; padding: .45rem .75rem; border: 1px solid rgb(255 255 255 / .5); border-radius: .35rem; color: white; background: transparent; cursor: pointer; }
 
-.farm-life { position: relative; display: block; background: #102b24; }
-.farm-life__chapter-nav {
-  position: absolute;
-  z-index: 6;
-  top: 1rem;
-  right: clamp(1rem, 3vw, 3rem);
-  left: clamp(1rem, 3vw, 3rem);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.5rem;
-  padding: .75rem 1rem;
-  color: white;
-  background: rgb(8 31 23 / .78);
-  border: 1px solid rgb(255 255 255 / .18);
-  border-radius: .45rem;
-}
-.farm-life__chapter-nav .eyebrow { margin: 0; }
-.farm-life__chapter-nav h2 { margin-top: .1rem; font: 600 1.15rem/1.2 'Source Sans 3', sans-serif; letter-spacing: 0; }
-.farm-life__chapter-nav nav { display: flex; gap: .35rem; }
-.farm-life__chapter-nav nav a { padding: .45rem .7rem; border: 1px solid rgb(255 255 255 / .3); border-radius: .3rem; text-decoration: none; }
-.farm-profile { height: 165vh; }
-.farm-profile__sticky { isolation: isolate; }
-.farm-profile__placeholder { position: absolute; inset: 0; background: linear-gradient(135deg, #304b3b, #6c7258); }
-.farm-profile__image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .25s linear; }
-.farm-profile[data-media-ready="true"] .farm-profile__image { opacity: 1; }
-.farm-profile__figure::after { z-index: 2; background: linear-gradient(90deg, rgb(8 31 23 / .76), rgb(8 31 23 / .17) 49%, transparent 72%); }
-.farm-profile__foreground { z-index: 3; filter: none; }
-.farm-profile--ground .farm-profile__image--wide { object-position: center 58% !important; transform: scale(calc(1 - var(--profile-progress) * .025)) translateY(calc(var(--profile-progress) * -1%)); }
-.farm-profile--ground .farm-profile__copy { left: clamp(1.25rem, 4vw, 4rem); width: min(25rem, 31vw); }
-.farm-profile--ground .farm-profile__foreground { inset: 0; height: auto; background: none; transform: none; }
-.farm-profile--ground .farm-profile__foreground i { position: absolute; top: -5%; bottom: -5%; width: 11%; border-radius: 50%; background: linear-gradient(90deg, #173b2d, #31513c); filter: blur(3px); opacity: calc(1 - var(--profile-progress) * 1.8); }
-.farm-profile--ground .farm-profile__foreground i:first-child { left: calc(-2% - var(--profile-progress) * 14%); transform: rotate(-3deg); }
-.farm-profile--ground .farm-profile__foreground i:last-child { right: calc(-3% - var(--profile-progress) * 17%); transform: rotate(4deg); }
-.farm-profile--wide .farm-profile__image--wide { width: 112%; max-width: none; object-position: center 62% !important; transform: translateX(calc(-7% + var(--profile-progress) * 7%)) scale(1.06); }
-.farm-profile--wide .farm-profile__foreground { inset: auto -4% -5%; height: 24%; background: linear-gradient(180deg, transparent, rgb(36 64 37 / .56)); transform: translateX(calc(var(--profile-progress) * -3%)); }
-.farm-profile--reveal .farm-profile__image--wide { object-position: 44% center !important; transform: scale(calc(1.12 - var(--profile-progress) * .1)); }
-.farm-profile--reveal .farm-profile__foreground { display: none; }
-.farm-profile__copy { width: min(33rem, 42vw); padding: 1.25rem; border-left: 2px solid rgb(232 185 76 / .72); background: linear-gradient(90deg, rgb(11 39 29 / .62), transparent); }
-.farm-profile__copy h2 { font-size: clamp(3.8rem, 7vw, 7.2rem); }
-
 @media (max-width: 1040px) {
   .product-card--feature { grid-column: span 2; }
 }
@@ -796,23 +691,6 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
   .weather-story__clear img { object-position: 54% 58%; transform: scale(1.03); }
   .weather-story__label { top: 44%; font-size: clamp(2.9rem, 14vw, 4.8rem); }
   .weather-story__controls { right: .75rem; bottom: .75rem; left: .75rem; justify-content: space-between; }
-  .farm-life__chapter-nav { top: .75rem; right: .75rem; left: .75rem; align-items: flex-start; padding: .65rem .75rem; }
-  .farm-life__chapter-nav h2 { display: none; }
-  .farm-life__chapter-nav nav { flex-wrap: wrap; justify-content: flex-end; }
-  .farm-life__chapter-nav nav a { padding: .35rem .55rem; font-size: .8rem; }
-  .farm-profile { height: 140vh; }
-  .farm-profile__sticky { display: grid; grid-template-rows: 58% 42%; background: #102b24; }
-  .farm-profile__figure { position: relative; grid-row: 1; inset: auto; min-height: 0; }
-  .farm-profile__figure::after { background: linear-gradient(0deg, rgb(7 29 21 / .28), transparent 48%); }
-  .farm-profile__copy { position: relative; grid-row: 2; inset: auto; width: auto; padding: 1rem 1.25rem 1.35rem; transform: none; border-left: 0; border-top: 2px solid rgb(232 185 76 / .72); background: #102b24; }
-  .farm-profile--ground .farm-profile__copy { left: auto; width: auto; }
-  .farm-profile__copy h2 { font-size: clamp(3.25rem, 16vw, 4.6rem); }
-  .farm-profile__copy > p:not(.eyebrow, .farm-profile__number) { margin: .65rem 0; font-size: .98rem; }
-  .farm-profile__number { margin-bottom: .45rem; }
-  .farm-profile__copy .eyebrow { margin-bottom: .35rem; }
-  .farm-profile--ground .farm-profile__image--wide { object-position: 54% 58% !important; transform: scale(calc(1.03 - var(--profile-progress) * .02)); }
-  .farm-profile--wide .farm-profile__image--wide { width: 100%; object-position: 50% 67% !important; transform: scale(calc(1.24 - var(--profile-progress) * .04)); }
-  .farm-profile--reveal .farm-profile__image--wide { object-position: 43% 48% !important; transform: scale(calc(1.08 - var(--profile-progress) * .05)); }
   .basket-dialog.basket-drawer { inset: 0; box-sizing: border-box; width: 100dvw; max-width: none; height: 100dvh; max-height: none; border-radius: 0; }
   .basket-drawer__header { padding-inline: 4rem; }
   .basket-drawer__scroll { padding-inline: 1rem; }
@@ -841,10 +719,6 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
   .weather-story__water { display: none; }
   .weather-story__clear { clip-path: none; }
   .weather-story__label { display: none; }
-  .farm-profile { height: auto; min-height: 44rem; }
-  .farm-profile__image,
-  .farm-profile__foreground,
-  .farm-profile__copy { transform: none !important; }
 }
 
 /* Treatment A final cascade — overrides the retired harvest-stage rules above. */
@@ -986,11 +860,6 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
 .collection-basket-note { max-width: 48rem; color: #536158; font-size: .88rem; }
 .basket-dialog.basket-drawer { position: fixed; top: 0; bottom: 0; max-height: 100dvh; }
 
-.farm-profile__image { display: block; }
-.farm-profile video.farm-profile__image { opacity: 1; }
-.farm-profile__play { position: absolute; z-index: 5; right: 1.2rem; bottom: 2.5rem; min-height: 2.8rem; padding: .55rem 1rem; border: 1px solid rgb(255 255 255 / .64); border-radius: 999px; color: white; background: rgb(9 28 21 / .76); cursor: pointer; }
-.farm-profile[data-video-active="true"] .farm-profile__play { border-color: #e8b94c; }
-
 @media (min-width: 1320px) {
   .product-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.25rem; }
   .product-card__heading { display: block; }
@@ -1054,7 +923,6 @@ h1 { font-size: clamp(3.7rem, 6.25vw, 6.6rem); }
   .hero-stage { height: auto; min-height: 46rem; }
   .hero-sticky { min-height: 46rem; }
   .entrance-links a { transition: none; }
-  .farm-profile__image { transform: none !important; }
 }
 
 /* One continuous spiral-bound workbook surface for the market. */

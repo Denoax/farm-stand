@@ -1,132 +1,353 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { farmLifeProfiles, type FarmLifeId } from '../content/farmLife'
+import './FarmLife.css'
 
 interface FarmLifeProps {
   onViewProduct: (productId: 'eggs') => void
+  onHearAnimal: (animal: FarmLifeId) => void
+  handoffActive: boolean
+  handoffTarget?: string
 }
 
-function FarmProfileScene({ profile, index, active, onActivate, onViewProduct }: {
+type FrameCallbackVideo = HTMLVideoElement & {
+  requestVideoFrameCallback?: (callback: VideoFrameRequestCallback) => number
+  cancelVideoFrameCallback?: (handle: number) => void
+}
+
+function initialTarget() {
+  try {
+    return decodeURIComponent(window.location.hash.slice(1))
+  } catch {
+    return ''
+  }
+}
+
+function FarmAlbumEntry({
+  profile,
+  active,
+  blocked,
+  reducedMotion,
+  directArrival,
+  onActivate,
+  onViewProduct,
+  onHearAnimal,
+}: {
   profile: (typeof farmLifeProfiles)[number]
-  index: number
   active: boolean
+  blocked: boolean
+  reducedMotion: boolean
+  directArrival: boolean
   onActivate: (id: FarmLifeId) => void
   onViewProduct: (productId: 'eggs') => void
+  onHearAnimal: (animal: FarmLifeId) => void
 }) {
-  const sceneRef = useRef<HTMLElement>(null)
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const articleRef = useRef<HTMLElement>(null)
+  const filmRef = useRef<HTMLDivElement>(null)
+  const videoRef = useRef<FrameCallbackVideo>(null)
+  const frameCallbackRef = useRef<number | undefined>(undefined)
+  const fallbackFrameRef = useRef<number | undefined>(undefined)
+  const playRequestRef = useRef(0)
+  const activeRef = useRef(active)
+  const blockedRef = useRef(blocked)
+  const userPausedRef = useRef(false)
+  const endedRef = useRef(false)
+  const skipSettleRef = useRef(initialTarget() === profile.id || directArrival)
+  const [shouldLoad, setShouldLoad] = useState(() => initialTarget() === profile.id || initialTarget() === 'farm-life' && profile.id === 'hens')
+  const [posterReady, setPosterReady] = useState(false)
+  const [posterFailed, setPosterFailed] = useState(false)
+  const [framePresented, setFramePresented] = useState(false)
   const [mediaFailed, setMediaFailed] = useState(false)
-  const [mediaReady, setMediaReady] = useState(false)
+  const [retryUsed, setRetryUsed] = useState(false)
   const [playing, setPlaying] = useState(false)
   const [ended, setEnded] = useState(false)
-  const [manualPlay, setManualPlay] = useState(false)
-  const [shouldLoad, setShouldLoad] = useState(() => {
-    const target = decodeURIComponent(window.location.hash.slice(1))
-    return target === profile.id || (target === 'farm-life' && index === 0)
-  })
+  const [userPaused, setUserPaused] = useState(false)
+  const [manualPlayback, setManualPlayback] = useState(false)
+  const [paperState, setPaperState] = useState<'waiting' | 'settling' | 'settled'>(() => skipSettleRef.current || reducedMotion ? 'settled' : 'waiting')
+
+  activeRef.current = active
+  blockedRef.current = blocked
+  userPausedRef.current = userPaused
+  endedRef.current = ended
 
   useEffect(() => {
-    const scene = sceneRef.current
-    if (!scene) return
-    let frame = 0
-    const update = () => {
-      frame = 0
-      const bounds = scene.getBoundingClientRect()
-      const range = Math.max(scene.offsetHeight - innerHeight, 1)
-      scene.style.setProperty('--profile-progress', Math.min(1, Math.max(0, -bounds.top / range)).toFixed(4))
+    if (!directArrival) return
+    skipSettleRef.current = true
+    setShouldLoad(true)
+    setPaperState('settled')
+  }, [directArrival])
+
+  useEffect(() => {
+    const handleDirectHash = () => {
+      if (initialTarget() !== profile.id) return
+      skipSettleRef.current = true
+      setShouldLoad(true)
+      setPaperState('settled')
     }
-    const schedule = () => { if (!frame) frame = requestAnimationFrame(update) }
-    update()
-    addEventListener('scroll', schedule, { passive: true })
-    addEventListener('resize', schedule)
-    return () => { cancelAnimationFrame(frame); removeEventListener('scroll', schedule); removeEventListener('resize', schedule) }
-  }, [])
+    addEventListener('hashchange', handleDirectHash)
+    return () => removeEventListener('hashchange', handleDirectHash)
+  }, [profile.id])
 
   useEffect(() => {
-    const scene = sceneRef.current
-    if (!scene || !('IntersectionObserver' in window)) { setShouldLoad(true); return }
+    const article = articleRef.current
+    if (!article || shouldLoad) return
+    if (!('IntersectionObserver' in window)) {
+      setShouldLoad(true)
+      return
+    }
     const observer = new IntersectionObserver(([entry]) => {
       if (!entry.isIntersecting) return
       setShouldLoad(true)
       observer.disconnect()
-    }, { rootMargin: '900px 0px' })
-    observer.observe(scene)
+    }, { rootMargin: '700px 0px' })
+    observer.observe(article)
     return () => observer.disconnect()
+  }, [shouldLoad])
+
+  useEffect(() => {
+    const film = filmRef.current
+    if (!film || paperState !== 'waiting') return
+    if (reducedMotion || skipSettleRef.current) {
+      setPaperState('settled')
+      return
+    }
+    if (!posterReady && !posterFailed) return
+    if (!('IntersectionObserver' in window)) {
+      setPaperState('settled')
+      return
+    }
+    const observer = new IntersectionObserver(([entry]) => {
+      const visiblyUseful = entry.intersectionRect.height >= Math.min(180, innerHeight * .28)
+      if (!entry.isIntersecting || !visiblyUseful) return
+      setPaperState(skipSettleRef.current ? 'settled' : 'settling')
+      observer.disconnect()
+    }, { threshold: [0, .2, .35, .5] })
+    observer.observe(film)
+    return () => observer.disconnect()
+  }, [paperState, posterFailed, posterReady, reducedMotion])
+
+  const markFramePresented = useCallback(() => {
+    setFramePresented(true)
+    setMediaFailed(false)
+  }, [])
+
+  const registerPresentedFrame = useCallback(() => {
+    const video = videoRef.current
+    if (!video || framePresented) return
+    if (frameCallbackRef.current !== undefined) video.cancelVideoFrameCallback?.(frameCallbackRef.current)
+    if (video.requestVideoFrameCallback) {
+      frameCallbackRef.current = video.requestVideoFrameCallback(() => markFramePresented())
+      return
+    }
+    fallbackFrameRef.current = requestAnimationFrame(() => {
+      fallbackFrameRef.current = requestAnimationFrame(markFramePresented)
+    })
+  }, [framePresented, markFramePresented])
+
+  useEffect(() => () => {
+    const video = videoRef.current
+    if (frameCallbackRef.current !== undefined) video?.cancelVideoFrameCallback?.(frameCallbackRef.current)
+    if (fallbackFrameRef.current !== undefined) cancelAnimationFrame(fallbackFrameRef.current)
+    playRequestRef.current += 1
   }, [])
 
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
-    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (!active || document.hidden || (!manualPlay && reducedMotion) || ended || mediaFailed) {
+    const canPlay = active && !blocked && !document.hidden && !mediaFailed && !ended && !userPaused && paperState === 'settled' && (posterReady || posterFailed) && (!reducedMotion || manualPlayback)
+    const request = ++playRequestRef.current
+    if (!canPlay) {
       video.pause()
       return
     }
-    void video.play().catch(() => setPlaying(false))
-  }, [active, ended, manualPlay, mediaFailed, shouldLoad])
+    void video.play().then(() => {
+      if (request !== playRequestRef.current || !activeRef.current || blockedRef.current || userPausedRef.current || endedRef.current || document.hidden) video.pause()
+    }).catch(() => {
+      if (request === playRequestRef.current) setPlaying(false)
+    })
+  }, [active, blocked, ended, manualPlayback, mediaFailed, paperState, posterFailed, posterReady, reducedMotion, shouldLoad, userPaused])
 
   const requestPlay = () => {
     const video = videoRef.current
     if (!video) return
-    if (ended) { video.currentTime = 0; setEnded(false) }
-    setManualPlay(true)
+    if (ended) video.currentTime = 0
+    setEnded(false)
+    setMediaFailed(false)
+    setUserPaused(false)
+    setManualPlayback(true)
+    setShouldLoad(true)
     onActivate(profile.id)
-    requestAnimationFrame(() => { void video.play().catch(() => setPlaying(false)) })
   }
 
+  const pause = () => {
+    setUserPaused(true)
+    setManualPlayback(false)
+    videoRef.current?.pause()
+  }
+
+  const retry = () => {
+    const video = videoRef.current
+    if (!video || retryUsed) return
+    setRetryUsed(true)
+    setMediaFailed(false)
+    setFramePresented(false)
+    setEnded(false)
+    setUserPaused(false)
+    setManualPlayback(true)
+    onActivate(profile.id)
+    video.load()
+  }
+
+  const togglePlayback = () => {
+    if (playing && !ended) pause()
+    else requestPlay()
+  }
+
+  const controlLabel = ended ? 'Replay film' : playing ? 'Pause film' : 'Play film'
+  const filmId = `${profile.id}-film`
+  const headingId = `${profile.id}-heading`
+
   return (
-    <article className={`farm-profile farm-profile--${profile.id} farm-profile--${profile.variant}`} id={profile.id} ref={sceneRef} tabIndex={-1} data-media-ready={mediaReady ? 'true' : 'false'} data-video-active={active ? 'true' : 'false'}>
-      <div className="farm-profile__sticky">
-        <figure className="farm-profile__figure">
-          <div className="farm-profile__placeholder" aria-hidden="true" />
-          <video ref={videoRef} className="farm-profile__image farm-profile__image--wide" src={shouldLoad && !mediaFailed ? profile.video : undefined} poster={profile.poster} muted playsInline preload="metadata" aria-label={profile.alt} style={{ objectPosition: profile.imagePosition }} onLoadedData={() => setMediaReady(true)} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => { setPlaying(false); setEnded(true) }} onError={() => { setMediaFailed(true); setPlaying(false) }} />
-          {mediaFailed && <span className="media-fallback" role="img" aria-label={`${profile.label} video unavailable. ${profile.alt}`}>{profile.label} video unavailable</span>}
-          {!mediaFailed && (!playing || ended) && <button className="farm-profile__play" type="button" onClick={requestPlay}>{ended ? 'Replay scene' : 'Play scene'}</button>}
-          <div className="farm-profile__foreground" aria-hidden="true"><i /><i /></div>
-          <figcaption>{profile.credit}</figcaption>
+    <article
+      className={`farm-album__entry farm-album__entry--${profile.id}`}
+      id={profile.id}
+      ref={articleRef}
+      tabIndex={-1}
+      aria-labelledby={headingId}
+      data-media-state={mediaFailed ? 'error' : ended ? 'ended' : playing ? 'playing' : framePresented ? 'ready' : 'poster'}
+      data-user-paused={userPaused ? 'true' : 'false'}
+      data-source-attached={shouldLoad ? 'true' : 'false'}
+      data-paper-state={paperState}
+    >
+      <h3 id={headingId}>{profile.heading}</h3>
+      <div className="farm-album__print" onAnimationEnd={() => setPaperState('settled')}>
+        <figure>
+          <div className="farm-album__film" data-film-id={profile.id} ref={filmRef} id={filmId}>
+            {!posterFailed && <img src={profile.poster} alt={profile.alt} width="1280" height="720" loading={shouldLoad ? 'eager' : 'lazy'} decoding="async" onLoad={() => setPosterReady(true)} onError={() => { setPosterFailed(true); setPosterReady(false) }} />}
+            {posterFailed && !framePresented && <span className="farm-album__neutral-poster" role="img" aria-label={`${profile.label} film poster unavailable. ${profile.alt}`}><span>{profile.label}</span></span>}
+            <video
+              ref={videoRef}
+              src={shouldLoad ? profile.video : undefined}
+              poster={profile.poster}
+              muted
+              playsInline
+              preload="metadata"
+              aria-hidden="true"
+              data-frame-presented={framePresented ? 'true' : 'false'}
+              onLoadedData={registerPresentedFrame}
+              onPlaying={() => { setPlaying(true); registerPresentedFrame() }}
+              onPause={() => setPlaying(false)}
+              onEnded={() => { setPlaying(false); setEnded(true); setManualPlayback(false) }}
+              onError={() => { setMediaFailed(true); setPlaying(false) }}
+            />
+          </div>
+          <figcaption>
+            <p>{profile.description}</p>
+            <div className="farm-album__controls" aria-label={`${profile.label} film controls`}>
+              {!mediaFailed && <button type="button" aria-controls={filmId} aria-label={`${profile.label}: ${controlLabel}`} onClick={togglePlayback}>{controlLabel}</button>}
+              {mediaFailed && !retryUsed && <button type="button" aria-controls={filmId} onClick={retry}>Retry film</button>}
+              {mediaFailed && retryUsed && <span role="status">Film unavailable. Poster retained.</span>}
+              <button type="button" onClick={() => onHearAnimal(profile.id)}>{profile.soundLabel}</button>
+              <a href={profile.link} onClick={profile.id === 'hens' ? (event) => { event.preventDefault(); onViewProduct('eggs') } : undefined}>{profile.linkLabel}</a>
+            </div>
+          </figcaption>
         </figure>
-        <div className="farm-profile__copy">
-          <p className="farm-profile__number">0{index + 1} / 03</p>
-          <p className="eyebrow eyebrow--light">Around the farm · licensed illustrative video</p>
-          <h2>{profile.heading}</h2>
-          <p>{profile.description}</p>
-          <a className="text-link" href={profile.link} onClick={profile.id === 'hens' ? (event) => { event.preventDefault(); onViewProduct('eggs') } : undefined}>{profile.linkLabel} <span aria-hidden="true">{profile.id === 'hens' ? '↓' : '↗'}</span></a>
-        </div>
       </div>
+      <p className="farm-album__note">{profile.note}</p>
     </article>
   )
 }
 
-export function FarmLife({ onViewProduct }: FarmLifeProps) {
+export function FarmLife({ onViewProduct, onHearAnimal, handoffActive, handoffTarget }: FarmLifeProps) {
   const sectionRef = useRef<HTMLElement>(null)
-  const visibilityRef = useRef(new Map<FarmLifeId, number>())
+  const visibleAreaRef = useRef(new Map<FarmLifeId, number>())
+  const dwellTimerRef = useRef<number | undefined>(undefined)
   const [activeId, setActiveId] = useState<FarmLifeId>()
-  const activate = useCallback((id: FarmLifeId) => setActiveId(id), [])
+  const [overlayBlocked, setOverlayBlocked] = useState(false)
+  const [reducedMotion, setReducedMotion] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches)
+  const blocked = handoffActive || overlayBlocked
+
+  const chooseOwner = useCallback(() => {
+    if (document.hidden || blocked) {
+      if (dwellTimerRef.current !== undefined) window.clearTimeout(dwellTimerRef.current)
+      setActiveId(undefined)
+      return
+    }
+    const next = [...visibleAreaRef.current.entries()].filter(([, area]) => area > 0).sort((a, b) => b[1] - a[1])[0]?.[0]
+    if (next === activeId) return
+    if (dwellTimerRef.current !== undefined) window.clearTimeout(dwellTimerRef.current)
+    if (!next) {
+      setActiveId(undefined)
+      return
+    }
+    dwellTimerRef.current = window.setTimeout(() => setActiveId(next), 200)
+  }, [activeId, blocked])
 
   useEffect(() => {
     const section = sectionRef.current
     if (!section || !('IntersectionObserver' in window)) return
-    const chooseActive = () => {
-      if (document.hidden) { setActiveId(undefined); return }
-      const active = [...visibilityRef.current.entries()].filter(([, ratio]) => ratio > 0).sort((a, b) => b[1] - a[1])[0]
-      setActiveId(active?.[0])
-    }
     const observer = new IntersectionObserver((entries) => {
-      for (const entry of entries) visibilityRef.current.set(entry.target.id as FarmLifeId, entry.isIntersecting ? entry.intersectionRatio : 0)
-      chooseActive()
+      for (const entry of entries) {
+        const id = (entry.target as HTMLElement).dataset.filmId as FarmLifeId
+        const usefulHeight = Math.min(entry.boundingClientRect.height, innerHeight * .72)
+        const eligible = entry.isIntersecting && entry.intersectionRect.height >= Math.min(150, usefulHeight * .32)
+        visibleAreaRef.current.set(id, eligible ? entry.intersectionRect.width * entry.intersectionRect.height : 0)
+      }
+      chooseOwner()
     }, { threshold: [0, .15, .3, .5, .7] })
-    section.querySelectorAll<HTMLElement>('.farm-profile').forEach((scene) => observer.observe(scene))
-    document.addEventListener('visibilitychange', chooseActive)
-    return () => { observer.disconnect(); document.removeEventListener('visibilitychange', chooseActive) }
+    section.querySelectorAll<HTMLElement>('[data-film-id]').forEach((film) => observer.observe(film))
+    return () => observer.disconnect()
+  }, [chooseOwner])
+
+  useEffect(() => {
+    const refresh = () => setOverlayBlocked(Boolean(document.querySelector('dialog[open], .mini-basket')))
+    refresh()
+    const observer = new MutationObserver(refresh)
+    observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['open'] })
+    return () => observer.disconnect()
   }, [])
 
+  useEffect(() => {
+    const media = matchMedia('(prefers-reduced-motion: reduce)')
+    const update = () => setReducedMotion(media.matches)
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
+
+  useEffect(() => {
+    const onVisibility = () => chooseOwner()
+    document.addEventListener('visibilitychange', onVisibility)
+    chooseOwner()
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      if (dwellTimerRef.current !== undefined) window.clearTimeout(dwellTimerRef.current)
+    }
+  }, [chooseOwner])
+
   return (
-    <section className="farm-life" id="farm-life" aria-labelledby="farm-life-heading" ref={sectionRef}>
-      <div className="farm-life__chapter-nav">
-        <div><p className="eyebrow eyebrow--light">Around the farm</p><h2 id="farm-life-heading">Farm life, one scene at a time.</h2></div>
-        <nav aria-label="Farm-life scenes">{farmLifeProfiles.map((profile) => <a key={profile.id} href={`#${profile.id}`}>{profile.label}</a>)}</nav>
-        <p className="visually-hidden">Licensed illustrative videos; they do not show a client or this fictional property.</p>
+    <section className="farm-album" id="farm-life" aria-labelledby="farm-life-heading" ref={sectionRef}>
+      <div className="farm-album__inner">
+        <header className="farm-album__intro">
+          <div><h2 id="farm-life-heading">Around the farm.</h2><p>Meet the neighbours.</p></div>
+          <nav aria-label="Farm-life scenes">{farmLifeProfiles.map((profile) => <a key={profile.id} href={`#${profile.id}`}>{profile.label}</a>)}</nav>
+        </header>
+        {farmLifeProfiles.map((profile) => (
+          <FarmAlbumEntry
+            key={profile.id}
+            profile={profile}
+            active={activeId === profile.id}
+            blocked={blocked}
+            reducedMotion={reducedMotion}
+            directArrival={handoffTarget === profile.id}
+            onActivate={setActiveId}
+            onViewProduct={onViewProduct}
+            onHearAnimal={onHearAnimal}
+          />
+        ))}
+        <div className="farm-album__credits" role="note">
+          <p>Illustrative farm films. These are not recordings of this demonstration property.</p>
+          <p>{farmLifeProfiles.map((profile, index) => <span key={profile.id}>{index ? ' · ' : ''}<a href={profile.sourceUrl}>{profile.creator} / Pexels</a></span>)}</p>
+        </div>
       </div>
-      {farmLifeProfiles.map((profile, index) => <FarmProfileScene key={profile.id} profile={profile} index={index} active={activeId === profile.id} onActivate={activate} onViewProduct={onViewProduct} />)}
     </section>
   )
 }

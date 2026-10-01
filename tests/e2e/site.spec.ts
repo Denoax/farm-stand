@@ -497,18 +497,146 @@ test('legacy basket migrates deliberately and ignores stored prices', async ({ p
   expect(storage.legacy).toBeNull()
 })
 
-test('farm-life scenes use matching posters and never play more than one large video', async ({ page }) => {
+test('living farm album uses matching films, normal flow, and one playback owner', async ({ page }) => {
   await page.goto(`${projectPath}#hens`, { waitUntil: 'networkidle' })
   await expect(page.locator('#hens video')).toHaveAttribute('poster', /hens-poster\.avif/)
   await expect(page.locator('#cattle video')).toHaveAttribute('poster', /cattle-poster\.avif/)
   await expect(page.locator('#sheep video')).toHaveAttribute('poster', /sheep-poster\.avif/)
-  expect(await page.locator('.farm-profile video').evaluateAll((videos) => videos.filter((video) => !(video as HTMLVideoElement).paused).length)).toBeLessThanOrEqual(1)
+  await expect(page.locator('#hens')).toHaveAttribute('data-paper-state', 'settled')
+  await expect(page.getByRole('heading', { name: 'Around the farm.' })).toBeVisible()
+  await expect(page.getByText('Meet the neighbours.')).toBeVisible()
+  await expect(page.locator('.farm-profile, .farm-life__chapter-nav, .farm-album [style*="--profile-progress"]')).toHaveCount(0)
+  const geometry = await page.locator('.farm-album').evaluate((album) => {
+    const entry = (id: string) => document.getElementById(id)!.getBoundingClientRect()
+    const film = (id: string) => document.querySelector(`#${id} .farm-album__film`)!.getBoundingClientRect()
+    return {
+      albumPosition: getComputedStyle(album).position,
+      entries: ['hens', 'cattle', 'sheep'].map((id) => ({ id, height: entry(id).height, filmRatio: film(id).width / film(id).height })),
+      sticky: album.querySelectorAll('[style*="sticky"], .farm-profile__sticky').length,
+    }
+  })
+  expect(geometry.albumPosition).toBe('relative')
+  expect(geometry.sticky).toBe(0)
+  expect(geometry.entries.every(({ height }) => height < 1200)).toBe(true)
+  expect(geometry.entries.every(({ filmRatio }) => Math.abs(filmRatio - 16 / 9) < .03)).toBe(true)
+  expect(await page.locator('.farm-album video').evaluateAll((videos) => videos.filter((video) => !(video as HTMLVideoElement).paused).length)).toBeLessThanOrEqual(1)
   await page.locator('#cattle').scrollIntoViewIfNeeded()
-  await page.waitForTimeout(300)
-  expect(await page.locator('.farm-profile video').evaluateAll((videos) => videos.filter((video) => !(video as HTMLVideoElement).paused).length)).toBeLessThanOrEqual(1)
+  await page.waitForTimeout(500)
+  expect(await page.locator('.farm-album video').evaluateAll((videos) => videos.filter((video) => !(video as HTMLVideoElement).paused).length)).toBeLessThanOrEqual(1)
+  await page.locator('#visit').scrollIntoViewIfNeeded()
+  await expect.poll(async () => page.locator('.farm-album video').evaluateAll((videos) => videos.every((video) => (video as HTMLVideoElement).paused))).toBe(true)
   await page.locator('#hens').getByRole('link', { name: 'View eggs' }).click()
   await expect(page).toHaveURL(/#product-eggs$/)
   await expect(page.locator('#product-eggs')).toBeFocused()
+})
+
+test('farm album keeps explicit pause intent, replay controls, and lazy source attachment', async ({ page }) => {
+  await page.goto(`${projectPath}#top`, { waitUntil: 'networkidle' })
+  await expect(page.locator('.farm-album__entry[data-source-attached="true"]')).toHaveCount(0)
+  await page.goto(`${projectPath}#hens`, { waitUntil: 'networkidle' })
+  const hens = page.locator('#hens')
+  await hens.scrollIntoViewIfNeeded()
+  await expect(hens).toHaveAttribute('data-paper-state', 'settled')
+  await expect(hens).toHaveAttribute('data-media-state', /playing|ready/)
+  const pauseFilm = hens.getByRole('button', { name: 'Hens: Pause film' })
+  await expect.poll(async () => hens.locator('video').evaluate((video) => (video as HTMLVideoElement).paused)).toBe(false)
+  await expect(pauseFilm).toBeVisible()
+  await pauseFilm.click()
+  await expect(hens).toHaveAttribute('data-user-paused', 'true')
+  await page.locator('#cattle').scrollIntoViewIfNeeded()
+  await page.waitForTimeout(350)
+  await hens.scrollIntoViewIfNeeded()
+  await page.waitForTimeout(350)
+  expect(await hens.locator('video').evaluate((video) => (video as HTMLVideoElement).paused)).toBe(true)
+  await expect(hens.getByRole('button', { name: 'Hens: Play film' })).toBeVisible()
+  await hens.getByRole('button', { name: 'Hens: Play film' }).click()
+  await expect(hens).toHaveAttribute('data-user-paused', 'false')
+  expect(await page.locator('.farm-album video').evaluateAll((videos) => videos.filter((video) => !(video as HTMLVideoElement).paused).length)).toBeLessThanOrEqual(1)
+})
+
+test('farm album links preserve history and hens-to-eggs preserves basket state', async ({ page }) => {
+  await page.addInitScript(() => sessionStorage.setItem('farm-stand-demo-basket-v2', JSON.stringify({ version: 2, lines: { apple: 2, 'farm-tee:m': 1 } })))
+  await page.goto(`${projectPath}#hens`, { waitUntil: 'networkidle' })
+  const originalBasket = await page.evaluate(() => sessionStorage.getItem('farm-stand-demo-basket-v2'))
+  await page.getByRole('navigation', { name: 'Farm-life scenes', exact: true }).getByRole('link', { name: 'Cattle' }).click()
+  await expect(page).toHaveURL(/#cattle$/)
+  await page.goBack()
+  await expect(page).toHaveURL(/#hens$/)
+  await page.locator('#hens').getByRole('link', { name: 'View eggs' }).click()
+  await expect(page).toHaveURL(/#product-eggs$/)
+  expect(await page.evaluate(() => sessionStorage.getItem('farm-stand-demo-basket-v2'))).toBe(originalBasket)
+  await expect(page.locator('#product-eggs')).toBeFocused()
+})
+
+test('farm album pauses for overlays and hidden tabs without losing user intent', async ({ page }) => {
+  await page.goto(`${projectPath}#hens`, { waitUntil: 'networkidle' })
+  const hens = page.locator('#hens')
+  await expect(hens).toHaveAttribute('data-media-state', /playing|ready/)
+  await page.getByRole('button', { name: /Open basket preview/ }).click()
+  await expect(page.getByRole('dialog', { name: 'At a glance' })).toBeVisible()
+  await expect.poll(async () => hens.locator('video').evaluate((video) => (video as HTMLVideoElement).paused)).toBe(true)
+  await page.getByRole('dialog', { name: 'At a glance' }).getByRole('button', { name: /Close/ }).click()
+  await expect.poll(async () => hens.locator('video').evaluate((video) => (video as HTMLVideoElement).paused)).toBe(false)
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true })
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+  await expect.poll(async () => hens.locator('video').evaluate((video) => (video as HTMLVideoElement).paused)).toBe(true)
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, value: false })
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+  await expect.poll(async () => hens.locator('video').evaluate((video) => (video as HTMLVideoElement).paused)).toBe(false)
+})
+
+test('ended animal film holds its frame and replays only on explicit request', async ({ page }) => {
+  await page.goto(`${projectPath}#sheep`, { waitUntil: 'networkidle' })
+  const sheep = page.locator('#sheep')
+  const video = sheep.locator('video')
+  await video.evaluate((element) => {
+    const media = element as HTMLVideoElement
+    media.currentTime = Math.max(0, media.duration - .08)
+    void media.play()
+  })
+  await expect(sheep).toHaveAttribute('data-media-state', 'ended', { timeout: 2500 })
+  await expect(video).toHaveAttribute('data-frame-presented', 'true')
+  await sheep.getByRole('button', { name: 'Sheep: Replay film' }).click()
+  await expect(sheep).toHaveAttribute('data-media-state', 'playing')
+  expect(await video.evaluate((element) => (element as HTMLVideoElement).currentTime)).toBeLessThan(2)
+})
+
+test('animal film and poster failures keep complete content and allow only one retry', async ({ page }) => {
+  let filmRequests = 0
+  await page.route('**/media/farm-life-motion/hens.mp4', (route) => { filmRequests += 1; void route.abort() })
+  await page.route('**/media/farm-life-motion/hens-poster.avif', (route) => route.abort())
+  await page.goto(`${projectPath}#hens`)
+  const hens = page.locator('#hens')
+  await expect(hens).toHaveAttribute('data-media-state', 'error')
+  await expect(hens.getByRole('img', { name: /Hens film poster unavailable/ })).toBeVisible()
+  await expect(hens.getByText('A hen and her chicks, busy at ground level.')).toBeVisible()
+  await expect(hens.getByRole('link', { name: 'View eggs' })).toBeVisible()
+  await hens.getByRole('button', { name: 'Retry film' }).click()
+  await expect(hens.getByText('Film unavailable. Poster retained.')).toBeVisible()
+  expect(filmRequests).toBe(2)
+  await expect(hens.getByRole('button', { name: 'Retry film' })).toHaveCount(0)
+})
+
+test('explicit album sound action emits one existing calibrated cue', async ({ page }) => {
+  await page.addInitScript(() => {
+    ;(window as typeof window & { __albumSounds?: Array<{ name: string; gain: number }> }).__albumSounds = []
+    window.addEventListener('farmstandsound', ((event: CustomEvent<{ name: string; gain: number }>) => {
+      ;(window as typeof window & { __albumSounds?: Array<{ name: string; gain: number }> }).__albumSounds?.push(event.detail)
+    }) as EventListener)
+  })
+  await page.goto(`${projectPath}#hens`, { waitUntil: 'networkidle' })
+  await page.mouse.click(8, 320)
+  await expect(page.locator('.sound-controls')).toHaveAttribute('data-sound-status', /ready|partial/, { timeout: 8000 })
+  await page.evaluate(() => { (window as typeof window & { __albumSounds?: unknown[] }).__albumSounds = [] })
+  const hear = page.locator('#hens').getByRole('button', { name: 'Hear a cluck' })
+  await hear.click()
+  await hear.click()
+  await expect.poll(async () => page.evaluate(() => (window as typeof window & { __albumSounds?: Array<{ name: string }> }).__albumSounds?.filter(({ name }) => name === 'hens').length)).toBe(1)
+  await expect.poll(async () => page.evaluate(() => (window as typeof window & { __albumSounds?: Array<{ name: string; gain: number }> }).__albumSounds?.find(({ name }) => name === 'hens')?.gain)).toBeCloseTo(.15, 3)
 })
 
 test('exact shop video owns one continuous hold and commits only in its decoded cover', async ({ page }, testInfo) => {
@@ -767,6 +895,8 @@ test('animal Polaroids use exact transition 02 without replaying on ordinary far
   await expect(root).toHaveAttribute('data-handoff-state', 'idle', { timeout: 2500 })
   await expect(page).toHaveURL(/#hens$/)
   await expect(page.locator('#hens')).toBeFocused()
+  await expect(page.locator('#hens')).toHaveAttribute('data-paper-state', 'settled')
+  await expect(page.locator('#hens .farm-album__film img')).toBeVisible()
   await page.getByRole('navigation', { name: 'Farm-life scenes', exact: true }).getByRole('link', { name: 'Cattle' }).click()
   await expect(page).toHaveURL(/#cattle$/)
   await expect(page.locator('.video-handoff')).toHaveCount(0)
@@ -1277,6 +1407,33 @@ test('contact editing preserves exact long input through insertion and undo with
   expect(result).toEqual({ summaries: 1, markerCount: 1, exactValue: true, pageOverflow: 0, sectionOverflow: 0 })
 })
 
+test('farm album stays readable without horizontal overflow across required narrow and short views', async ({ page }) => {
+  for (const size of [{ width: 320, height: 740 }, { width: 390, height: 844 }, { width: 960, height: 540 }, { width: 1920, height: 900 }]) {
+    await page.setViewportSize(size)
+    await page.goto(`${projectPath}#hens`, { waitUntil: 'domcontentloaded' })
+    const layout = await page.locator('.farm-album').evaluate((album) => {
+      const film = album.querySelector('#hens .farm-album__film')!.getBoundingClientRect()
+      const controls = album.querySelector('#hens .farm-album__controls')!.getBoundingClientRect()
+      return {
+        overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        filmLeft: film.left,
+        filmRight: innerWidth - film.right,
+        controlsRight: innerWidth - controls.right,
+      }
+    })
+    expect(layout.overflow, `${size.width}x${size.height}`).toBeLessThanOrEqual(1)
+    expect(layout.filmLeft, `${size.width}x${size.height}`).toBeGreaterThanOrEqual(8)
+    expect(layout.filmRight, `${size.width}x${size.height}`).toBeGreaterThanOrEqual(8)
+    expect(layout.controlsRight, `${size.width}x${size.height}`).toBeGreaterThanOrEqual(8)
+  }
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto(`${projectPath}#hens`)
+  await page.addStyleTag({ content: '.farm-album { font-size: 200% !important; }' })
+  await page.locator('#hens').scrollIntoViewIfNeeded()
+  expect(await page.locator('.farm-album').evaluate((album) => album.scrollWidth - album.clientWidth)).toBeLessThanOrEqual(1)
+  await expect(page.locator('#hens').getByRole('button', { name: /Hens: (Play|Pause) film/ })).toBeVisible()
+})
+
 test('reduced motion presents complete still states and keeps manual video control', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto(projectPath)
@@ -1286,7 +1443,8 @@ test('reduced motion presents complete still states and keeps manual video contr
   await expect(page.locator('body > #root > div')).toHaveAttribute('data-handoff-state', 'bypassed')
   await expect(page.getByRole('button', { name: /Open basket preview/ })).toBeVisible()
   await page.goto(`${projectPath}#sheep`)
-  await expect(page.locator('#sheep').getByRole('button', { name: 'Play scene' })).toBeVisible()
+  await expect(page.locator('#sheep').getByRole('button', { name: 'Sheep: Play film' })).toBeVisible()
+  await expect(page.locator('#sheep')).toHaveAttribute('data-paper-state', 'settled')
   expect(await page.locator('#sheep video').evaluate((video) => (video as HTMLVideoElement).paused)).toBe(true)
 })
 
@@ -1302,7 +1460,9 @@ test('model, opening-image, product-image, and video failures retain complete fa
   await expect(page.getByRole('button', { name: /Open basket preview/ })).toBeVisible()
   await expect(page.getByRole('group', { name: /Orchard apples image unavailable/ })).toBeVisible()
   await page.goto(`${projectPath}#hens`)
-  await expect(page.getByRole('img', { name: /Hens video unavailable/ })).toBeVisible()
+  await expect(page.locator('#hens')).toHaveAttribute('data-media-state', 'error')
+  await expect(page.locator('#hens img')).toBeVisible()
+  await expect(page.locator('#hens').getByRole('button', { name: 'Retry film' })).toBeVisible()
 })
 
 test('layouts avoid horizontal overflow and portrait basket stays within the viewport', async ({ page }) => {

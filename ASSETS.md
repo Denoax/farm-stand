@@ -57,7 +57,7 @@ All acquisition originals remain ignored and outside the public Pages artifact. 
 - **Cattle video** — Taryn Elliott, Pexels: https://www.pexels.com/video/herd-of-cows-in-a-pastureland-3769204/. The inspected wide-pasture source was resized to 1280×720, H.264-encoded at CRF 24 with fast-start metadata, and delivered without audio as `public/media/farm-life-motion/cattle.mp4`; its inspected poster is delivered beside it.
 - **Sheep video** — Matthias Groeneveld, Pexels: https://www.pexels.com/video/12116085/. A ten-second section was resized to 1280×720, H.264-encoded at CRF 24 with fast-start metadata, and delivered without audio as `public/media/farm-life-motion/sheep.mp4`; its inspected poster is delivered beside it.
 
-All expansion photographs and videos are used under the [Pexels license](https://www.pexels.com/license/). The source record includes hashes for the three acquired videos and all six video/poster derivatives. The application permits only one large farm-life video to play, keeps every clip muted and non-looping, and falls back to its matching poster.
+All expansion photographs and videos are used under the [Pexels license](https://www.pexels.com/license/). The source record includes hashes for the three acquired videos and all six video/poster derivatives. For the living-farm album pass, all three complete ten-second delivery clips were re-inspected in five evenly spaced frames and each poster was compared with its decoded opening frame; the retained subjects, descriptions, creators, hashes, and 16:9 delivery crops still match. The application permits only one large farm-life video to play, keeps every clip muted and non-looping, and falls back to its matching poster.
 
 ## v2 catalogue and farm-life photography
 

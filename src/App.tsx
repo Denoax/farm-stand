@@ -778,7 +778,12 @@ export function App() {
         </section>
 
         <ShopSection basket={basket} dispatch={dispatchBasket} focusRequest={shopFocusRequest} marketReady={marketReady} onCommerceSound={soundscape.playCommerce} />
-        <FarmLife onViewProduct={viewShopProduct} />
+        <FarmLife
+          onViewProduct={viewShopProduct}
+          onHearAnimal={soundscape.playAnimal}
+          handoffActive={handoffPhase !== 'idle'}
+          handoffTarget={handoffRequest?.targetId}
+        />
         <VisitSection />
 
         <section className="service" id="website" aria-labelledby="service-heading">
