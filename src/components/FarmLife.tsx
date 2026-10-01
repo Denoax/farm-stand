@@ -4,7 +4,6 @@ import './FarmLife.css'
 
 interface FarmLifeProps {
   onViewProduct: (productId: 'eggs') => void
-  onHearAnimal: (animal: FarmLifeId) => void
   handoffActive: boolean
   handoffTarget?: string
 }
@@ -22,24 +21,45 @@ function initialTarget() {
   }
 }
 
+function AlbumMarginSketch({ kind }: { kind: FarmLifeId }) {
+  if (kind === 'cattle') return null
+  return kind === 'hens' ? (
+    <svg className="farm-album__sketch farm-album__sketch--hens" viewBox="0 0 180 112" aria-hidden="true">
+      <path d="M12 86c28 4 44-3 62-18 20-17 35-19 55-12" />
+      <g className="farm-album__footprints">
+        <path d="m23 78-7-8m7 8 1-11m-1 11 9-5" />
+        <path d="m53 71-7-8m7 8 1-11m-1 11 9-5" />
+        <path d="m83 59-7-8m7 8 1-11m-1 11 9-5" />
+      </g>
+      <path d="M130 91c4-20 4-23 6-35m1 35c5-15 13-27 22-35m-19 35c12-11 18-14 28-18m-34 18c-9-15-14-20-21-25" />
+    </svg>
+  ) : (
+    <svg className="farm-album__sketch farm-album__sketch--sheep" viewBox="0 0 170 132" aria-hidden="true">
+      <path d="M84 125c-1-25 1-54 5-84m-3 47c-24-8-43-23-54-43m55 23c21-12 35-27 43-46" />
+      <path d="M25 47c-11-8-14-22-5-29 10-8 23-1 25 10 2 12-8 24-20 19Zm106-22c5-12 20-17 28-8 7 9 0 23-12 26-12 3-21-7-16-18Z" />
+      <path d="M56 116c2-12 1-21-2-29m7 30c5-12 11-19 18-25m37 25c-4-13-3-23 0-32m5 33c5-12 11-20 20-26" />
+    </svg>
+  )
+}
+
 function FarmAlbumEntry({
   profile,
   active,
   blocked,
-  reducedMotion,
+  motionEnabled,
   directArrival,
   onActivate,
+  onEnableMotion,
   onViewProduct,
-  onHearAnimal,
 }: {
   profile: (typeof farmLifeProfiles)[number]
   active: boolean
   blocked: boolean
-  reducedMotion: boolean
+  motionEnabled: boolean
   directArrival: boolean
   onActivate: (id: FarmLifeId) => void
+  onEnableMotion: () => void
   onViewProduct: (productId: 'eggs') => void
-  onHearAnimal: (animal: FarmLifeId) => void
 }) {
   const articleRef = useRef<HTMLElement>(null)
   const filmRef = useRef<HTMLDivElement>(null)
@@ -49,25 +69,23 @@ function FarmAlbumEntry({
   const playRequestRef = useRef(0)
   const activeRef = useRef(active)
   const blockedRef = useRef(blocked)
-  const userPausedRef = useRef(false)
-  const endedRef = useRef(false)
+  const motionEnabledRef = useRef(motionEnabled)
+  const lastMediaTimeRef = useRef(0)
   const skipSettleRef = useRef(initialTarget() === profile.id || directArrival)
   const [shouldLoad, setShouldLoad] = useState(() => initialTarget() === profile.id || initialTarget() === 'farm-life' && profile.id === 'hens')
   const [posterReady, setPosterReady] = useState(false)
   const [posterFailed, setPosterFailed] = useState(false)
   const [framePresented, setFramePresented] = useState(false)
   const [mediaFailed, setMediaFailed] = useState(false)
+  const [playBlocked, setPlayBlocked] = useState(false)
   const [retryUsed, setRetryUsed] = useState(false)
   const [playing, setPlaying] = useState(false)
-  const [ended, setEnded] = useState(false)
-  const [userPaused, setUserPaused] = useState(false)
-  const [manualPlayback, setManualPlayback] = useState(false)
-  const [paperState, setPaperState] = useState<'waiting' | 'settling' | 'settled'>(() => skipSettleRef.current || reducedMotion ? 'settled' : 'waiting')
+  const [loopCount, setLoopCount] = useState(0)
+  const [paperState, setPaperState] = useState<'waiting' | 'settling' | 'settled'>(() => skipSettleRef.current ? 'settled' : 'waiting')
 
   activeRef.current = active
   blockedRef.current = blocked
-  userPausedRef.current = userPaused
-  endedRef.current = ended
+  motionEnabledRef.current = motionEnabled
 
   useEffect(() => {
     if (!directArrival) return
@@ -106,7 +124,7 @@ function FarmAlbumEntry({
   useEffect(() => {
     const film = filmRef.current
     if (!film || paperState !== 'waiting') return
-    if (reducedMotion || skipSettleRef.current) {
+    if (skipSettleRef.current) {
       setPaperState('settled')
       return
     }
@@ -123,11 +141,12 @@ function FarmAlbumEntry({
     }, { threshold: [0, .2, .35, .5] })
     observer.observe(film)
     return () => observer.disconnect()
-  }, [paperState, posterFailed, posterReady, reducedMotion])
+  }, [paperState, posterFailed, posterReady])
 
   const markFramePresented = useCallback(() => {
     setFramePresented(true)
     setMediaFailed(false)
+    setPlayBlocked(false)
   }, [])
 
   const registerPresentedFrame = useCallback(() => {
@@ -153,35 +172,28 @@ function FarmAlbumEntry({
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
-    const canPlay = active && !blocked && !document.hidden && !mediaFailed && !ended && !userPaused && paperState === 'settled' && (posterReady || posterFailed) && (!reducedMotion || manualPlayback)
+    const canPlay = active && motionEnabled && !blocked && !document.hidden && !mediaFailed && paperState === 'settled' && (posterReady || posterFailed)
     const request = ++playRequestRef.current
     if (!canPlay) {
       video.pause()
       return
     }
     void video.play().then(() => {
-      if (request !== playRequestRef.current || !activeRef.current || blockedRef.current || userPausedRef.current || endedRef.current || document.hidden) video.pause()
+      if (request !== playRequestRef.current || !activeRef.current || blockedRef.current || !motionEnabledRef.current || document.hidden) video.pause()
     }).catch(() => {
-      if (request === playRequestRef.current) setPlaying(false)
+      if (request === playRequestRef.current) {
+        setPlaying(false)
+        setPlayBlocked(true)
+      }
     })
-  }, [active, blocked, ended, manualPlayback, mediaFailed, paperState, posterFailed, posterReady, reducedMotion, shouldLoad, userPaused])
+  }, [active, blocked, mediaFailed, motionEnabled, paperState, posterFailed, posterReady, shouldLoad])
 
   const requestPlay = () => {
-    const video = videoRef.current
-    if (!video) return
-    if (ended) video.currentTime = 0
-    setEnded(false)
     setMediaFailed(false)
-    setUserPaused(false)
-    setManualPlayback(true)
+    setPlayBlocked(false)
     setShouldLoad(true)
+    onEnableMotion()
     onActivate(profile.id)
-  }
-
-  const pause = () => {
-    setUserPaused(true)
-    setManualPlayback(false)
-    videoRef.current?.pause()
   }
 
   const retry = () => {
@@ -189,20 +201,13 @@ function FarmAlbumEntry({
     if (!video || retryUsed) return
     setRetryUsed(true)
     setMediaFailed(false)
+    setPlayBlocked(false)
     setFramePresented(false)
-    setEnded(false)
-    setUserPaused(false)
-    setManualPlayback(true)
+    onEnableMotion()
     onActivate(profile.id)
     video.load()
   }
 
-  const togglePlayback = () => {
-    if (playing && !ended) pause()
-    else requestPlay()
-  }
-
-  const controlLabel = ended ? 'Replay film' : playing ? 'Pause film' : 'Play film'
   const filmId = `${profile.id}-film`
   const headingId = `${profile.id}-heading`
 
@@ -213,10 +218,11 @@ function FarmAlbumEntry({
       ref={articleRef}
       tabIndex={-1}
       aria-labelledby={headingId}
-      data-media-state={mediaFailed ? 'error' : ended ? 'ended' : playing ? 'playing' : framePresented ? 'ready' : 'poster'}
-      data-user-paused={userPaused ? 'true' : 'false'}
+      data-media-state={mediaFailed ? 'error' : playBlocked ? 'blocked' : playing ? 'playing' : framePresented ? 'ready' : 'poster'}
       data-source-attached={shouldLoad ? 'true' : 'false'}
       data-paper-state={paperState}
+      data-loop-count={loopCount}
+      data-active-owner={active ? 'true' : 'false'}
     >
       <h3 id={headingId}>{profile.heading}</h3>
       <div className="farm-album__print" onAnimationEnd={() => setPaperState('settled')}>
@@ -230,40 +236,49 @@ function FarmAlbumEntry({
               poster={profile.poster}
               muted
               playsInline
+              loop
               preload="metadata"
               aria-hidden="true"
               data-frame-presented={framePresented ? 'true' : 'false'}
               onLoadedData={registerPresentedFrame}
-              onPlaying={() => { setPlaying(true); registerPresentedFrame() }}
+              onPlaying={() => { setPlaying(true); setPlayBlocked(false); registerPresentedFrame() }}
               onPause={() => setPlaying(false)}
-              onEnded={() => { setPlaying(false); setEnded(true); setManualPlayback(false) }}
+              onTimeUpdate={(event) => {
+                const time = event.currentTarget.currentTime
+                if (time + .5 < lastMediaTimeRef.current) setLoopCount((count) => count + 1)
+                lastMediaTimeRef.current = time
+              }}
               onError={() => { setMediaFailed(true); setPlaying(false) }}
             />
           </div>
           <figcaption>
             <p>{profile.description}</p>
-            <div className="farm-album__controls" aria-label={`${profile.label} film controls`}>
-              {!mediaFailed && <button type="button" aria-controls={filmId} aria-label={`${profile.label}: ${controlLabel}`} onClick={togglePlayback}>{controlLabel}</button>}
+            <div className="farm-album__links">
+              {playBlocked && !mediaFailed && <button type="button" aria-controls={filmId} onClick={requestPlay}>Play {profile.label.toLowerCase()} film</button>}
               {mediaFailed && !retryUsed && <button type="button" aria-controls={filmId} onClick={retry}>Retry film</button>}
               {mediaFailed && retryUsed && <span role="status">Film unavailable. Poster retained.</span>}
-              <button type="button" onClick={() => onHearAnimal(profile.id)}>{profile.soundLabel}</button>
               <a href={profile.link} onClick={profile.id === 'hens' ? (event) => { event.preventDefault(); onViewProduct('eggs') } : undefined}>{profile.linkLabel}</a>
             </div>
           </figcaption>
         </figure>
       </div>
       <p className="farm-album__note">{profile.note}</p>
+      <AlbumMarginSketch kind={profile.id} />
     </article>
   )
 }
 
-export function FarmLife({ onViewProduct, onHearAnimal, handoffActive, handoffTarget }: FarmLifeProps) {
+export function FarmLife({ onViewProduct, handoffActive, handoffTarget }: FarmLifeProps) {
   const sectionRef = useRef<HTMLElement>(null)
   const visibleAreaRef = useRef(new Map<FarmLifeId, number>())
   const dwellTimerRef = useRef<number | undefined>(undefined)
-  const [activeId, setActiveId] = useState<FarmLifeId>()
+  const [activeId, setActiveId] = useState<FarmLifeId | undefined>(() => {
+    const target = initialTarget()
+    return farmLifeProfiles.some(({ id }) => id === target) ? target as FarmLifeId : undefined
+  })
   const [overlayBlocked, setOverlayBlocked] = useState(false)
   const [reducedMotion, setReducedMotion] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches)
+  const [motionEnabled, setMotionEnabled] = useState(() => !matchMedia('(prefers-reduced-motion: reduce)').matches)
   const blocked = handoffActive || overlayBlocked
 
   const chooseOwner = useCallback(() => {
@@ -308,7 +323,10 @@ export function FarmLife({ onViewProduct, onHearAnimal, handoffActive, handoffTa
 
   useEffect(() => {
     const media = matchMedia('(prefers-reduced-motion: reduce)')
-    const update = () => setReducedMotion(media.matches)
+    const update = () => {
+      setReducedMotion(media.matches)
+      if (media.matches) setMotionEnabled(false)
+    }
     media.addEventListener('change', update)
     return () => media.removeEventListener('change', update)
   }, [])
@@ -323,12 +341,30 @@ export function FarmLife({ onViewProduct, onHearAnimal, handoffActive, handoffTa
     }
   }, [chooseOwner])
 
+  const enableMotion = () => {
+    const next = farmLifeProfiles
+      .map(({ id }) => {
+        const rect = sectionRef.current?.querySelector<HTMLElement>(`[data-film-id="${id}"]`)?.getBoundingClientRect()
+        if (!rect) return { id, area: 0 }
+        const width = Math.max(0, Math.min(rect.right, innerWidth) - Math.max(rect.left, 0))
+        const height = Math.max(0, Math.min(rect.bottom, innerHeight) - Math.max(rect.top, 0))
+        return { id, area: width * height }
+      })
+      .sort((a, b) => b.area - a.area)[0]
+    if (next?.area) setActiveId(next.id)
+    setMotionEnabled(true)
+  }
+
+  const toggleLabel = motionEnabled ? 'Pause animal films' : 'Play animal films'
+
   return (
-    <section className="farm-album" id="farm-life" aria-labelledby="farm-life-heading" ref={sectionRef}>
+    <section className="farm-album" id="farm-life" aria-labelledby="farm-life-heading" ref={sectionRef} data-motion-enabled={motionEnabled ? 'true' : 'false'} data-reduced-motion={reducedMotion ? 'true' : 'false'}>
       <div className="farm-album__inner">
         <header className="farm-album__intro">
           <div><h2 id="farm-life-heading">Around the farm.</h2><p>Meet the neighbours.</p></div>
-          <nav aria-label="Farm-life scenes">{farmLifeProfiles.map((profile) => <a key={profile.id} href={`#${profile.id}`}>{profile.label}</a>)}</nav>
+          <button className="farm-album__motion" type="button" aria-label={toggleLabel} title={toggleLabel} aria-pressed={!motionEnabled} onClick={() => motionEnabled ? setMotionEnabled(false) : enableMotion()}>
+            {motionEnabled ? <span aria-hidden="true"><i /><i /></span> : <span className="farm-album__play" aria-hidden="true" />}
+          </button>
         </header>
         {farmLifeProfiles.map((profile) => (
           <FarmAlbumEntry
@@ -336,11 +372,11 @@ export function FarmLife({ onViewProduct, onHearAnimal, handoffActive, handoffTa
             profile={profile}
             active={activeId === profile.id}
             blocked={blocked}
-            reducedMotion={reducedMotion}
+            motionEnabled={motionEnabled}
             directArrival={handoffTarget === profile.id}
             onActivate={setActiveId}
+            onEnableMotion={enableMotion}
             onViewProduct={onViewProduct}
-            onHearAnimal={onHearAnimal}
           />
         ))}
         <div className="farm-album__credits" role="note">

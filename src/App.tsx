@@ -780,7 +780,6 @@ export function App() {
         <ShopSection basket={basket} dispatch={dispatchBasket} focusRequest={shopFocusRequest} marketReady={marketReady} onCommerceSound={soundscape.playCommerce} />
         <FarmLife
           onViewProduct={viewShopProduct}
-          onHearAnimal={soundscape.playAnimal}
           handoffActive={handoffPhase !== 'idle'}
           handoffTarget={handoffRequest?.targetId}
         />

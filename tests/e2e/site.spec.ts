@@ -505,6 +505,7 @@ test('living farm album uses matching films, normal flow, and one playback owner
   await expect(page.locator('#hens')).toHaveAttribute('data-paper-state', 'settled')
   await expect(page.getByRole('heading', { name: 'Around the farm.' })).toBeVisible()
   await expect(page.getByText('Meet the neighbours.')).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Farm-life scenes', exact: true })).toHaveCount(0)
   await expect(page.locator('.farm-profile, .farm-life__chapter-nav, .farm-album [style*="--profile-progress"]')).toHaveCount(0)
   const geometry = await page.locator('.farm-album').evaluate((album) => {
     const entry = (id: string) => document.getElementById(id)!.getBoundingClientRect()
@@ -530,7 +531,7 @@ test('living farm album uses matching films, normal flow, and one playback owner
   await expect(page.locator('#product-eggs')).toBeFocused()
 })
 
-test('farm album keeps explicit pause intent, replay controls, and lazy source attachment', async ({ page }) => {
+test('farm album keeps shared pause intent across entries and lazy source attachment', async ({ page }) => {
   await page.goto(`${projectPath}#top`, { waitUntil: 'networkidle' })
   await expect(page.locator('.farm-album__entry[data-source-attached="true"]')).toHaveCount(0)
   await page.goto(`${projectPath}#hens`, { waitUntil: 'networkidle' })
@@ -538,19 +539,20 @@ test('farm album keeps explicit pause intent, replay controls, and lazy source a
   await hens.scrollIntoViewIfNeeded()
   await expect(hens).toHaveAttribute('data-paper-state', 'settled')
   await expect(hens).toHaveAttribute('data-media-state', /playing|ready/)
-  const pauseFilm = hens.getByRole('button', { name: 'Hens: Pause film' })
   await expect.poll(async () => hens.locator('video').evaluate((video) => (video as HTMLVideoElement).paused)).toBe(false)
-  await expect(pauseFilm).toBeVisible()
-  await pauseFilm.click()
-  await expect(hens).toHaveAttribute('data-user-paused', 'true')
+  const pauseFilms = page.getByRole('button', { name: 'Pause animal films' })
+  await expect(pauseFilms).toBeVisible()
+  await pauseFilms.click()
+  await expect(page.locator('.farm-album')).toHaveAttribute('data-motion-enabled', 'false')
+  await expect.poll(async () => page.locator('.farm-album video').evaluateAll((videos) => videos.every((video) => (video as HTMLVideoElement).paused))).toBe(true)
   await page.locator('#cattle').scrollIntoViewIfNeeded()
   await page.waitForTimeout(350)
   await hens.scrollIntoViewIfNeeded()
   await page.waitForTimeout(350)
   expect(await hens.locator('video').evaluate((video) => (video as HTMLVideoElement).paused)).toBe(true)
-  await expect(hens.getByRole('button', { name: 'Hens: Play film' })).toBeVisible()
-  await hens.getByRole('button', { name: 'Hens: Play film' }).click()
-  await expect(hens).toHaveAttribute('data-user-paused', 'false')
+  await page.getByRole('button', { name: 'Play animal films' }).click()
+  await expect(page.locator('.farm-album')).toHaveAttribute('data-motion-enabled', 'true')
+  await expect.poll(async () => hens.locator('video').evaluate((video) => (video as HTMLVideoElement).paused)).toBe(false)
   expect(await page.locator('.farm-album video').evaluateAll((videos) => videos.filter((video) => !(video as HTMLVideoElement).paused).length)).toBeLessThanOrEqual(1)
 })
 
@@ -558,7 +560,7 @@ test('farm album links preserve history and hens-to-eggs preserves basket state'
   await page.addInitScript(() => sessionStorage.setItem('farm-stand-demo-basket-v2', JSON.stringify({ version: 2, lines: { apple: 2, 'farm-tee:m': 1 } })))
   await page.goto(`${projectPath}#hens`, { waitUntil: 'networkidle' })
   const originalBasket = await page.evaluate(() => sessionStorage.getItem('farm-stand-demo-basket-v2'))
-  await page.getByRole('navigation', { name: 'Farm-life scenes', exact: true }).getByRole('link', { name: 'Cattle' }).click()
+  await page.evaluate(() => { location.hash = 'cattle' })
   await expect(page).toHaveURL(/#cattle$/)
   await page.goBack()
   await expect(page).toHaveURL(/#hens$/)
@@ -589,20 +591,23 @@ test('farm album pauses for overlays and hidden tabs without losing user intent'
   await expect.poll(async () => hens.locator('video').evaluate((video) => (video as HTMLVideoElement).paused)).toBe(false)
 })
 
-test('ended animal film holds its frame and replays only on explicit request', async ({ page }) => {
-  await page.goto(`${projectPath}#sheep`, { waitUntil: 'networkidle' })
-  const sheep = page.locator('#sheep')
-  const video = sheep.locator('video')
-  await video.evaluate((element) => {
-    const media = element as HTMLVideoElement
-    media.currentTime = Math.max(0, media.duration - .08)
-    void media.play()
-  })
-  await expect(sheep).toHaveAttribute('data-media-state', 'ended', { timeout: 2500 })
-  await expect(video).toHaveAttribute('data-frame-presented', 'true')
-  await sheep.getByRole('button', { name: 'Sheep: Replay film' }).click()
-  await expect(sheep).toHaveAttribute('data-media-state', 'playing')
-  expect(await video.evaluate((element) => (element as HTMLVideoElement).currentTime)).toBeLessThan(2)
+test('each animal film wraps twice without ending, reloading, or showing replay controls', async ({ page }) => {
+  for (const id of ['hens', 'cattle', 'sheep']) {
+    await page.goto(`${projectPath}#${id}`, { waitUntil: 'networkidle' })
+    const entry = page.locator(`#${id}`)
+    const video = entry.locator('video')
+    await expect.poll(async () => video.evaluate((element) => !(element as HTMLVideoElement).paused)).toBe(true)
+    for (let expected = 1; expected <= 2; expected += 1) {
+      await video.evaluate((element) => {
+        const media = element as HTMLVideoElement
+        media.currentTime = Math.max(0, media.duration - .12)
+      })
+      await expect(entry).toHaveAttribute('data-loop-count', String(expected), { timeout: 2500 })
+      expect(await video.evaluate((element) => (element as HTMLVideoElement).paused)).toBe(false)
+    }
+    await expect(video).toHaveAttribute('loop', '')
+    await expect(entry.getByRole('button', { name: /Replay|Hear/ })).toHaveCount(0)
+  }
 })
 
 test('animal film and poster failures keep complete content and allow only one retry', async ({ page }) => {
@@ -621,7 +626,7 @@ test('animal film and poster failures keep complete content and allow only one r
   await expect(hens.getByRole('button', { name: 'Retry film' })).toHaveCount(0)
 })
 
-test('explicit album sound action emits one existing calibrated cue', async ({ page }) => {
+test('animal loops have no local sound controls and emit no animal cue at a wrap', async ({ page }) => {
   await page.addInitScript(() => {
     ;(window as typeof window & { __albumSounds?: Array<{ name: string; gain: number }> }).__albumSounds = []
     window.addEventListener('farmstandsound', ((event: CustomEvent<{ name: string; gain: number }>) => {
@@ -629,14 +634,14 @@ test('explicit album sound action emits one existing calibrated cue', async ({ p
     }) as EventListener)
   })
   await page.goto(`${projectPath}#hens`, { waitUntil: 'networkidle' })
-  await page.mouse.click(8, 320)
-  await expect(page.locator('.sound-controls')).toHaveAttribute('data-sound-status', /ready|partial/, { timeout: 8000 })
   await page.evaluate(() => { (window as typeof window & { __albumSounds?: unknown[] }).__albumSounds = [] })
-  const hear = page.locator('#hens').getByRole('button', { name: 'Hear a cluck' })
-  await hear.click()
-  await hear.click()
-  await expect.poll(async () => page.evaluate(() => (window as typeof window & { __albumSounds?: Array<{ name: string }> }).__albumSounds?.filter(({ name }) => name === 'hens').length)).toBe(1)
-  await expect.poll(async () => page.evaluate(() => (window as typeof window & { __albumSounds?: Array<{ name: string; gain: number }> }).__albumSounds?.find(({ name }) => name === 'hens')?.gain)).toBeCloseTo(.15, 3)
+  await expect(page.locator('.farm-album').getByRole('button', { name: /Hear|Replay/ })).toHaveCount(0)
+  await page.locator('#hens video').evaluate((element) => {
+    const media = element as HTMLVideoElement
+    media.currentTime = Math.max(0, media.duration - .12)
+  })
+  await expect(page.locator('#hens')).toHaveAttribute('data-loop-count', '1', { timeout: 2500 })
+  expect(await page.evaluate(() => (window as typeof window & { __albumSounds?: Array<{ name: string }> }).__albumSounds?.filter(({ name }) => name === 'hens').length)).toBe(0)
 })
 
 test('exact shop video owns one continuous hold and commits only in its decoded cover', async ({ page }, testInfo) => {
@@ -897,7 +902,7 @@ test('animal Polaroids use exact transition 02 without replaying on ordinary far
   await expect(page.locator('#hens')).toBeFocused()
   await expect(page.locator('#hens')).toHaveAttribute('data-paper-state', 'settled')
   await expect(page.locator('#hens .farm-album__film img')).toBeVisible()
-  await page.getByRole('navigation', { name: 'Farm-life scenes', exact: true }).getByRole('link', { name: 'Cattle' }).click()
+  await page.evaluate(() => { location.hash = 'cattle' })
   await expect(page).toHaveURL(/#cattle$/)
   await expect(page.locator('.video-handoff')).toHaveCount(0)
 })
@@ -1414,12 +1419,12 @@ test('farm album stays readable without horizontal overflow across required narr
     await page.goto(`${projectPath}#hens`, { waitUntil: 'domcontentloaded' })
     const layout = await page.locator('.farm-album').evaluate((album) => {
       const film = album.querySelector('#hens .farm-album__film')!.getBoundingClientRect()
-      const controls = album.querySelector('#hens .farm-album__controls')!.getBoundingClientRect()
+      const motionControl = album.querySelector('.farm-album__motion')!.getBoundingClientRect()
       return {
         overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         filmLeft: film.left,
         filmRight: innerWidth - film.right,
-        controlsRight: innerWidth - controls.right,
+        controlsRight: innerWidth - motionControl.right,
       }
     })
     expect(layout.overflow, `${size.width}x${size.height}`).toBeLessThanOrEqual(1)
@@ -1432,7 +1437,7 @@ test('farm album stays readable without horizontal overflow across required narr
   await page.addStyleTag({ content: '.farm-album { font-size: 200% !important; }' })
   await page.locator('#hens').scrollIntoViewIfNeeded()
   expect(await page.locator('.farm-album').evaluate((album) => album.scrollWidth - album.clientWidth)).toBeLessThanOrEqual(1)
-  await expect(page.locator('#hens').getByRole('button', { name: /Hens: (Play|Pause) film/ })).toBeVisible()
+  await expect(page.locator('.farm-album').getByRole('button', { name: 'Pause animal films' })).toBeVisible()
 })
 
 test('reduced motion presents complete still states and keeps manual video control', async ({ page }) => {
@@ -1444,9 +1449,11 @@ test('reduced motion presents complete still states and keeps manual video contr
   await expect(page.locator('body > #root > div')).toHaveAttribute('data-handoff-state', 'bypassed')
   await expect(page.getByRole('button', { name: /Open basket preview/ })).toBeVisible()
   await page.goto(`${projectPath}#sheep`)
-  await expect(page.locator('#sheep').getByRole('button', { name: 'Sheep: Play film' })).toBeVisible()
+  await expect(page.locator('.farm-album').getByRole('button', { name: 'Play animal films' })).toBeVisible()
   await expect(page.locator('#sheep')).toHaveAttribute('data-paper-state', 'settled')
   expect(await page.locator('#sheep video').evaluate((video) => (video as HTMLVideoElement).paused)).toBe(true)
+  await page.locator('.farm-album').getByRole('button', { name: 'Play animal films' }).click()
+  await expect.poll(async () => page.locator('#sheep video').evaluate((video) => !(video as HTMLVideoElement).paused)).toBe(true)
 })
 
 test('model, opening-image, product-image, and video failures retain complete fallbacks', async ({ page }) => {
@@ -1516,15 +1523,74 @@ test('visit, service, and contact remain fictional and send nothing', async ({ p
   const writes: string[] = []
   page.on('request', (request) => { if (request.method() !== 'GET') writes.push(`${request.method()} ${request.url()}`) })
   await page.goto(`${projectPath}#visit`)
-  await expect(page.getByText('These are sample times, not live opening hours.')).toBeVisible()
+  await expect(page.getByText('These are sample times, not live opening hours.')).toHaveCount(0)
+  await expect(page.getByText('Sample visiting details')).toHaveCount(0)
   await expect(page.getByText('This is a demonstration farm, so there is no visitor address.')).toBeVisible()
+  await expect(page.getByText('Thursday')).toBeVisible()
+  await expect(page.getByText('3–6 pm')).toBeVisible()
   await page.locator('#website').scrollIntoViewIfNeeded()
+  await expect(page.locator('#website').getByText('Your website', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('A little detail you can change')).toHaveCount(0)
+  await expect(page.getByText('Practice only—this changes the sign, not collection availability.')).toHaveCount(0)
   await page.getByText('Try changing the hours', { exact: true }).click()
   await page.getByLabel('Opens').fill('10:30')
   await expect(page.locator('.try-update')).toContainText('10:30 am–1:00 pm')
   await page.locator('#contact').scrollIntoViewIfNeeded()
   await expect(page.getByRole('button', { name: /send|submit/i })).toHaveCount(0)
   expect(writes).toEqual([])
+})
+
+test('visiting envelope opens in place, exposes one content tree, and direct visit arrives open', async ({ page }) => {
+  await page.addInitScript(() => {
+    ;(window as typeof window & { __visitSounds?: string[] }).__visitSounds = []
+    window.addEventListener('farmstandsound', ((event: CustomEvent<{ name: string }>) => {
+      ;(window as typeof window & { __visitSounds?: string[] }).__visitSounds?.push(event.detail.name)
+    }) as EventListener)
+  })
+  await page.goto(`${projectPath}#top`, { waitUntil: 'networkidle' })
+  await page.mouse.click(8, 320)
+  await expect(page.locator('.sound-controls')).toHaveAttribute('data-sound-status', /ready|partial/, { timeout: 8000 })
+  await page.evaluate(() => { (window as typeof window & { __visitSounds?: string[] }).__visitSounds = [] })
+  await page.locator('#visit').scrollIntoViewIfNeeded()
+  const envelope = page.locator('.visiting-envelope')
+  const open = page.getByRole('button', { name: 'Open visiting letter' })
+  await expect(envelope).toHaveAttribute('data-phase', 'closed')
+  await expect(open).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.locator('#visiting-letter')).toHaveAttribute('aria-hidden', 'true')
+  await open.click()
+  await expect(page.getByRole('button', { name: 'Fold visiting letter' })).toBeDisabled()
+  await expect(envelope).toHaveAttribute('data-phase', 'open', { timeout: 2200 })
+  await expect(page.locator('#visiting-letter')).toHaveAttribute('aria-hidden', 'false')
+  await expect(page.locator('#visit #visiting-letter')).toHaveCount(1)
+  await expect(page.locator('#visiting-letter').getByRole('link', { name: 'Back to the market' })).toBeVisible()
+  await expect.poll(async () => page.evaluate(() => (window as typeof window & { __visitSounds?: string[] }).__visitSounds?.filter((name) => name.startsWith('details')).length)).toBe(1)
+
+  await page.goto(`${projectPath}#visit`)
+  await expect(envelope).toHaveAttribute('data-phase', 'open')
+  await expect(page.getByRole('button', { name: 'Fold visiting letter' })).toHaveAttribute('aria-expanded', 'true')
+})
+
+test('envelope and larger hours sign remain content-sized at phone and 200 percent text', async ({ page }) => {
+  for (const size of [{ width: 320, height: 740 }, { width: 390, height: 844 }, { width: 1440, height: 900 }]) {
+    await page.setViewportSize(size)
+    await page.goto(`${projectPath}#visit`, { waitUntil: 'domcontentloaded' })
+    const visit = await page.locator('#visit').evaluate((section) => ({
+      pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      sectionOverflow: section.scrollWidth - section.clientWidth,
+      letterHeight: section.querySelector('#visiting-letter')!.getBoundingClientRect().height,
+    }))
+    expect(visit.pageOverflow, `${size.width}x${size.height}`).toBeLessThanOrEqual(1)
+    expect(visit.sectionOverflow, `${size.width}x${size.height}`).toBeLessThanOrEqual(1)
+    expect(visit.letterHeight, `${size.width}x${size.height}`).toBeGreaterThan(300)
+    await page.goto(`${projectPath}#website`, { waitUntil: 'domcontentloaded' })
+    const sign = await page.locator('.try-update').evaluate((element) => element.getBoundingClientRect().width)
+    expect(sign, `${size.width}x${size.height}`).toBeGreaterThanOrEqual(Math.min(size.width - 48, 340))
+  }
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.goto(`${projectPath}#visit`)
+  await page.addStyleTag({ content: 'html { font-size: 200% !important; }' })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1)
+  await expect(page.getByText('This is a demonstration farm, so there is no visitor address.')).toBeVisible()
 })
 
 test('sample hours validate same-day ranges, reset exactly, and never change basket collection data', async ({ page }) => {

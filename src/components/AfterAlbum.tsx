@@ -17,7 +17,6 @@ export function ServiceSection({ onInterfaceSound }: AfterAlbumProps) {
   return (
     <section className="after-section service" id="website" aria-labelledby="service-heading">
       <div className="service__copy">
-        <p className="eyebrow">Your website</p>
         <h2 id="service-heading">Now picture your place.</h2>
         <p className="service__lead">Your products, your opening times, your story. A website shaped around what people need to know about your business.</p>
         <div className="service__proof" aria-label="What this demonstration shows">
@@ -35,9 +34,9 @@ export function ServiceSection({ onInterfaceSound }: AfterAlbumProps) {
             <p>The content, scope, price and ongoing support would be agreed first. Payments, booking, stock systems, editing and message delivery are separate choices, not connected services in this demonstration.</p>
           </details>
         </div>
+        <a className="button button--ink service__action" href="#contact">Write a website note</a>
       </div>
       <TryUpdate onInterfaceSound={onInterfaceSound} />
-      <a className="button button--ink service__action" href="#contact">Write a website note</a>
     </section>
   )
 }

@@ -39,7 +39,6 @@ export function TryUpdate({ onInterfaceSound }: TryUpdateProps) {
 
   return (
     <section className="try-update" aria-labelledby="try-update-heading">
-      <p className="eyebrow">A little detail you can change</p>
       <h3 id="try-update-heading">Sample Saturday hours</h3>
       <span className="hours-mask" aria-live="polite">
         <span className="hours-value" data-valid={error ? 'false' : 'true'} key={error ? 'invalid' : `${hours.opens}-${hours.closes}`}>{formattedRange}</span>
@@ -78,7 +77,6 @@ export function TryUpdate({ onInterfaceSound }: TryUpdateProps) {
           }}
         >Reset sample</button>
       </details>
-      <p className="try-update__boundary">Practice only—this changes the sign, not collection availability.</p>
     </section>
   )
 }
