@@ -50,6 +50,7 @@ function FarmAlbumEntry({
   directArrival,
   onActivate,
   onEnableMotion,
+  onToggleMotion,
   onViewProduct,
 }: {
   profile: (typeof farmLifeProfiles)[number]
@@ -59,6 +60,7 @@ function FarmAlbumEntry({
   directArrival: boolean
   onActivate: (id: FarmLifeId) => void
   onEnableMotion: () => void
+  onToggleMotion: (id: FarmLifeId) => void
   onViewProduct: (productId: 'eggs') => void
 }) {
   const articleRef = useRef<HTMLElement>(null)
@@ -71,6 +73,7 @@ function FarmAlbumEntry({
   const blockedRef = useRef(blocked)
   const motionEnabledRef = useRef(motionEnabled)
   const lastMediaTimeRef = useRef(0)
+  const pointerStartRef = useRef<{ id: number; x: number; y: number } | undefined>(undefined)
   const skipSettleRef = useRef(initialTarget() === profile.id || directArrival)
   const [shouldLoad, setShouldLoad] = useState(() => initialTarget() === profile.id || initialTarget() === 'farm-life' && profile.id === 'hens')
   const [posterReady, setPosterReady] = useState(false)
@@ -196,6 +199,13 @@ function FarmAlbumEntry({
     onActivate(profile.id)
   }
 
+  const toggleFilm = () => {
+    if (mediaFailed) return
+    setShouldLoad(true)
+    setPlayBlocked(false)
+    onToggleMotion(profile.id)
+  }
+
   const retry = () => {
     const video = videoRef.current
     if (!video || retryUsed) return
@@ -227,7 +237,34 @@ function FarmAlbumEntry({
       <h3 id={headingId}>{profile.heading}</h3>
       <div className="farm-album__print" onAnimationEnd={() => setPaperState('settled')}>
         <figure>
-          <div className="farm-album__film" data-film-id={profile.id} ref={filmRef} id={filmId}>
+          <div
+            className="farm-album__film"
+            data-film-id={profile.id}
+            data-film-playing={playing ? 'true' : 'false'}
+            ref={filmRef}
+            id={filmId}
+            role={mediaFailed ? undefined : 'button'}
+            tabIndex={mediaFailed ? undefined : 0}
+            aria-label={mediaFailed ? undefined : `${playing && active && motionEnabled ? 'Pause' : 'Play'} ${profile.label} film`}
+            aria-pressed={mediaFailed ? undefined : playing && active && motionEnabled}
+            onKeyDown={(event) => {
+              if (event.repeat || event.key !== 'Enter' && event.key !== ' ') return
+              event.preventDefault()
+              toggleFilm()
+            }}
+            onPointerDown={(event) => {
+              if (event.button !== 0) return
+              pointerStartRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY }
+            }}
+            onPointerCancel={() => { pointerStartRef.current = undefined }}
+            onPointerUp={(event) => {
+              const start = pointerStartRef.current
+              pointerStartRef.current = undefined
+              if (!start || start.id !== event.pointerId || Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8) return
+              toggleFilm()
+            }}
+            onClick={(event) => { if (event.detail === 0) toggleFilm() }}
+          >
             {!posterFailed && <img src={profile.poster} alt={profile.alt} width="1280" height="720" loading={shouldLoad ? 'eager' : 'lazy'} decoding="async" onLoad={() => setPosterReady(true)} onError={() => { setPosterFailed(true); setPosterReady(false) }} />}
             {posterFailed && !framePresented && <span className="farm-album__neutral-poster" role="img" aria-label={`${profile.label} film poster unavailable. ${profile.alt}`}><span>{profile.label}</span></span>}
             <video
@@ -250,6 +287,7 @@ function FarmAlbumEntry({
               }}
               onError={() => { setMediaFailed(true); setPlaying(false) }}
             />
+            {!mediaFailed && <span className="farm-album__film-instruction" aria-hidden="true">{playing && active && motionEnabled ? 'Pause film' : 'Play film'}</span>}
           </div>
           <figcaption>
             <p>{profile.description}</p>
@@ -341,7 +379,12 @@ export function FarmLife({ onViewProduct, handoffActive, handoffTarget }: FarmLi
     }
   }, [chooseOwner])
 
-  const enableMotion = () => {
+  const enableMotion = (requestedId?: FarmLifeId) => {
+    if (requestedId) {
+      setActiveId(requestedId)
+      setMotionEnabled(true)
+      return
+    }
     const next = farmLifeProfiles
       .map(({ id }) => {
         const rect = sectionRef.current?.querySelector<HTMLElement>(`[data-film-id="${id}"]`)?.getBoundingClientRect()
@@ -355,16 +398,19 @@ export function FarmLife({ onViewProduct, handoffActive, handoffTarget }: FarmLi
     setMotionEnabled(true)
   }
 
-  const toggleLabel = motionEnabled ? 'Pause animal films' : 'Play animal films'
+  const toggleMotion = (id: FarmLifeId) => {
+    if (motionEnabled && activeId === id) {
+      setMotionEnabled(false)
+      return
+    }
+    enableMotion(id)
+  }
 
   return (
     <section className="farm-album" id="farm-life" aria-labelledby="farm-life-heading" ref={sectionRef} data-motion-enabled={motionEnabled ? 'true' : 'false'} data-reduced-motion={reducedMotion ? 'true' : 'false'}>
       <div className="farm-album__inner">
         <header className="farm-album__intro">
           <div><h2 id="farm-life-heading">Around the farm.</h2><p>Meet the neighbours.</p></div>
-          <button className="farm-album__motion" type="button" aria-label={toggleLabel} title={toggleLabel} aria-pressed={!motionEnabled} onClick={() => motionEnabled ? setMotionEnabled(false) : enableMotion()}>
-            {motionEnabled ? <span aria-hidden="true"><i /><i /></span> : <span className="farm-album__play" aria-hidden="true" />}
-          </button>
         </header>
         {farmLifeProfiles.map((profile) => (
           <FarmAlbumEntry
@@ -375,7 +421,8 @@ export function FarmLife({ onViewProduct, handoffActive, handoffTarget }: FarmLi
             motionEnabled={motionEnabled}
             directArrival={handoffTarget === profile.id}
             onActivate={setActiveId}
-            onEnableMotion={enableMotion}
+            onEnableMotion={() => enableMotion(profile.id)}
+            onToggleMotion={toggleMotion}
             onViewProduct={onViewProduct}
           />
         ))}

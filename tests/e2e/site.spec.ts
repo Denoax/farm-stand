@@ -531,7 +531,7 @@ test('living farm album uses matching films, normal flow, and one playback owner
   await expect(page.locator('#product-eggs')).toBeFocused()
 })
 
-test('farm album keeps shared pause intent across entries and lazy source attachment', async ({ page }) => {
+test('farm album keeps film-surface pause intent across entries and lazy source attachment', async ({ page }) => {
   await page.goto(`${projectPath}#top`, { waitUntil: 'networkidle' })
   await expect(page.locator('.farm-album__entry[data-source-attached="true"]')).toHaveCount(0)
   await page.goto(`${projectPath}#hens`, { waitUntil: 'networkidle' })
@@ -540,9 +540,10 @@ test('farm album keeps shared pause intent across entries and lazy source attach
   await expect(hens).toHaveAttribute('data-paper-state', 'settled')
   await expect(hens).toHaveAttribute('data-media-state', /playing|ready/)
   await expect.poll(async () => hens.locator('video').evaluate((video) => (video as HTMLVideoElement).paused)).toBe(false)
-  const pauseFilms = page.getByRole('button', { name: 'Pause animal films' })
-  await expect(pauseFilms).toBeVisible()
-  await pauseFilms.click()
+  const hensFilm = hens.getByRole('button', { name: 'Pause Hens film' })
+  await expect(page.locator('.farm-album__motion')).toHaveCount(0)
+  await expect(hensFilm).toBeVisible()
+  await hensFilm.click()
   await expect(page.locator('.farm-album')).toHaveAttribute('data-motion-enabled', 'false')
   await expect.poll(async () => page.locator('.farm-album video').evaluateAll((videos) => videos.every((video) => (video as HTMLVideoElement).paused))).toBe(true)
   await page.locator('#cattle').scrollIntoViewIfNeeded()
@@ -550,9 +551,14 @@ test('farm album keeps shared pause intent across entries and lazy source attach
   await hens.scrollIntoViewIfNeeded()
   await page.waitForTimeout(350)
   expect(await hens.locator('video').evaluate((video) => (video as HTMLVideoElement).paused)).toBe(true)
-  await page.getByRole('button', { name: 'Play animal films' }).click()
+  await hens.getByRole('button', { name: 'Play Hens film' }).click()
   await expect(page.locator('.farm-album')).toHaveAttribute('data-motion-enabled', 'true')
   await expect.poll(async () => hens.locator('video').evaluate((video) => (video as HTMLVideoElement).paused)).toBe(false)
+  await hens.locator('.farm-album__film').evaluate((film) => {
+    film.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 7, clientX: 20, clientY: 20 }))
+    film.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0, pointerId: 7, clientX: 20, clientY: 45 }))
+  })
+  await expect(page.locator('.farm-album')).toHaveAttribute('data-motion-enabled', 'true')
   expect(await page.locator('.farm-album video').evaluateAll((videos) => videos.filter((video) => !(video as HTMLVideoElement).paused).length)).toBeLessThanOrEqual(1)
 })
 
@@ -1419,25 +1425,23 @@ test('farm album stays readable without horizontal overflow across required narr
     await page.goto(`${projectPath}#hens`, { waitUntil: 'domcontentloaded' })
     const layout = await page.locator('.farm-album').evaluate((album) => {
       const film = album.querySelector('#hens .farm-album__film')!.getBoundingClientRect()
-      const motionControl = album.querySelector('.farm-album__motion')!.getBoundingClientRect()
       return {
         overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         filmLeft: film.left,
         filmRight: innerWidth - film.right,
-        controlsRight: innerWidth - motionControl.right,
       }
     })
     expect(layout.overflow, `${size.width}x${size.height}`).toBeLessThanOrEqual(1)
     expect(layout.filmLeft, `${size.width}x${size.height}`).toBeGreaterThanOrEqual(8)
     expect(layout.filmRight, `${size.width}x${size.height}`).toBeGreaterThanOrEqual(8)
-    expect(layout.controlsRight, `${size.width}x${size.height}`).toBeGreaterThanOrEqual(8)
   }
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto(`${projectPath}#hens`)
   await page.addStyleTag({ content: '.farm-album { font-size: 200% !important; }' })
   await page.locator('#hens').scrollIntoViewIfNeeded()
   expect(await page.locator('.farm-album').evaluate((album) => album.scrollWidth - album.clientWidth)).toBeLessThanOrEqual(1)
-  await expect(page.locator('.farm-album').getByRole('button', { name: 'Pause animal films' })).toBeVisible()
+  await expect(page.locator('#hens').getByRole('button', { name: /Hens film/ })).toBeVisible()
+  await expect(page.locator('.farm-album__motion')).toHaveCount(0)
 })
 
 test('reduced motion presents complete still states and keeps manual video control', async ({ page }) => {
@@ -1449,10 +1453,10 @@ test('reduced motion presents complete still states and keeps manual video contr
   await expect(page.locator('body > #root > div')).toHaveAttribute('data-handoff-state', 'bypassed')
   await expect(page.getByRole('button', { name: /Open basket preview/ })).toBeVisible()
   await page.goto(`${projectPath}#sheep`)
-  await expect(page.locator('.farm-album').getByRole('button', { name: 'Play animal films' })).toBeVisible()
+  await expect(page.locator('#sheep').getByRole('button', { name: 'Play Sheep film' })).toBeVisible()
   await expect(page.locator('#sheep')).toHaveAttribute('data-paper-state', 'settled')
   expect(await page.locator('#sheep video').evaluate((video) => (video as HTMLVideoElement).paused)).toBe(true)
-  await page.locator('.farm-album').getByRole('button', { name: 'Play animal films' }).click()
+  await page.locator('#sheep').getByRole('button', { name: 'Play Sheep film' }).press('Enter')
   await expect.poll(async () => page.locator('#sheep video').evaluate((video) => !(video as HTMLVideoElement).paused)).toBe(true)
 })
 
@@ -1557,9 +1561,24 @@ test('visiting envelope opens in place, exposes one content tree, and direct vis
   await expect(envelope).toHaveAttribute('data-phase', 'closed')
   await expect(open).toHaveAttribute('aria-expanded', 'false')
   await expect(page.locator('#visiting-letter')).toHaveAttribute('aria-hidden', 'true')
-  await open.click()
+  await page.evaluate(() => {
+    const host = document.querySelector('.visiting-envelope')!
+    ;(window as typeof window & { __foldPhases?: string[] }).__foldPhases = []
+    new MutationObserver(() => {
+      ;(window as typeof window & { __foldPhases?: string[] }).__foldPhases?.push((host as HTMLElement).dataset.phase ?? '')
+    }).observe(host, { attributes: true, attributeFilter: ['data-phase'] })
+  })
+  await open.press('Enter')
   await expect(page.getByRole('button', { name: 'Fold visiting letter' })).toBeDisabled()
-  await expect(envelope).toHaveAttribute('data-phase', 'open', { timeout: 2200 })
+  await expect(envelope).toHaveAttribute('data-phase', 'open', { timeout: 4200 })
+  expect(await page.evaluate(() => (window as typeof window & { __foldPhases?: string[] }).__foldPhases)).toEqual([
+    'opening-flap',
+    'opening-extract',
+    'opening-hold',
+    'opening-upper',
+    'opening-lower',
+    'open',
+  ])
   await expect(page.locator('#visiting-letter')).toHaveAttribute('aria-hidden', 'false')
   await expect(page.locator('#visit #visiting-letter')).toHaveCount(1)
   await expect(page.locator('#visiting-letter').getByRole('link', { name: 'Back to the market' })).toBeVisible()
@@ -1568,6 +1587,36 @@ test('visiting envelope opens in place, exposes one content tree, and direct vis
   await page.goto(`${projectPath}#visit`)
   await expect(envelope).toHaveAttribute('data-phase', 'open')
   await expect(page.getByRole('button', { name: 'Fold visiting letter' })).toHaveAttribute('aria-expanded', 'true')
+})
+
+test('folded letter settles safely through resize, rapid activation, hidden tabs, and motion changes', async ({ page }) => {
+  await page.goto(`${projectPath}#top`, { waitUntil: 'networkidle' })
+  await page.locator('#visit').scrollIntoViewIfNeeded()
+  const envelope = page.locator('.visiting-envelope')
+  const open = page.getByRole('button', { name: 'Open visiting letter' })
+  await open.click()
+  await page.locator('.visiting-envelope__button').dispatchEvent('click')
+  await expect(envelope).toHaveAttribute('data-phase', 'opening-upper', { timeout: 2400 })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true })
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+  await expect(envelope).toHaveAttribute('data-phase', 'open')
+  await expect(page.locator('#visiting-letter')).toHaveAttribute('aria-hidden', 'false')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1)
+
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, value: false })
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+  await page.getByRole('button', { name: 'Fold visiting letter' }).click()
+  await expect(envelope).toHaveAttribute('data-phase', 'closing-lower')
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await expect(envelope).toHaveAttribute('data-phase', 'closed')
+  await expect(page.locator('#visiting-letter')).toHaveAttribute('aria-hidden', 'true')
+  await page.getByRole('button', { name: 'Open visiting letter' }).press('Space')
+  await expect(envelope).toHaveAttribute('data-phase', 'open')
 })
 
 test('envelope and larger hours sign remain content-sized at phone and 200 percent text', async ({ page }) => {

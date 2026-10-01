@@ -64,27 +64,6 @@
   font: 600 clamp(1.25rem, 2vw, 1.7rem)/1.1 Caveat, 'Segoe Print', cursive;
 }
 
-.farm-album__motion {
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  width: 2.8rem;
-  height: 2.8rem;
-  padding: 0;
-  color: #f8f4e8;
-  background: #526937;
-  border: 1px solid rgb(35 60 45 / .34);
-  border-radius: 50%;
-  box-shadow: 0 .35rem .8rem rgb(51 70 46 / .16);
-  cursor: pointer;
-}
-
-.farm-album__motion:hover,
-.farm-album__motion:focus-visible { background: #344e3f; }
-.farm-album__motion > span:not(.farm-album__play) { display: flex; gap: .22rem; }
-.farm-album__motion i { width: .23rem; height: .85rem; background: currentColor; border-radius: .08rem; }
-.farm-album__play { width: 0; height: 0; margin-left: .12rem; border-block: .48rem solid transparent; border-left: .72rem solid currentColor; }
-
 .farm-album__entry {
   position: relative;
   display: grid;
@@ -129,7 +108,17 @@
   box-shadow: 0 .75rem 1.9rem rgb(48 58 45 / .14), 0 .18rem .35rem rgb(48 58 45 / .12);
 }
 
-.farm-album__film { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: #dce3d5; border: 1px solid #c3cbbd; }
+.farm-album__film {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #dce3d5;
+  border: 1px solid #c3cbbd;
+  cursor: pointer;
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+}
+.farm-album__film:focus-visible { outline: 3px solid #65782e; outline-offset: .28rem; }
 .farm-album__film::before,
 .farm-album__film::after { content: ''; position: absolute; z-index: 3; width: 1.2rem; height: 1.2rem; border-color: rgb(73 99 83 / .55); pointer-events: none; }
 .farm-album__film::before { top: .65rem; left: .65rem; border-top: 1px solid; border-left: 1px solid; }
@@ -142,6 +131,26 @@
 .farm-album__film video { z-index: 2; opacity: 0; }
 .farm-album__film video[data-frame-presented='true'] { opacity: 1; }
 .farm-album__neutral-poster { display: grid; place-items: center; color: #53665a; background: linear-gradient(145deg, #dce3d5, #cbd6c8); font: 600 1.1rem/1 Fraunces, Georgia, serif; }
+.farm-album__film-instruction {
+  position: absolute;
+  z-index: 4;
+  right: .75rem;
+  bottom: .75rem;
+  padding: .38rem .58rem;
+  color: #fffdf5;
+  background: rgb(34 55 44 / .82);
+  border-radius: .2rem;
+  opacity: 0;
+  transform: translateY(.2rem);
+  transition: opacity .16s ease, transform .16s ease;
+  font: 700 .78rem/1 'Source Sans 3', sans-serif;
+  pointer-events: none;
+}
+.farm-album__film:hover .farm-album__film-instruction,
+.farm-album__film:focus-visible .farm-album__film-instruction {
+  opacity: 1;
+  transform: none;
+}
 
 .farm-album__print figcaption { display: grid; grid-template-columns: minmax(13rem, 1fr) auto; align-items: center; gap: 1rem 2rem; padding: .85rem .25rem 0; }
 .farm-album__print figcaption > p { margin: 0; color: #53645b; font-size: .95rem; }
