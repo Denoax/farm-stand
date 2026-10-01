@@ -1324,8 +1324,9 @@ test('failed actions stay silent while confirmed clear and copy use their own cu
   await drawer.getByRole('button', { name: 'Continue browsing' }).click()
 
   await page.locator('#contact').scrollIntoViewIfNeeded()
-  await page.getByRole('button', { name: 'Copy website brief' }).click()
-  await expect(page.getByRole('button', { name: 'Brief copied' })).toBeVisible()
+  await page.getByLabel('What should your website help with?').fill('Keep sample opening information easy to find.')
+  await page.getByRole('button', { name: 'Copy website note' }).click()
+  await expect(page.getByText('Note copied', { exact: true })).toBeVisible()
   await expect.poll(async () => page.evaluate(() => (window as typeof window & { __heardSounds?: string[] }).__heardSounds?.filter((name) => name === 'confirm'))).toEqual(['confirm'])
 })
 
@@ -1381,7 +1382,7 @@ test('fixed header compacts after real scrolling and restores only at the true t
 
 test('contact editing preserves exact long input through insertion and undo without multiplying or overflowing', async ({ page }) => {
   await page.goto(`${projectPath}#contact`, { waitUntil: 'networkidle' })
-  const field = page.getByLabel('What should your website make easier?')
+  const field = page.getByLabel('What should your website help with?')
   const original = `${'Long farm detail '.repeat(310)}END-MARKER`
   await field.fill(original)
   await field.evaluate((node) => {
@@ -1515,14 +1516,168 @@ test('visit, service, and contact remain fictional and send nothing', async ({ p
   const writes: string[] = []
   page.on('request', (request) => { if (request.method() !== 'GET') writes.push(`${request.method()} ${request.url()}`) })
   await page.goto(`${projectPath}#visit`)
-  await expect(page.getByText('Illustrative periods, not a live schedule.')).toBeVisible()
-  await expect(page.getByText('No address or geographic directions are configured.')).toBeVisible()
+  await expect(page.getByText('These are sample times, not live opening hours.')).toBeVisible()
+  await expect(page.getByText('This is a demonstration farm, so there is no visitor address.')).toBeVisible()
   await page.locator('#website').scrollIntoViewIfNeeded()
+  await page.getByText('Try changing the hours', { exact: true }).click()
   await page.getByLabel('Opens').fill('10:30')
-  await expect(page.locator('.try-update__preview')).toContainText('10:30 am–1:00 pm')
+  await expect(page.locator('.try-update')).toContainText('10:30 am–1:00 pm')
   await page.locator('#contact').scrollIntoViewIfNeeded()
   await expect(page.getByRole('button', { name: /send|submit/i })).toHaveCount(0)
   expect(writes).toEqual([])
+})
+
+test('sample hours validate same-day ranges, reset exactly, and never change basket collection data', async ({ page }) => {
+  await page.goto(`${projectPath}#website`, { waitUntil: 'networkidle' })
+  const initialBasket = await page.evaluate(() => sessionStorage.getItem('farm-stand-demo-basket-v2'))
+  await page.getByText('Try changing the hours', { exact: true }).click()
+  const opens = page.getByLabel('Opens')
+  const closes = page.getByLabel('Closes')
+
+  await opens.fill('10:30')
+  await closes.fill('12:15')
+  await expect(page.locator('.hours-value')).toHaveText('10:30 am–12:15 pm')
+  await expect(opens).toHaveAttribute('aria-invalid', 'false')
+
+  await closes.fill('08:00')
+  await expect(page.locator('.hours-value')).toHaveText('Hours need checking')
+  await expect(page.getByText('Closing must be later than opening for this same-day example.')).toBeVisible()
+  await expect(closes).toHaveAttribute('aria-invalid', 'true')
+
+  await page.getByRole('button', { name: 'Reset sample' }).click()
+  await expect(opens).toHaveValue('09:00')
+  await expect(closes).toHaveValue('13:00')
+  await expect(page.locator('.hours-value')).toHaveText('9:00 am–1:00 pm')
+  expect(await page.evaluate(() => sessionStorage.getItem('farm-stand-demo-basket-v2'))).toBe(initialBasket)
+})
+
+test('project postcard formats Unicode and repetition once, rejects blank notes, and suppresses stale copy success', async ({ page }) => {
+  await page.addInitScript(() => {
+    const state = window as typeof window & {
+      __copiedNotes?: string[]
+      __copyResolvers?: Array<() => void>
+      __heardSounds?: string[]
+    }
+    state.__copiedNotes = []
+    state.__copyResolvers = []
+    state.__heardSounds = []
+    window.addEventListener('farmstandsound', ((event: CustomEvent<{ name: string }>) => state.__heardSounds?.push(event.detail.name)) as EventListener)
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: (value: string) => {
+          state.__copiedNotes?.push(value)
+          return new Promise<void>((resolve) => state.__copyResolvers?.push(resolve))
+        },
+      },
+    })
+  })
+  await page.goto(`${projectPath}#contact`, { waitUntil: 'networkidle' })
+  const brief = page.getByLabel('What should your website help with?')
+  const copy = page.locator('.postcard__actions .button')
+
+  await copy.click()
+  await expect(brief).toBeFocused()
+  await expect(page.getByText('Add a short note about what the website should help with.')).toBeVisible()
+  expect(await page.evaluate(() => (window as typeof window & { __copiedNotes?: string[] }).__copiedNotes)).toEqual([])
+
+  await page.getByLabel('Business name (optional)').fill("Café d'Árvore 🌱")
+  await brief.fill('Keep pears.\nKeep pears.\n第二行 — unchanged.')
+  await copy.click()
+  await expect(copy).toHaveText('Copying…')
+  await brief.fill('A newer note while copying.')
+  await page.evaluate(() => (window as typeof window & { __copyResolvers?: Array<() => void> }).__copyResolvers?.shift()?.())
+  await expect(page.getByText('Note copied', { exact: true })).toHaveCount(0)
+  expect(await page.evaluate(() => (window as typeof window & { __heardSounds?: string[] }).__heardSounds?.filter((name) => name === 'confirm'))).toEqual([])
+  expect(await page.evaluate(() => (window as typeof window & { __copiedNotes?: string[] }).__copiedNotes?.[0])).toBe(
+    "Farm Stand website note\n\nBusiness name: Café d'Árvore 🌱\n\nWhat should the website help with?\nKeep pears.\nKeep pears.\n第二行 — unchanged.",
+  )
+
+  await copy.click()
+  await page.evaluate(() => (window as typeof window & { __copyResolvers?: Array<() => void> }).__copyResolvers?.shift()?.())
+  await expect(page.getByText('Note copied', { exact: true })).toBeVisible()
+  await expect(page.getByText('Copied', { exact: true })).toBeVisible()
+  expect(await page.evaluate(() => (window as typeof window & { __heardSounds?: string[] }).__heardSounds?.filter((name) => name === 'confirm'))).toEqual(['confirm'])
+})
+
+test('clipboard rejection expands selectable preview and the download matches the same formatter', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new Error('blocked') } } })
+  })
+  await page.goto(`${projectPath}#contact`, { waitUntil: 'networkidle' })
+  await page.getByLabel('What should your website help with?').fill('Keep the workshop hours clear.\nPreserve this second line.')
+  await page.getByRole('button', { name: 'Copy website note' }).click()
+  await expect(page.getByText('Clipboard unavailable. The note is selected below; download is also available.')).toBeVisible()
+  await expect(page.locator('.postcard__preview')).toHaveAttribute('open', '')
+  await expect.poll(async () => page.evaluate(() => window.getSelection()?.toString() ?? '')).toContain('Keep the workshop hours clear.')
+
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Download note (.txt)' }).click()
+  const download = await downloadPromise
+  expect(download.suggestedFilename()).toBe('farm-stand-website-note.txt')
+  const stream = await download.createReadStream()
+  const chunks: Uint8Array[] = []
+  for await (const chunk of stream) chunks.push(chunk)
+  const contents = Buffer.concat(chunks).toString('utf8')
+  expect(contents).toBe('Farm Stand website note\n\nWhat should the website help with?\nKeep the workshop hours clear.\nPreserve this second line.')
+})
+
+test('after-album hashes, credits, narrow layouts, and 200 percent text remain usable', async ({ page }) => {
+  for (const id of ['visit', 'website', 'contact']) {
+    await page.goto('about:blank')
+    await page.goto(`${projectPath}#${id}`, { waitUntil: 'domcontentloaded' })
+    const geometry = await page.evaluate((targetId) => {
+      const header = document.querySelector('.site-header')!.getBoundingClientRect()
+      const target = document.getElementById(targetId)!.getBoundingClientRect()
+      return { headerBottom: header.bottom, targetTop: target.top }
+    }, id)
+    expect(geometry.targetTop).toBeGreaterThanOrEqual(geometry.headerBottom - 1)
+    expect(geometry.targetTop).toBeLessThan(geometry.headerBottom + 140)
+  }
+
+  await page.goto(`${projectPath}#website`)
+  await page.getByRole('link', { name: 'Write a website note' }).click()
+  await expect(page).toHaveURL(/#contact$/)
+  await page.goBack()
+  await expect(page).toHaveURL(/#website$/)
+
+  await page.locator('.site-footer').scrollIntoViewIfNeeded()
+  await page.getByText('Sources & credits', { exact: true }).click()
+  await expect(page.getByText(/Bird Orange: user-supplied asset/)).toBeVisible()
+  await expect(page.getByText(/Notebook pencil studies: user-supplied/)).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Icons8', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: /Morning/ })).toBeVisible()
+
+  for (const size of [{ width: 320, height: 740 }, { width: 390, height: 844 }, { width: 960, height: 540 }, { width: 1920, height: 900 }]) {
+    await page.setViewportSize(size)
+    await page.goto(`${projectPath}#contact`, { waitUntil: 'domcontentloaded' })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), `${size.width}x${size.height}`).toBeLessThanOrEqual(1)
+    await expect(page.getByRole('button', { name: 'Copy website note' })).toBeVisible()
+  }
+
+  await page.setViewportSize({ width: 320, height: 740 })
+  await page.goto(`${projectPath}#contact`)
+  const copyButton = page.getByRole('button', { name: 'Copy website note' })
+  await copyButton.scrollIntoViewIfNeeded()
+  expect(await page.evaluate(() => {
+    const action = document.querySelector('.postcard__actions .button')!.getBoundingClientRect()
+    const basket = document.querySelector('.floating-basket')!.getBoundingClientRect()
+    return !(action.right <= basket.left || action.left >= basket.right || action.bottom <= basket.top || action.top >= basket.bottom)
+  })).toBe(false)
+  await page.locator('.site-footer').scrollIntoViewIfNeeded()
+  await page.getByText('Sources & credits', { exact: true }).click()
+  await page.locator('.site-footer__credits p:last-child').scrollIntoViewIfNeeded()
+  expect(await page.evaluate(() => {
+    const credit = document.querySelector('.site-footer__credits p:last-child')!.getBoundingClientRect()
+    const basket = document.querySelector('.floating-basket')!.getBoundingClientRect()
+    return !(credit.right <= basket.left || credit.left >= basket.right || credit.bottom <= basket.top || credit.top >= basket.bottom)
+  })).toBe(false)
+
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.goto(`${projectPath}#contact`)
+  await page.addStyleTag({ content: 'html { font-size: 200% !important; }' })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1)
+  await expect(page.getByRole('button', { name: 'Download note (.txt)' })).toBeVisible()
 })
 
 test('two-hundred-percent text sizing keeps the market operable without horizontal scrolling', async ({ page }) => {

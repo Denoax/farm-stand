@@ -3,8 +3,8 @@ import { ContactPreview } from './components/ContactPreview'
 import { ShopSection } from './components/ShopSection'
 import { FarmLife } from './components/FarmLife'
 import { VisitSection } from './components/VisitSection'
-import { TryUpdate } from './components/TryUpdate'
 import { Logo } from './components/Logo'
+import { ServiceSection, SiteFooter } from './components/AfterAlbum'
 import { VideoHandoff, type HandoffClip, type HandoffKind, type HandoffPhase } from './components/VideoHandoff'
 import { SoundControls } from './components/SoundControls'
 import { basketReducer, basketStorageKey, legacyBasketStorageKey, parseBasketSnapshot, serializeBasket } from './state/basket'
@@ -784,29 +784,8 @@ export function App() {
           handoffActive={handoffPhase !== 'idle'}
           handoffTarget={handoffRequest?.targetId}
         />
-        <VisitSection />
-
-        <section className="service" id="website" aria-labelledby="service-heading">
-          <div className="service-heading">
-            <p className="eyebrow">Your website</p>
-            <h2 id="service-heading">A website built around how your business works.</h2>
-            <p className="service-lead">Bring products, visiting details, and enquiries together in a site that feels true to the business.</p>
-          </div>
-          <div className="service-story">
-            <p className="eyebrow">A plain-language process</p>
-            <ol className="process-list">
-              <li><span>01</span><div><strong>Understand the business</strong><p>Start with what customers need to know and what the owner needs the website to make easier.</p></div></li>
-              <li><span>02</span><div><strong>Organize the content</strong><p>Shape products, services, visiting details, and enquiries into a structure people can scan.</p></div></li>
-              <li><span>03</span><div><strong>Design and build</strong><p>Create the visual system and responsive pages around the real material available.</p></div></li>
-              <li><span>04</span><div><strong>Review and launch</strong><p>Check the important journeys, refine the result, and connect the approved web address and contact details.</p></div></li>
-            </ol>
-          </div>
-          <div className="service-boundary">
-            <p><strong>Shown in this example:</strong> a clear shop, collection information, farm-life stories, and a contact preview.</p>
-            <p><strong>Set up for a real business only when needed:</strong> inventory, payments, booking, content editing, message delivery, analytics, or ongoing support.</p>
-          </div>
-          <TryUpdate />
-        </section>
+        <VisitSection onInterfaceSound={soundscape.playCommerce} />
+        <ServiceSection onInterfaceSound={soundscape.playCommerce} />
 
         <ContactPreview onInterfaceSound={soundscape.playCommerce} />
       </main>
@@ -828,12 +807,7 @@ export function App() {
         />
       )}
 
-      <footer>
-        <a className="footer-brand" href="#top" aria-label="Return to the farm stand"><Logo /> <span>Return to the farm stand ↑</span></a>
-        <p>Farm stand website example · no orders, payments, bookings, or submissions</p>
-        <p>Produce models: Poly Haven, CC0 · product photography: credited Pexels contributors · pencil studies: user-supplied reference pixels, reused at the user’s request</p>
-        <p>Farm photograph: <a href="https://www.pexels.com/photo/trees-in-orchard-17765489/">Mark Stebnicki / Pexels</a> · leaf transitions: <a href="https://www.youtube.com/watch?v=RRyXHZKOYGc">Kajal Karmakar 01</a> and <a href="https://www.youtube.com/watch?v=dAZGvwAzupY">02</a>, user-supplied originals · <a href="https://incompetech.com/music/royalty-free/index.html?Search=Search&amp;isrc=USUAN2300003">“Morning” by Kevin MacLeod</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a></p>
-      </footer>
+      <SiteFooter onInterfaceSound={soundscape.playCommerce} />
     </div>
   )
 }

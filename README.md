@@ -1,6 +1,6 @@
 # Farm stand website demonstration
 
-A local, single-page website-services showcase for growers and local businesses. Its fictional farm includes a one-time cinematic market opening, a 48-product photographed catalogue, a variant-aware demonstration basket, collection preview, three licensed farm-life video scenes, practical visit content, a client-side sample-hours update, service explanation, and copy-only website brief. It cannot accept orders, payments, bookings, saved content updates, or contact submissions.
+A local, single-page website-services showcase for growers and local businesses. Its fictional farm includes a one-time cinematic market opening, a 48-product photographed catalogue, a variant-aware demonstration basket, collection preview, three licensed farm-life video scenes, a folded sample visiting note, a client-side sample-hours update, and a copy/download-only website note. It cannot accept orders, payments, bookings, saved content updates, or contact submissions.
 
 Basket persistence stores only validated product/variant identifiers and bounded integer quantities. Displayed prices are always read from the current catalogue rather than trusted from saved browser data.
 
@@ -25,4 +25,4 @@ npm run build
 npm run preview -- --host 127.0.0.1
 ```
 
-Run the browser tests with `npm run test:e2e`. With the production preview running, `npm run measure` records transfer/layout/renderer evidence, `npm run measure:motion` records software-rendered motion and hold timing, `npm run capture:frame-guides` regenerates the plate-registration guides, and `npm run capture:finish` creates the current permanent-frame screenshots, failure states, and normal-speed recordings. Asset provenance and transformations are recorded in [ASSETS.md](./ASSETS.md). Bulky captures and recordings under `evidence/` are deliberately ignored; concise review reports and machine-readable summaries are tracked with the source.
+Run the browser tests with `npm run test:e2e`. With the production preview running, `npm run measure` records transfer/layout/renderer evidence, `npm run measure:motion` records software-rendered motion and hold timing, `npm run capture:frame-guides` regenerates the plate-registration guides, `npm run capture:finish` creates the permanent-frame review, and `npm run capture:after-album` captures the sheep-to-footer ending with an actual same-run browser-audio track. Asset provenance and transformations are recorded in [ASSETS.md](./ASSETS.md). Bulky captures and recordings under `evidence/` are deliberately ignored; concise review reports and machine-readable summaries are tracked with the source.
